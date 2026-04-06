@@ -154,7 +154,7 @@ var R={"data":{"Cowellnex株式会社":{"s":[2,0,3,8000000,0,0],"cs":[{"n":"浅�
 var D=R.data,MT=R.meta;
 var GAS_URL="https://script.google.com/macros/s/AKfycbwuB-bko02MczlRorWD0qQ7Ch80fLoZd5Gmtwb2BWKDfOLOlOBokjiBNjodupe-r2VF/exec";
 
-var N=Object.keys(D),cur=0,fsF='all',SF='https://circulation.lightning.force.com/lightning/r/',SFC=SF+'Contact/',SFO=SF+'Opportunity/';
+var N=Object.keys(D),cur=0,fsF='all',SF='https://circulation.lightning.force.com/lightning/r/',SFC=SF+'Account/',SFO=SF+'Opportunity/';
 var deptFilter='all';
 // Delta mode: 0=先週, 1=今月, 2=先月, 3=下期
 var deltaMode=0;
@@ -465,25 +465,25 @@ function phN(p){for(var i=8;i>=1;i--)if(p&&p.indexOf('0'+i)>=0)return i;if(p&&p.
 function processGAS(casesT,contactsT,pnT){
   try{
   var cs=pCSV(casesT),ct=pCSV(contactsT),pn=pCSV(pnT);
-  // Cases columns hardcoded: 0:主担当者 1:取引先名 2:案件名 3:顧客担当者氏名 4:CK 5:フェーズ 10:新規/継続 12:作成日 13:案件ID
-  // Contacts columns hardcoded: 0:取引先名 1:姓 2:名 3:役職 6:取引先所有者 8:作成日 9:取引先ID 14:最終活動日 15:ターゲット 16:所属部署
+  // Cases columns: 0:主担当者 1:取引先名 2:案件名 3:顧客担当者氏名 4:CK 5:フェーズ 10:新規/継続 12:作成日 13:案件ID
+  // Contacts columns: 0:取引先名 1:所属部署 2:名 3:姓 4:役職 7:取引先所有者 9:作成日 10:取引先ID 15:最終活動日 16:ターゲット
   var TEAM=['徳永','中村','岡部','栫','福本'];
-  // PN columns hardcoded: 0:主担当者 1:取引先名 2:案件名 3:フェーズ 5:CK 10:月額顧客請求額 11:月額専門家支払額 12:契約開始日 13:契約終了日 21:解約日
+  // PN columns: 0:主担当者 1:取引先名 2:案件名 3:フェーズ 5:CK 10:月額顧客請求額 11:月額専門家支払額 12:契約開始日 13:契約終了日 21:解約日
 
   function isTeam(n){if(!n)return false;for(var i=0;i<TEAM.length;i++)if(n.indexOf(TEAM[i])>=0)return true;return false;}
   var allCo=new Set();
   cs.r.forEach(function(r){var c=gv(r,1),fs=gv(r,0);if(c&&isTeam(fs))allCo.add(c);});
-  ct.r.forEach(function(r){var c=gv(r,0),own=gv(r,6);if(c&&isTeam(own))allCo.add(c);});
+  ct.r.forEach(function(r){var c=gv(r,0);if(c&&allCo.has(c))allCo.add(c);});
 
   var contacts={},coFS2={};
+  cs.r.forEach(function(r){var co=gv(r,1),fs=gv(r,0);if(co&&fs&&!coFS2[co])coFS2[co]=fs;});
   ct.r.forEach(function(r){
     var co=gv(r,0);if(!co||!allCo.has(co))return;
-    var sei=gv(r,1).trim(),mei=gv(r,2).trim();var nm=(sei+' '+mei).trim();var nmR=(mei+' '+sei).trim();if(!nm||nm.indexOf('ダミー')>=0||nm.indexOf('ABM')>=0)return;
-    var cat=gv(r,15),km='';
+    var mei=gv(r,2).trim(),sei=gv(r,3).trim();var nm=(sei+' '+mei).trim();var nmR=(mei+' '+sei).trim();if(!nm||nm.indexOf('ダミー')>=0||nm.indexOf('ABM')>=0)return;
+    var cat=gv(r,16),km='';
     if(cat.indexOf('決裁者')>=0)km='決裁者';else if(cat.indexOf('チャンピオン')>=0)km='Champion';else if(cat.indexOf('キーマン')>=0)km='キーマン';
-    var own=gv(r,6);if(own&&!coFS2[co])coFS2[co]=own;
     if(!contacts[co])contacts[co]=[];
-    contacts[co].push({n:nm,nr:nmR,role:gv(r,3).slice(0,18),d:gv(r,8).slice(0,10),la:gv(r,14).slice(0,10),km:km,cid:gv(r,9),dept:gv(r,16).slice(0,40)});
+    contacts[co].push({n:nm,nr:nmR,role:gv(r,4).slice(0,18),d:gv(r,9).slice(0,10),la:gv(r,15).slice(0,10),km:km,cid:gv(r,10),dept:gv(r,1).slice(0,40)});
   });
 
   var cases2={};
@@ -532,6 +532,9 @@ function processGAS(casesT,contactsT,pnT){
   console.log('PN: included='+pnOK+', skipped='+pnSkip+' (DEAD/no-rev/no-date)');
 
   var SO2={'won':0,'meeting':1,'deal':2,'prospect':3,'contacted':4,'dead':5,'registered':6};
+  var matchLog=0;
+  // Debug: show first company's contact names vs case lead names
+  var debugDone=false;
   var output={};
   allCo.forEach(function(co){
     if(!co)return;var ctcts=contacts[co]||[],cses=cases2[co]||[];
@@ -540,12 +543,19 @@ function processGAS(casesT,contactsT,pnT){
     var allCS=nr.filter(function(c){return c.pn>=1;}).map(function(c){return{n:c.lead,t:c.theme,p:c.pn,d:c.date,aid:c.aid,ck:c.ck};}).slice(0,200);
     var allNL=ctcts.map(function(c2){return{n:c2.n,dept:c2.dept||'',role:c2.role,d:c2.d,cid:c2.cid,la:c2.la,km:c2.km};}).slice(0,200);
     var deptMap={};
+    if(!debugDone&&ctcts.length>0&&cses.length>0){
+      console.log('DEBUG company: '+co);
+      console.log('Contact names (nm/nmR):', ctcts.slice(0,3).map(function(c2){return c2.n+' / '+c2.nr;}));
+      console.log('Case leads:', cses.slice(0,3).map(function(c){return c.lead;}));
+      debugDone=true;
+    }
     ctcts.forEach(function(c2){
-      var nm=c2.n,nm2=nm.replace(/ /g,''),nmR=c2.nr||'',nmR2=nmR.replace(/ /g,'');
-      var my=cses.filter(function(c){return c.lead===nm||c.lead===nm2||c.lead===nmR||c.lead===nmR2;});
+      var nm=c2.n,nm2=nm.replace(/\s/g,''),nmR=c2.nr||'',nmR2=nmR.replace(/\s/g,'');
+      var my=cses.filter(function(c){var cl=c.lead,cl2=cl.replace(/\s/g,'');return cl===nm||cl===nmR||cl2===nm2||cl2===nmR2;});
       var mx=Math.max.apply(null,my.map(function(c){return c.pn;}).concat([0]));
       var dead=my.length>0&&my.every(function(c){return c.pn===-1;});
       var st=mx===8?'won':mx>=4?'meeting':mx>=2?'deal':mx>=1?'prospect':dead?'dead':my.length>0?'contacted':'registered';
+      if(matchLog<5&&my.length>0){console.log('Match: contact='+nm+' / '+nmR+' → cases='+my.length+' st='+st);matchLog++;}
       var d=c2.dept||'(不明)';deptMap[d]=deptMap[d]||[];
       deptMap[d].push({n:nm,r:c2.role,st:st,w:my.filter(function(c){return c.pn===8;}).length,sfid:c2.cid,la:c2.la,km:c2.km});
     });
