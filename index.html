@@ -383,7 +383,7 @@ function showMemoPopup(key,title){
   REL_OPTS.forEach(function(o){h+='<option value="'+o+'"'+(m.rel===o?' selected':'')+'>'+(o||'選択してください')+'</option>';});
   h+='</select></div>';
   h+='<div class="memo-field"><label>メモ（関係性・経緯・注意点など）</label><textarea id="mp_note" rows="4" placeholder="例: 来週会食予定 / 過去お叱りあり注意 / 異動予定4月〜">'+esc2(m.note||'')+'</textarea></div>';
-  h+='<div class="memo-field"><label>ネクストアクション</label><input type="text" id="mp_next" placeholder="例: 4/15 アポ打診" value="'+esc2(m.next||'')+'"></div>';
+  h+='<div class="memo-field"><label>ネクストアクション</label><div style="display:flex;gap:6px"><input type="date" id="mp_nextDate" style="width:140px;border:1px solid var(--bd);border-radius:6px;padding:6px 8px;font-size:12px" value="'+(m.nextDate||'')+'"><input type="text" id="mp_next" style="flex:1" placeholder="例: アポ打診 / 提案書送付" value="'+esc2(m.next||'')+'"></div></div>';
   h+='<div class="memo-btn-row"><button class="memo-btn" onclick="this.closest(\'.memo-overlay\').remove()">キャンセル</button>';
   if(m.note||m.rel||m.next)h+='<button class="memo-btn danger" onclick="clearMemo(\''+esc(key)+'\');this.closest(\'.memo-overlay\').remove()">クリア</button>';
   h+='<button class="memo-btn primary" onclick="saveMemoFromPopup(\''+esc(key)+'\');this.closest(\'.memo-overlay\').remove()">保存</button></div>';
@@ -397,14 +397,15 @@ function saveMemoFromPopup(key){
   var note=document.getElementById('mp_note').value.trim();
   var rel=document.getElementById('mp_rel').value;
   var next=document.getElementById('mp_next').value.trim();
-  if(!note&&!rel&&!next){delete m[key];}else{m[key]={note:note,rel:rel,next:next};}
+  var nextDate=document.getElementById('mp_nextDate').value;
+  if(!note&&!rel&&!next&&!nextDate){delete m[key];}else{m[key]={note:note,rel:rel,next:next,nextDate:nextDate};}
   saveMemos(cn,m);rO(cur);
 }
 function clearMemo(key){var cn=N[cur],m=getMemos(cn);delete m[key];saveMemos(cn,m);rO(cur);}
 function memoTooltip(e,key){
-  var m=getMemo(key);if(!m.note&&!m.rel&&!m.next)return;
+  var m=getMemo(key);if(!m.note&&!m.rel&&!m.next&&!m.nextDate)return;
   var tt=document.createElement('div');tt.className='memo-preview';tt.id='mtip';
-  var t=[];if(m.rel)t.push('関係: '+m.rel);if(m.next)t.push('Next: '+m.next);if(m.note)t.push(m.note.slice(0,100));
+  var t=[];if(m.rel)t.push('関係: '+m.rel);if(m.next||m.nextDate)t.push('Next: '+(m.nextDate||'')+' '+(m.next||''));if(m.note)t.push(m.note.slice(0,100));
   tt.textContent=t.join('\n');
   tt.style.left=(e.clientX+12)+'px';tt.style.top=(e.clientY-10)+'px';
   document.body.appendChild(tt);
@@ -439,8 +440,8 @@ function renderCard(node,depth){
       h+='<span class="memo-tag '+(hasLM?'has':'empty')+'" onclick="event.stopPropagation();showMemoPopup(\'lead_'+esc(l.n)+'\',\''+esc(l.n)+'\')" onmouseenter="memoTooltip(event,\'lead_'+esc(l.n)+'\')" onmouseleave="memoTooltipHide()">📋</span>';
       h+='</div>';
       if(l.r)h+='<div style="font-size:10px;color:var(--ink2);font-weight:500;margin:1px 0">'+l.r+'</div>';
-      if(lMemo.next)h+='<div style="font-size:8px;color:var(--blue);font-weight:500">▶ '+esc2(lMemo.next)+'</div>';
-      h+='<div class="pi-d">'+(l.d||l.la||'')+'</div>';
+      if(lMemo.next)h+='<div style="font-size:8px;color:var(--blue);font-weight:500">▶ '+(lMemo.nextDate?lMemo.nextDate+' ':'')+ esc2(lMemo.next)+'</div>';
+      /* 登録日は非表示 */
       if(isWS){h+='<div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:8px;cursor:pointer;color:var(--blue)" onclick="event.stopPropagation();editLead(\''+dn+'\',\''+esc(l.n)+'\')">✏️編集</span><span style="font-size:8px;cursor:pointer;color:var(--red)" onclick="event.stopPropagation();deleteLead(\''+dn+'\',\''+esc(l.n)+'\')">🗑削除</span></div>';}
       h+='</div>';
       h+='<div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-left:auto"><input type="checkbox" '+(ck[l.n]?'checked':'')+' style="cursor:pointer;accent-color:var(--blue)" title="アプローチ対象" onclick="event.stopPropagation();toggleCheck(\''+esc(l.n)+'\')"><span class="ps pill '+SS[st]+'">'+SL[st]+'</span></div></div>';
@@ -551,7 +552,7 @@ function rO(idx){
       h+='<td style="font-size:10px;color:var(--ink2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+l.dept+'</td>';
       h+='<td style="font-size:10px;'+(relC||'')+'">'+(lm.rel||'-')+'</td>';
       h+='<td class="memo-cell">'+(lm.note?lm.note.slice(0,40):'')+'</td>';
-      h+='<td style="font-size:10px;color:var(--blue)">'+(lm.next||'')+'</td>';
+      h+='<td style="font-size:10px;color:var(--blue)">'+(lm.nextDate?'<span style="color:var(--ink3)">'+lm.nextDate+'</span> ':'')+(lm.next||'')+'</td>';
       h+='<td><span class="pill '+SS[l.st]+'">'+SL[l.st]+'</span></td>';
       h+='<td style="font-size:9px;color:var(--ink3);font-family:var(--mono)">'+(l.la||l.d||'')+'</td>';
       h+='</tr>';
