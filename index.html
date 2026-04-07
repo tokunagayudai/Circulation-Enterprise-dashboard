@@ -47,7 +47,7 @@
 .chart-legend{display:flex;gap:12px;margin-top:8px;font-size:10px;color:var(--ink2)}
 .chart-legend span{display:flex;align-items:center;gap:4px}
 .chart-legend .dot{width:8px;height:8px;border-radius:2px}
-.drill{max-height:0;overflow:hidden;transition:.2s;margin:0 24px}.drill.show{max-height:600px;overflow-y:auto}
+.drill{max-height:0;overflow:hidden;transition:.2s;margin:0 24px}.drill.show{max-height:3000px;overflow-y:auto}
 .drill-hd{display:flex;gap:10px;font-size:9px;font-weight:600;color:var(--ink3);padding:8px 12px;border-bottom:1px solid var(--bd)}
 .drill-row{display:flex;gap:10px;align-items:center;padding:7px 12px;font-size:11px;border-bottom:1px solid rgba(0,0,0,.03);cursor:pointer;transition:.08s}
 .drill-row:hover{background:rgba(0,121,192,.04)}
@@ -55,8 +55,8 @@
 .drill-row .nm{min-width:70px;font-weight:600}.drill-row .th{color:var(--ink2);flex:1;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drill-row .dt{font-family:var(--mono);font-size:9px;color:var(--ink3)}.drill-row .sf{font-size:8px;color:var(--blue);font-weight:600}
 .pill{font-size:8px;padding:1px 6px;border-radius:8px;font-weight:600;white-space:nowrap}
-.pill-g{background:var(--grn-bg);color:var(--grn)}.pill-b{background:#ddf4ff;color:var(--blue)}.pill-o{background:#fff8c5;color:var(--org)}.pill-r{background:#ffebe9;color:var(--red)}
-.rev-drill{max-height:0;overflow:hidden;transition:.2s;margin-top:8px}.rev-drill.show{max-height:500px;overflow-y:auto}
+.pill-g{background:var(--grn-bg);color:var(--grn)}.pill-b{background:#ddf4ff;color:var(--blue)}.pill-o{background:#fff8c5;color:var(--org)}.pill-r{background:#ffebe9;color:var(--red)}.pill-ws{background:#f0e6ff;color:var(--purple)}
+.rev-drill{max-height:0;overflow:hidden;transition:.2s;margin-top:8px}.rev-drill.show{max-height:2000px;overflow-y:auto}
 
 /* Company grid - MF style */
 .co-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;padding:8px 24px}
@@ -161,10 +161,10 @@ var deltaMode=0;
 var DELTA_LABELS=['先週比','今月','先月比','下期(2月〜)'];
 
 function lg(c){return '';}
-var SA={'won':'aw','meeting':'am','deal':'ad','prospect':'ap','contacted':'ac2','dead':'ax','registered':'ar'};
-var SL={'won':'受注','meeting':'面談済','deal':'案件化','prospect':'商談','contacted':'接触','dead':'DEAD','registered':'登録のみ'};
-var SS={'won':'pill-g','meeting':'pill-o','deal':'pill-b','prospect':'pill-o','dead':'pill-r','registered':'','contacted':''};
-var SC3={'won':'sw3','meeting':'sm3','deal':'sd3','prospect':'sp3','contacted':'sc3','dead':'sx3','registered':'sr3'};
+var SA={'won':'aw','meeting':'am','deal':'ad','prospect':'ap','contacted':'ac2','dead':'ax','registered':'ar','whitespace':'ar'};
+var SL={'won':'受注','meeting':'面談済','deal':'案件化','prospect':'商談','contacted':'接触','dead':'DEAD','registered':'登録のみ','whitespace':'WS'};
+var SS={'won':'pill-g','meeting':'pill-o','deal':'pill-b','prospect':'pill-o','dead':'pill-r','registered':'','contacted':'','whitespace':'pill-ws'};
+var SC3={'won':'sw3','meeting':'sm3','deal':'sd3','prospect':'sp3','contacted':'sc3','dead':'sx3','registered':'sr3','whitespace':'sr3'};
 
 function showO(){document.querySelectorAll('.ni').forEach(function(e){e.classList.remove('act');});document.getElementById('no').classList.add('act');deptFilter='all';rO(cur);}
 
@@ -262,7 +262,7 @@ function showD(){
 
 // Drill handlers
 function tgD(i){var el=document.getElementById('dd'+i);if(el.classList.contains('show')){el.classList.remove('show');return;}document.querySelectorAll('.drill').forEach(function(e){e.classList.remove('show');});var fn=fN(),h='',dr=[FY_START,FY_END];
-  if(i===0){h+='<div class="drill-hd"><span style="min-width:90px">企業</span><span style="min-width:70px">リード</span><span>役職/部署</span><span style="margin-left:auto">登録日</span></div>';var all=[];fn.forEach(function(n){(D[n].nl||[]).filter(function(l){return l.d>=dr[0]&&l.d<=dr[1];}).forEach(function(l){all.push({co:n,n:l.n,dept:l.dept,role:l.role,d:l.d,cid:l.cid,km:l.km});});});if(!all.length)h+='<div style="padding:14px;color:var(--ink3)">該当なし</div>';all.forEach(function(l){var oc=l.cid?'onclick="window.open(\''+SFC+l.cid+'/view\',\'_blank\')"':'';h+='<div class="drill-row" '+oc+'><span class="co">'+l.co.replace(/株式会社/g,'').slice(0,14)+'</span><span class="nm">'+l.n+(l.km?' <span class="pill '+(l.km==='決裁者'?'pill-r':l.km==='チャンピオン'?'pill-b':'pill-o')+'">'+l.km+'</span>':'')+'</span><span class="th">'+(l.role||'')+(l.dept?' '+l.dept:'')+'</span>';if(l.cid)h+='<span class="sf">↗SF</span>';h+='<span class="dt">'+l.d+'</span></div>';});}
+  if(i===0){h+='<div class="drill-hd"><span style="min-width:90px">企業</span><span style="min-width:70px">リード</span><span>役職/部署</span><span style="margin-left:auto">登録日</span></div>';var all=[];fn.forEach(function(n){(D[n].nl||[]).filter(function(l){return l.d>=dr[0]&&l.d<=dr[1];}).forEach(function(l){all.push({co:n,n:l.n,dept:l.dept,role:l.role,d:l.d,cid:l.cid,km:l.km});});});if(!all.length)h+='<div style="padding:14px;color:var(--ink3)">該当なし</div>';all.forEach(function(l){var oc=l.cid?'onclick="window.open(\''+SFC+l.cid+'/view\',\'_blank\')"':'';h+='<div class="drill-row" '+oc+'><span class="co">'+l.co.replace(/株式会社/g,'').slice(0,14)+'</span><span class="nm">'+l.n+(l.km?' <span class="pill '+(l.km==='決裁者'?'pill-r':l.km==='Champion'?'pill-b':'pill-o')+'">'+l.km+'</span>':'')+'</span><span class="th">'+(l.role||'')+(l.dept?' '+l.dept:'')+'</span>';if(l.cid)h+='<span class="sf">↗SF</span>';h+='<span class="dt">'+l.d+'</span></div>';});}
   else{h+='<div class="drill-hd"><span style="min-width:90px">企業</span><span style="min-width:70px">担当者</span><span>案件</span><span style="margin-left:auto">CK/Phase</span></div>';var minP=[0,1,2,4,8][i];var all=[];fn.forEach(function(n){(D[n].cs||[]).filter(function(c){return c.d>=dr[0]&&c.d<=dr[1]&&(i===4?c.p===8:c.p>=minP);}).forEach(function(c){all.push({co:n,n:c.n,t:c.t,p:c.p,d:c.d,aid:c.aid,ck:c.ck});});});if(!all.length)h+='<div style="padding:14px;color:var(--ink3)">該当なし</div>';all.sort(function(a,b){return b.p-a.p;});all.forEach(function(c){var pc=c.p>=8?'pill-g':c.p>=4?'pill-o':c.p>=2?'pill-b':'';var oc=c.aid?'onclick="window.open(\''+SFO+c.aid+'/view\',\'_blank\')"':'';h+='<div class="drill-row" '+oc+'><span class="co">'+c.co.replace(/株式会社/g,'').slice(0,18)+'</span><span class="nm">'+c.n+'</span><span class="th" style="max-width:300px">'+c.t+'</span>';if(c.aid)h+='<span class="sf">↗SF</span>';if(c.ck)h+='<span style="font-size:9px;color:var(--grn);font-weight:600">'+fmt$(c.ck)+'</span>';h+='<span class="pill '+pc+'">P'+c.p+'</span></div>';});}
   el.innerHTML=h;el.classList.add('show');}
 function tgGRC(el){var sub=el.nextElementSibling;if(sub)sub.style.display=sub.style.display==='none'?'block':'none';}
@@ -330,27 +330,45 @@ function leadDrop(e,td){e.preventDefault();e.currentTarget.classList.remove('act
   saveTree(cn,tree);var sv=document.getElementById('sv');if(sv){sv.classList.add('show');setTimeout(function(){sv.classList.remove('show');},1500);}rO(cur);}
 
 function esc(s){return s.replace(/'/g,"\\'");}
+function addDept(){var name=prompt('新しい部署名を入力:');if(!name)return;var cn=N[cur],tree=getTree(cn)||buildDefaultTree(D[cn].d||[]);tree.push({name:name,children:[],leads:[],lc:0,best:'registered',hw:false});saveTree(cn,tree);rO(cur);}
+function addWhitespace(dn){var name=prompt('担当者名を入力（ホワイトスペース）:');if(!name)return;var role=prompt('役職（任意）:')||'';var cn=N[cur],tree=getTree(cn)||buildDefaultTree(D[cn].d||[]);function al(nodes){for(var i=0;i<nodes.length;i++){if(nodes[i].name===dn){if(!nodes[i].leads)nodes[i].leads=[];nodes[i].leads.push({n:name,r:role,st:'whitespace',w:0,sfid:'',la:'',km:'',d:''});nodes[i].lc=(nodes[i].lc||0)+1;return true;}if(nodes[i].children&&al(nodes[i].children))return true;}return false;}al(tree);saveTree(cn,tree);rO(cur);}
+function editLead(dn,ln){var cn=N[cur],tree=getTree(cn)||buildDefaultTree(D[cn].d||[]);function find(nodes){for(var i=0;i<nodes.length;i++){if(nodes[i].name===dn&&nodes[i].leads){for(var j=0;j<nodes[i].leads.length;j++){if(nodes[i].leads[j].n===ln)return nodes[i].leads[j];}}if(nodes[i].children){var r=find(nodes[i].children);if(r)return r;}}return null;}var lead=find(tree);if(!lead)return;var nn=prompt('名前:',lead.n);if(!nn)return;var nr=prompt('役職:',lead.r||'');lead.n=nn;lead.r=nr;saveTree(cn,tree);rO(cur);}
+function deleteLead(dn,ln){if(!confirm(ln+'を削除しますか？'))return;var cn=N[cur],tree=getTree(cn)||buildDefaultTree(D[cn].d||[]);function rm(nodes){for(var i=0;i<nodes.length;i++){if(nodes[i].name===dn&&nodes[i].leads){for(var j=0;j<nodes[i].leads.length;j++){if(nodes[i].leads[j].n===ln){nodes[i].leads.splice(j,1);nodes[i].lc=Math.max(0,(nodes[i].lc||1)-1);return true;}}}if(nodes[i].children&&rm(nodes[i].children))return true;}return false;}rm(tree);saveTree(cn,tree);rO(cur);}
+function extractDept(dn){var cn=N[cur],tree=getTree(cn)||buildDefaultTree(D[cn].d||[]);var dept=null;function rm(nodes){for(var i=0;i<nodes.length;i++){if(nodes[i].children){for(var j=0;j<nodes[i].children.length;j++){if(nodes[i].children[j].name===dn){dept=nodes[i].children.splice(j,1)[0];return true;}}if(rm(nodes[i].children))return true;};}return false;}rm(tree);if(dept){tree.push(dept);saveTree(cn,tree);rO(cur);}}
+function getNotionLink(cn){try{return localStorage.getItem('acplan_notion_'+cn)||'';}catch(e){return '';}}
+function setNotionLink(cn){var cur_link=getNotionLink(cn);var url=prompt('Notionページ URL:',cur_link);if(url===null)return;try{localStorage.setItem('acplan_notion_'+cn,url);}catch(e){}rO(N.indexOf(cn));}
+var checkedLeads={};
+function getChecked(){try{var d=JSON.parse(localStorage.getItem('acplan_checked_'+N[cur])||'{}');return d;}catch(e){return {};}}
+function toggleCheck(ln){var cn=N[cur],ck=getChecked();if(ck[ln])delete ck[ln];else ck[ln]=true;try{localStorage.setItem('acplan_checked_'+cn,JSON.stringify(ck));}catch(e){}}
 function renderCard(node,depth){
   var hw=node.hw,dn=esc(node.name),dp=Math.min(depth,2);
+  var ck=getChecked();
   var h='<div class="dc depth'+dp+'" draggable="true" ondragstart="deptDragStart(event,\''+dn+'\')" ondragover="deptDragOver(event)" ondragleave="deptDragLeave(event)" ondrop="deptDrop(event,\''+dn+'\')">';
-  h+='<div class="dc-hd'+(hw?' has-won':'')+'"><div class="dc-nm">'+node.name+'</div><div class="dc-ct">'+node.lc+(hw?' ✅':'')+'</div></div>';
+  h+='<div class="dc-hd'+(hw?' has-won':'')+'"><div class="dc-nm">'+node.name+'</div><div style="display:flex;gap:4px;align-items:center"><div class="dc-ct">'+node.lc+(hw?' ✅':'')+'</div>';
+  if(depth>0)h+='<span style="font-size:8px;cursor:pointer;color:var(--ink3)" onclick="event.stopPropagation();extractDept(\''+dn+'\')" title="外に出す">↗</span>';
+  h+='</div></div>';
   h+='<div class="dc-body">';
   if(node.leads&&node.leads.length){
     h+='<div class="dc-people" ondragover="leadDropZoneDragOver(event)" ondragleave="leadDropZoneDragLeave(event)" ondrop="leadDrop(event,\''+dn+'\')">';
     node.leads.forEach(function(l){
       var st=l.st||'registered';
+      var isWS=st==='whitespace';
       var oc=l.sfid?'onclick="event.stopPropagation();window.open(\''+SFC+l.sfid+'/view\',\'_blank\')"':'';
-      h+='<div class="pc '+SC3[st]+'" draggable="true" ondragstart="leadDragStart(event,\''+esc(l.n)+'\',\''+dn+'\')" ondragend="leadDragEnd(event)" '+oc+'>';
-      var avTxt=l.km==='決裁者'?'決':l.km==='チャンピオン'?'C':l.km==='キーマン'?'K':'';
-      var avCls=l.km==='決裁者'?'background:#7c3aed;color:#fff':l.km==='チャンピオン'?'background:var(--blue);color:#fff':l.km==='キーマン'?'background:var(--org);color:#fff':'';
+      h+='<div class="pc '+SC3[st]+'" draggable="true" ondragstart="event.stopPropagation();leadDragStart(event,\''+esc(l.n)+'\',\''+dn+'\')" ondragend="leadDragEnd(event)" '+(isWS?'':oc)+'>';
+      var avTxt=l.km==='決裁者'?'決':l.km==='Champion'?'C':l.km==='キーマン'?'K':isWS?'?':'';
+      var avCls=l.km==='決裁者'?'background:#7c3aed;color:#fff':l.km==='Champion'?'background:var(--blue);color:#fff':l.km==='キーマン'?'background:var(--org);color:#fff':isWS?'background:#e8e0f0;color:var(--purple)':'';
+      var kmLabel=l.km==='Champion'?'<span style="font-size:8px;background:var(--blue);color:#fff;padding:1px 4px;border-radius:3px;margin-left:3px">チャンピオン</span>':l.km==='キーマン'?'<span style="font-size:8px;background:var(--org);color:#fff;padding:1px 4px;border-radius:3px;margin-left:3px">キーマン</span>':l.km==='決裁者'?'<span style="font-size:8px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;margin-left:3px">決裁者</span>':'';
       h+='<div class="pa '+SA[st]+'" style="'+(avCls||'')+'">'+avTxt+'</div>';
-      h+='<div class="pi"><div class="pi-n">'+l.n+(l.sfid?' <span style="font-size:7px;color:var(--blue)">↗</span>':'')+'</div>';
-      if(l.r)h+='<div class="pi-r">'+l.r+'</div>';
-      if(l.la)h+='<div class="pi-d">'+l.la+'</div>';
-      h+='</div><span class="ps pill '+SS[st]+'">'+SL[st]+'</span></div>';
+      h+='<div class="pi"><div class="pi-n">'+l.n+(l.sfid?' <span style="font-size:7px;color:var(--blue)">↗</span>':'')+kmLabel+'</div>';
+      if(l.r)h+='<div style="font-size:10px;color:var(--ink2);font-weight:500;margin:1px 0">'+l.r+'</div>';
+      h+='<div class="pi-d">'+(l.d||l.la||'')+'</div>';
+      if(isWS){h+='<div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:8px;cursor:pointer;color:var(--blue)" onclick="event.stopPropagation();editLead(\''+dn+'\',\''+esc(l.n)+'\')">✏️編集</span><span style="font-size:8px;cursor:pointer;color:var(--red)" onclick="event.stopPropagation();deleteLead(\''+dn+'\',\''+esc(l.n)+'\')">🗑削除</span></div>';}
+      h+='</div>';
+      h+='<div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-left:auto"><input type="checkbox" '+(ck[l.n]?'checked':'')+' style="cursor:pointer;accent-color:var(--blue)" title="アプローチ対象" onclick="event.stopPropagation();toggleCheck(\''+esc(l.n)+'\')"><span class="ps pill '+SS[st]+'">'+SL[st]+'</span></div></div>';
     });
     h+='</div>';
   }else{h+='<div class="dc-drop" ondragover="leadDropZoneDragOver(event)" ondragleave="leadDropZoneDragLeave(event)" ondrop="leadDrop(event,\''+dn+'\')"></div>';}
+  h+='<div style="padding:4px 8px"><button style="font-size:9px;padding:2px 8px;border:1px dashed var(--bd);background:none;border-radius:4px;cursor:pointer;color:var(--ink3)" onclick="event.stopPropagation();addWhitespace(\''+dn+'\')">＋ 担当者</button></div>';
   h+='</div>';
   if(node.children&&node.children.length){h+='<div class="dc-children">';node.children.forEach(function(c){h+=renderCard(c,depth+1);});h+='</div>';}
   h+='</div>';return h;
@@ -409,26 +427,35 @@ function rO(idx){
     h+='<div class="rev-drill" id="crd"></div></div>';}
 
   h+='<div class="dz" onclick="document.getElementById(\'fi\').click()" ondragover="event.preventDefault()" ondrop="event.preventDefault();doAI(event.dataTransfer.files[0])">🏢 組織図ドロップ→AIがホワイトスペース特定<input type="file" id="fi" accept="image/*" style="display:none" onchange="doAI(this.files[0])"></div>';
+  h+='<div style="display:flex;gap:8px;margin:0 24px 8px;align-items:center;flex-wrap:wrap">';
+  h+='<button onclick="addDept()" style="padding:4px 12px;border:1px dashed var(--blue);background:none;border-radius:6px;cursor:pointer;color:var(--blue);font-size:11px;font-weight:600">＋ 部署追加</button>';
+  h+='<button onclick="resetTree()" style="padding:4px 12px;border:1px solid var(--bd);background:none;border-radius:6px;cursor:pointer;color:var(--ink3);font-size:10px">↺ リセット</button>';
+  var notionUrl=getNotionLink(name);
+  if(notionUrl){h+='<a href="'+notionUrl+'" target="_blank" style="padding:4px 12px;border:1px solid var(--grn);background:var(--grn-bg);border-radius:6px;color:var(--grn);font-size:10px;text-decoration:none;font-weight:600;margin-left:auto">📝 Notionで管理</a>';}
+  h+='<button onclick="setNotionLink(\''+esc(name)+'\')" style="padding:4px 12px;border:1px solid var(--bd);background:none;border-radius:6px;cursor:pointer;color:var(--ink3);font-size:10px'+(notionUrl?'':';margin-left:auto')+'">'+(notionUrl?'🔗 URL変更':'🔗 Notion紐付')+'</button>';
+  h+='<a href="https://www.notion.so/2d35b464b52681e598bdc625c85f8179?v=2d35b464b52681d590ad000c86bc4e67" target="_blank" style="padding:4px 12px;border:1px solid var(--bd);background:none;border-radius:6px;color:var(--ink2);font-size:10px;text-decoration:none">📋 アカプラ一覧</a>';
+  h+='</div>';
   h+='<div class="an" id="ar"><div style="font-weight:700;color:var(--blue)">🔍 AI解析</div><div id="ab"></div></div>';
 
-  h+='<div class="legend"><div class="lg-i"><div class="lg-d" style="background:var(--grn)"></div>受注</div><div class="lg-i"><div class="lg-d" style="background:#7dd3fc"></div>稼働中</div><div class="lg-i"><div class="lg-d" style="background:var(--org)"></div>面談済</div><div class="lg-i"><div class="lg-d" style="background:var(--blue)"></div>案件化</div><div class="lg-i"><div class="lg-d" style="background:#d29922"></div>商談</div><div class="lg-i"><div class="lg-d" style="background:var(--ink3)"></div>接触</div><div class="lg-i"><div class="lg-d" style="background:var(--red)"></div>DEAD</div><div class="lg-i"><span style="width:8px;height:8px;border-radius:50%;background:#7c3aed;display:inline-block"></span>決裁者</div><div class="lg-i"><span style="width:8px;height:8px;border-radius:50%;background:var(--blue);display:inline-block"></span>チャンピオン</div><div class="lg-i"><span style="width:8px;height:8px;border-radius:50%;background:var(--org);display:inline-block"></span>キーマン</div></div>';
+  h+='<div class="legend"><div class="lg-i"><div class="lg-d" style="background:var(--grn)"></div>受注</div><div class="lg-i"><div class="lg-d" style="background:#0ea5e9"></div>稼働中</div><div class="lg-i"><div class="lg-d" style="background:var(--org)"></div>面談済</div><div class="lg-i"><div class="lg-d" style="background:var(--blue)"></div>案件化</div><div class="lg-i"><div class="lg-d" style="background:#d29922"></div>商談</div><div class="lg-i"><div class="lg-d" style="background:var(--ink3)"></div>接触</div><div class="lg-i"><div class="lg-d" style="background:var(--red)"></div>DEAD</div><div class="lg-i"><span style="width:8px;height:8px;border-radius:50%;background:#7c3aed;display:inline-block"></span>決裁者</div><div class="lg-i"><span style="width:8px;height:8px;border-radius:50%;background:var(--blue);display:inline-block"></span>チャンピオン</div><div class="lg-i"><span style="width:8px;height:8px;border-radius:50%;background:var(--org);display:inline-block"></span>キーマン</div></div>';
 
   var depts=d.d||[];
   var hasCustomTree=getTree(name);
   h+='<div class="org-toolbar"><span>組織マップ</span><span style="font-size:9px;color:var(--ink3);font-weight:400">部署ドラッグ→階層化　リードも移動可</span>';
   if(hasCustomTree)h+='<button onclick="resetTree()">リセット</button>';
   h+='<span class="saved" id="sv">✓ 保存済</span></div>';
-  if(depts.length>5){h+='<div class="dept-filter">';h+='<div class="dept-btn'+(deptFilter==='all'?' act':'')+'" onclick="deptFilter=\'all\';rO('+idx+')">すべて('+depts.length+')</div>';h+='<div class="dept-btn'+(deptFilter==='active'?' act':'')+'" onclick="deptFilter=\'active\';rO('+idx+')">稼働中</div>';h+='<div class="dept-btn'+(deptFilter==='idle'?' act':'')+'" onclick="deptFilter=\'idle\';rO('+idx+')">未進展</div></div>';}
+  if(depts.length>5){h+='<div class="dept-filter">';h+='<div class="dept-btn'+(deptFilter==='all'?' act':'')+'" onclick="deptFilter=\'all\';rO('+idx+')">すべて('+depts.length+')</div>';h+='<div class="dept-btn'+(deptFilter==='active'?' act':'')+'" onclick="deptFilter=\'active\';rO('+idx+')">稼働中</div>';h+='<div class="dept-btn'+(deptFilter==='idle'?' act':'')+'" onclick="deptFilter=\'idle\';rO('+idx+')">未進展</div>';h+='<div class="dept-btn'+(deptFilter==='checked'?' act':'')+'" onclick="deptFilter=\'checked\';rO('+idx+')">☑ アプローチ対象</div></div>';}
 
   var tree=hasCustomTree||buildDefaultTree(depts);
-  function filterTree(nodes,mode){if(mode==='all')return nodes;var a=['won','meeting','deal','prospect'];return nodes.filter(function(n){if(n.children&&n.children.length){n.children=filterTree(n.children,mode);if(n.children.length)return true;}if(mode==='active')return a.indexOf(n.best)>=0;return a.indexOf(n.best)<0;});}
+  var ck=getChecked();
+  function filterTree(nodes,mode){if(mode==='all')return nodes;var a=['won','meeting','deal','prospect'];return nodes.filter(function(n){var cn2=JSON.parse(JSON.stringify(n));if(cn2.children&&cn2.children.length){cn2.children=filterTree(cn2.children,mode);if(cn2.children.length){n.children=cn2.children;return true;}}if(mode==='active')return a.indexOf(n.best)>=0;if(mode==='idle')return a.indexOf(n.best)<0;if(mode==='checked'){if(n.leads){var cl=n.leads.filter(function(l){return ck[l.n];});if(cl.length){n.leads=cl;n.lc=cl.length;return true;}}return false;}return true;});}
   var fTree=JSON.parse(JSON.stringify(tree));if(deptFilter!=='all')fTree=filterTree(fTree,deptFilter);
   h+='<div class="org-canvas"><div class="org-root">';fTree.forEach(function(node){h+=renderCard(node,0);});h+='</div></div>';
   M.innerHTML=h;
 }
 
 function tgCK(i,idx){var el=document.getElementById('ck'+i);if(el.classList.contains('show')){el.classList.remove('show');return;}document.querySelectorAll('.drill').forEach(function(e){e.classList.remove('show');});var d=D[N[idx]],h='',dr=[FY_START,FY_END];
-  if(i===0){h+='<div class="drill-hd"><span>リード</span><span>役職/部署</span><span style="margin-left:auto">活動/登録日</span></div>';var nl=(d.nl||[]).filter(function(l){return l.d>=dr[0]&&l.d<=dr[1];});if(!nl.length)h+='<div style="padding:14px;color:var(--ink3)">該当なし</div>';nl.forEach(function(l){var oc=l.cid?'onclick="window.open(\''+SFC+l.cid+'/view\',\'_blank\')"':'';h+='<div class="drill-row" '+oc+'><span class="nm">'+l.n+(l.km?' <span class="pill '+(l.km==='決裁者'?'pill-r':l.km==='チャンピオン'?'pill-b':'pill-o')+'">'+l.km+'</span>':'')+'</span><span class="th">'+(l.role||'')+(l.dept?' '+l.dept:'')+'</span>';if(l.cid)h+='<span class="sf">↗SF</span>';h+='<span class="dt">'+(l.la?l.la+' / ':'')+l.d+'</span></div>';});}
+  if(i===0){h+='<div class="drill-hd"><span>リード</span><span>役職/部署</span><span style="margin-left:auto">活動/登録日</span></div>';var nl=(d.nl||[]).filter(function(l){return l.d>=dr[0]&&l.d<=dr[1];});if(!nl.length)h+='<div style="padding:14px;color:var(--ink3)">該当なし</div>';nl.forEach(function(l){var oc=l.cid?'onclick="window.open(\''+SFC+l.cid+'/view\',\'_blank\')"':'';h+='<div class="drill-row" '+oc+'><span class="nm">'+l.n+(l.km?' <span class="pill '+(l.km==='決裁者'?'pill-r':l.km==='Champion'?'pill-b':'pill-o')+'">'+l.km+'</span>':'')+'</span><span class="th">'+(l.role||'')+(l.dept?' '+l.dept:'')+'</span>';if(l.cid)h+='<span class="sf">↗SF</span>';h+='<span class="dt">'+(l.la?l.la+' / ':'')+l.d+'</span></div>';});}
   else{h+='<div class="drill-hd"><span>担当者</span><span>案件</span><span style="margin-left:auto">CK/Phase</span></div>';var minP=[0,1,2,4,8][i];var cs=(d.cs||[]).filter(function(c){return c.d>=dr[0]&&c.d<=dr[1]&&(i===4?c.p===8:c.p>=minP);});if(!cs.length)h+='<div style="padding:14px;color:var(--ink3)">該当なし</div>';cs.sort(function(a,b){return b.p-a.p;});cs.forEach(function(c){var pc=c.p>=8?'pill-g':c.p>=4?'pill-o':c.p>=2?'pill-b':'';var oc=c.aid?'onclick="window.open(\''+SFO+c.aid+'/view\',\'_blank\')"':'';h+='<div class="drill-row" '+oc+'><span class="nm">'+c.n+'</span><span class="th">'+c.t+'</span>';if(c.aid)h+='<span class="sf">↗SF</span>';if(c.ck)h+='<span style="font-size:9px;color:var(--grn);font-weight:600">'+fmt$(c.ck)+'</span>';h+='<span class="pill '+pc+'">P'+c.p+'</span></div>';});}
   el.innerHTML=h;el.classList.add('show');}
 function tgCR(m,idx){var el=document.getElementById('crd');if(el.classList.contains('show')&&el.getAttribute('data-m')===m){el.classList.remove('show');return;}el.setAttribute('data-m',m);var pnd=(D[N[idx]].pnd||{})[m]||[];var h='<div style="font-weight:700;color:var(--blue);margin-bottom:4px">'+m+' ('+pnd.length+'件)</div>';if(!pnd.length)h+='<span style="color:var(--ink3)">データなし</span>';pnd.forEach(function(p){var gp=p.r-p.p;h+='<div class="drill-row"><span class="th">'+p.n+'</span><span style="color:var(--blue);font-weight:600;margin-left:auto">'+fmt$(p.r)+'</span><span style="color:var(--grn);font-size:9px">GP '+fmt$(gp)+'</span><span class="dt">'+p.e+'</span></div>';});el.innerHTML=h;el.classList.add('show');}
@@ -481,7 +508,7 @@ function processGAS(casesT,contactsT,pnT){
     var co=gv(r,0);if(!co||!allCo.has(co))return;
     var mei=gv(r,2).trim(),sei=gv(r,3).trim();var nm=(sei+' '+mei).trim();var nmR=(mei+' '+sei).trim();if(!nm||nm.indexOf('ダミー')>=0||nm.indexOf('ABM')>=0)return;
     var cat=gv(r,16),km='';
-    if(cat.indexOf('決裁者')>=0)km='決裁者';else if(cat.indexOf('チャンピオン')>=0)km='チャンピオン';else if(cat.indexOf('キーマン')>=0)km='キーマン';
+    if(cat.indexOf('決裁者')>=0)km='決裁者';else if(cat.indexOf('チャンピオン')>=0)km='Champion';else if(cat.indexOf('キーマン')>=0)km='キーマン';
     if(!contacts[co])contacts[co]=[];
     contacts[co].push({n:nm,nr:nmR,role:gv(r,4).slice(0,18),d:gv(r,9).slice(0,10),la:gv(r,15).slice(0,10),km:km,cid:gv(r,10),dept:gv(r,1).slice(0,40)});
   });
@@ -557,7 +584,7 @@ function processGAS(casesT,contactsT,pnT){
       var st=mx===8?'won':mx>=4?'meeting':mx>=2?'deal':mx>=1?'prospect':dead?'dead':my.length>0?'contacted':'registered';
       if(matchLog<5&&my.length>0){console.log('Match: contact='+nm+' / '+nmR+' → cases='+my.length+' st='+st);matchLog++;}
       var d=c2.dept||'(不明)';deptMap[d]=deptMap[d]||[];
-      deptMap[d].push({n:nm,r:c2.role,st:st,w:my.filter(function(c){return c.pn===8;}).length,sfid:c2.cid,la:c2.la,km:c2.km});
+      deptMap[d].push({n:nm,r:c2.role,st:st,w:my.filter(function(c){return c.pn===8;}).length,sfid:c2.cid,la:c2.la,km:c2.km,d:c2.d});
     });
     var dO=[];for(var dn in deptMap){var ls=deptMap[dn].sort(function(a,b){return(SO2[a.st]||9)-(SO2[b.st]||9);});dO.push({n:dn,leads:ls.slice(0,10),lc:ls.length,best:ls[0]?ls[0].st:'registered',hw:ls.some(function(l){return l.st==='won';})});}
     var rv={};if(coRev[co]){for(var mm in coRev[co]){var d2=coRev[co][mm];rv[mm]=[d2[0],d2[0]-d2[1],d2[2],d2[0]?Math.round((d2[0]-d2[1])/d2[0]*1000)/10:0];}}
