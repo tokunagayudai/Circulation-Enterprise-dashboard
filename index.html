@@ -82,7 +82,7 @@
 .dz{margin:8px 24px;padding:20px;text-align:center;border:2px dashed var(--bd);border-radius:10px;color:var(--ink3);cursor:pointer;transition:.15s;font-size:12px}
 .dz:hover{border-color:var(--blue);color:var(--blue)}
 .an{display:none;margin:8px 24px;padding:14px;background:var(--bg2);border-radius:10px;font-size:12px;line-height:1.6;border:1px solid rgba(0,0,0,.04)}.an.show{display:block}
-.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--bd);border-top-color:var(--blue);border-radius:50%;animation:sp .6s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+.spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--bd);border-top-color:var(--blue);border-radius:50%;animation:sp .6s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 .hint{padding:4px 24px;font-size:9px;color:var(--ink3)}
 
 /* Org chart */
@@ -232,7 +232,8 @@ function showD(){
   h+='<div class="delta-sw">';
   DELTA_LABELS.forEach(function(l,i){h+='<div class="ds'+(i===deltaMode?' act':'')+'" onclick="deltaMode='+i+';showD()">'+l+'</div>';});
   h+='</div>';
-  h+='<select class="fl" onchange="fsF=this.value;showD()">';h+='<option value="all"'+(fsF==='all'?' selected':'')+'>全担当者</option>';MT.fs.forEach(function(f){h+='<option value="'+f+'"'+(f===fsF?' selected':'')+'>'+f+'</option>';});h+='</select></div></div>';
+  h+='<select class="fl" onchange="fsF=this.value;showD()">';h+='<option value="all"'+(fsF==='all'?' selected':'')+'>全担当者</option>';MT.fs.forEach(function(f){h+='<option value="'+f+'"'+(f===fsF?' selected':'')+'>'+f+'</option>';});h+='</select>';
+  h+='<span id="sync-badge"></span></div></div>';
 
   // KPI cards - Rakuten style: cumulative main + switchable delta
   var KNAMES=['新規リード','商談 P1+','案件 P2+','面談 P4+','受注 P8'];
@@ -285,7 +286,7 @@ function showD(){
     h+='<div class="co-m"><div class="v" style="font-size:11px;color:var(--grn)">'+fmt$(tGP)+'</div><div class="l">粗利 '+mgn+'%</div></div>';
     h+='</div></div>';
   });
-  h+='</div>';document.getElementById('M').innerHTML=h;
+  h+='</div>';document.getElementById('M').innerHTML=h;updateSyncBadge();
 }
 
 // Drill handlers
@@ -479,7 +480,7 @@ function rO(idx){
   var h='<div class="hdr"><div><div class="title">'+name+'</div><div class="sub">FS: '+d.f+'　FY13累計</div></div><div class="filters">';
   h+='<select class="fl" onchange="deptFilter=\'all\';rO(N.indexOf(this.value))" style="min-width:240px">';N.forEach(function(n,i){h+='<option value="'+n+'"'+(i===idx?' selected':'')+'>'+n+'</option>';});h+='</select>';
   h+='<div class="delta-sw">';DELTA_LABELS.forEach(function(l,i){h+='<div class="ds'+(i===deltaMode?' act':'')+'" onclick="deltaMode='+i+';rO('+idx+')">'+l+'</div>';});h+='</div>';
-  h+='</div></div>';
+  h+='<span id="sync-badge"></span></div></div>';
 
   var KNAMES=['新規リード','商談 P1+','案件 P2+','面談 P4+','受注 P8'];
   var KCOLS=['var(--blue)','var(--ink)','var(--org)','#bf4a00','var(--grn)'];
@@ -578,7 +579,7 @@ function rO(idx){
   }else{
     h+='<div class="org-canvas"><div class="org-root">';fTree.forEach(function(node){h+=renderCard(node,0);});h+='</div></div>';
   }
-  M.innerHTML=h;
+  M.innerHTML=h;updateSyncBadge();
 }
 
 function tgCK(i,idx){var el=document.getElementById('ck'+i);if(el.classList.contains('show')){el.classList.remove('show');return;}document.querySelectorAll('.drill').forEach(function(e){e.classList.remove('show');});var d=D[N[idx]],h='',dr=[FY_START,FY_END];
@@ -591,23 +592,28 @@ function doAI(file){if(!file)return;var name=N[cur],d=D[name];var eds=(d.d||[]).
 
 
 // === GAS LIVE DATA FETCH ===
-var LOADING=false;
+var LOADING=false,SYNC_STATUS='offline'; // 'offline'|'syncing'|'live'
+function updateSyncBadge(){
+  var el=document.getElementById('sync-badge');if(!el)return;
+  if(SYNC_STATUS==='syncing')el.innerHTML='<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue);color:#fff;padding:4px 12px;border-radius:12px;font-size:10px;font-weight:600;animation:pulse 1.5s infinite">🔄 Sheets同期中...</span>';
+  else if(SYNC_STATUS==='live')el.innerHTML='<span style="display:inline-flex;align-items:center;gap:4px;background:var(--grn);color:#fff;padding:4px 12px;border-radius:12px;font-size:10px;font-weight:600">✅ LIVE</span>';
+  else el.innerHTML='<span style="display:inline-flex;align-items:center;gap:4px;background:var(--org);color:#fff;padding:4px 12px;border-radius:12px;font-size:10px;font-weight:600">📦 オフライン</span>';
+}
 function fetchFromGAS(){
   console.log('>>> fetchFromGAS called');
   if(LOADING)return;LOADING=true;
-  // Show embedded data immediately, then update with GAS data
-  showD();
-  document.getElementById('M').insertAdjacentHTML('afterbegin','<div id="gas-loading" style="position:fixed;top:70px;right:80px;background:var(--blue);color:#fff;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;z-index:99;box-shadow:0 2px 8px rgba(0,0,0,.15)">🔄 Sheets同期中...</div>');
+  SYNC_STATUS='syncing';
+  showD();updateSyncBadge();
   Promise.all([
     fetch(GAS_URL+'?sheet=acplan_cases').then(function(r){return r.text();}),
     fetch(GAS_URL+'?sheet=acplan_contacts').then(function(r){return r.text();}),
     fetch(GAS_URL+'?sheet=acplan_pn').then(function(r){return r.text();})
   ]).then(function(res){
-    if(res[0].length<50){LOADING=false;showD();return;}
+    if(res[0].length<50){LOADING=false;SYNC_STATUS='offline';showD();updateSyncBadge();return;}
     var nd=processGAS(res[0],res[1],res[2]);
     if(nd){R=nd;D=R.data;MT=R.meta;N=Object.keys(D);}
-    LOADING=false;var lb=document.getElementById('gas-loading');if(lb)lb.outerHTML='<div style="position:fixed;top:70px;right:80px;background:var(--grn);color:#fff;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;z-index:99">✅ LIVE</div>';showD();
-  }).catch(function(err){console.warn('>>> GAS fetch failed (expected on file://), using embedded data');var lb=document.getElementById('gas-loading');if(lb)lb.outerHTML='<div style="position:fixed;top:70px;right:80px;background:var(--org);color:#fff;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:600;z-index:99">📦 オフライン</div>';LOADING=false;});
+    LOADING=false;SYNC_STATUS='live';showD();updateSyncBadge();
+  }).catch(function(err){console.warn('>>> GAS fetch failed (expected on file://), using embedded data');LOADING=false;SYNC_STATUS='offline';updateSyncBadge();});
 }
 function pCSV(t){var ls=t.split(/\r?\n/).filter(function(l){return l.trim();}),h=pLine(ls[0]),rs=[];for(var i=1;i<ls.length;i++){var c=pLine(ls[i]);if(c.length>=3)rs.push(c);}return{h:h,r:rs};}
 function pLine(l){var cs=[],c='',q=false;for(var i=0;i<l.length;i++){if(l[i]==='"')q=!q;else if(l[i]===','&&!q){cs.push(c.trim());c='';}else c+=l[i];}cs.push(c.trim());return cs;}
