@@ -444,11 +444,11 @@ function rO(idx){
   h+='<div class="org-toolbar"><span>組織マップ</span><span style="font-size:9px;color:var(--ink3);font-weight:400">部署ドラッグ→階層化　リードも移動可</span>';
   if(hasCustomTree)h+='<button onclick="resetTree()">リセット</button>';
   h+='<span class="saved" id="sv">✓ 保存済</span></div>';
-  if(depts.length>5){h+='<div class="dept-filter">';h+='<div class="dept-btn'+(deptFilter==='all'?' act':'')+'" onclick="deptFilter=\'all\';rO('+idx+')">すべて('+depts.length+')</div>';h+='<div class="dept-btn'+(deptFilter==='active'?' act':'')+'" onclick="deptFilter=\'active\';rO('+idx+')">稼働中</div>';h+='<div class="dept-btn'+(deptFilter==='idle'?' act':'')+'" onclick="deptFilter=\'idle\';rO('+idx+')">未進展</div>';h+='<div class="dept-btn'+(deptFilter==='checked'?' act':'')+'" onclick="deptFilter=\'checked\';rO('+idx+')">☑ アプローチ対象</div></div>';}
+  if(depts.length>5){h+='<div class="dept-filter">';h+='<div class="dept-btn'+(deptFilter==='all'?' act':'')+'" onclick="deptFilter=\'all\';rO('+idx+')">すべて('+depts.length+')</div>';h+='<div class="dept-btn'+(deptFilter==='active'?' act':'')+'" onclick="deptFilter=\'active\';rO('+idx+')">稼働中</div>';h+='<div class="dept-btn'+(deptFilter==='progress'?' act':'')+'" onclick="deptFilter=\'progress\';rO('+idx+')">進行中</div>';h+='<div class="dept-btn'+(deptFilter==='idle'?' act':'')+'" onclick="deptFilter=\'idle\';rO('+idx+')">未進展</div>';h+='<div class="dept-btn'+(deptFilter==='checked'?' act':'')+'" onclick="deptFilter=\'checked\';rO('+idx+')">☑ アプローチ対象</div></div>';}
 
   var tree=hasCustomTree||buildDefaultTree(depts);
   var ck=getChecked();
-  function filterTree(nodes,mode){if(mode==='all')return nodes;var a=['won','active','meeting','deal','prospect'];return nodes.filter(function(n){var cn2=JSON.parse(JSON.stringify(n));if(cn2.children&&cn2.children.length){cn2.children=filterTree(cn2.children,mode);if(cn2.children.length){n.children=cn2.children;return true;}}if(mode==='active')return a.indexOf(n.best)>=0;if(mode==='idle')return a.indexOf(n.best)<0;if(mode==='checked'){if(n.leads){var cl=n.leads.filter(function(l){return ck[l.n];});if(cl.length){n.leads=cl;n.lc=cl.length;return true;}}return false;}return true;});}
+  function filterTree(nodes,mode){if(mode==='all')return nodes;var prog=['won','active','meeting','deal','prospect'];return nodes.filter(function(n){var cn2=JSON.parse(JSON.stringify(n));if(cn2.children&&cn2.children.length){cn2.children=filterTree(cn2.children,mode);if(cn2.children.length){n.children=cn2.children;return true;}}if(mode==='active'){if(n.leads){var al2=n.leads.filter(function(l){return l.st==='active';});if(al2.length){n.leads=al2;n.lc=al2.length;return true;}}return false;}if(mode==='progress')return prog.indexOf(n.best)>=0;if(mode==='idle')return prog.indexOf(n.best)<0;if(mode==='checked'){if(n.leads){var cl=n.leads.filter(function(l){return ck[l.n];});if(cl.length){n.leads=cl;n.lc=cl.length;return true;}}return false;}return true;});}
   var fTree=JSON.parse(JSON.stringify(tree));if(deptFilter!=='all')fTree=filterTree(fTree,deptFilter);
   h+='<div class="org-canvas"><div class="org-root">';fTree.forEach(function(node){h+=renderCard(node,0);});h+='</div></div>';
   M.innerHTML=h;
@@ -558,12 +558,11 @@ function processGAS(casesT,contactsT,pnT){
   });
   console.log('PN: included='+pnOK+', skipped='+pnSkip+' (DEAD/no-rev/no-date)');
 
-  // Build active PN contacts map: store raw case names for matching
-  var activePNCaseNames={};
+  // Build active PN set: case IDs with running contracts as of today
+  var activePNIds=new Set();
   var today=new Date();
   pn.r.forEach(function(r){
     var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
-    var co=gv(r,1);if(!co)return;
     var start=gv(r,12).trim(),end=gv(r,13).trim();
     var cancel=gv(r,21).trim();
     if(cancel&&cancel.length>=7){var cd2=new Date(cancel.replace(/\//g,'-'));if(!isNaN(cd2)){var ed3=new Date(end.replace(/\//g,'-'));if(!isNaN(ed3)&&cd2<ed3)end=cancel;}}
@@ -571,11 +570,11 @@ function processGAS(casesT,contactsT,pnT){
     var sd2=new Date(start.replace(/\//g,'-')),ed2=new Date(end.replace(/\//g,'-'));
     if(isNaN(sd2)||isNaN(ed2))return;
     if(today>=sd2&&today<=ed2){
-      if(!activePNCaseNames[co])activePNCaseNames[co]=[];
-      activePNCaseNames[co].push(gv(r,2).replace(/\s/g,''));
+      var aid=gv(r,9).trim();
+      if(aid)activePNIds.add(aid);
     }
   });
-  console.log('Active PN cases:', Object.keys(activePNCaseNames).map(function(k){return k+'('+activePNCaseNames[k].length+'件): '+activePNCaseNames[k].slice(0,3).join(', ');}));
+  console.log('Active PN IDs: '+activePNIds.size+'件');
 
   var SO2={'won':0,'active':1,'meeting':2,'deal':3,'prospect':4,'contacted':5,'dead':6,'registered':7};
   var matchLog=0;
@@ -600,14 +599,8 @@ function processGAS(casesT,contactsT,pnT){
       var my=cses.filter(function(c){var cl=c.lead,cl2=cl.replace(/\s/g,'');return cl===nm||cl===nmR||cl2===nm2||cl2===nmR2;});
       var mx=Math.max.apply(null,my.map(function(c){return c.pn;}).concat([0]));
       var dead=my.length>0&&my.every(function(c){return c.pn===-1;});
-      // Check if contact has active PN contract today (match surname in PN case names)
-      var isActivePN=false;
-      if(activePNCaseNames[co]){
-        var sei2=c2.n.split(/\s/)[0];  // surname (姓)
-        if(sei2.length>=2){
-          activePNCaseNames[co].forEach(function(cn){if(cn.indexOf(sei2)>=0)isActivePN=true;});
-        }
-      }
+      // Check if contact has active PN contract today (match via case ID)
+      var isActivePN=my.some(function(c){return c.aid&&activePNIds.has(c.aid);});
       var st=isActivePN?'active':mx===8?'won':mx>=4?'meeting':mx>=2?'deal':mx>=1?'prospect':dead?'dead':my.length>0?'contacted':'registered';
       if(matchLog<5&&my.length>0){console.log('Match: contact='+nm+' / '+nmR+' → cases='+my.length+' st='+st);matchLog++;}
       var d=c2.dept||'(不明)';deptMap[d]=deptMap[d]||[];
