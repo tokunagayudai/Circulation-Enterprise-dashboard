@@ -558,9 +558,9 @@ function processGAS(casesT,contactsT,pnT){
   });
   console.log('PN: included='+pnOK+', skipped='+pnSkip+' (DEAD/no-rev/no-date)');
 
-  // Build active PN contacts map: contacts with running contracts as of today
-  var activePNContacts={};
-  var today=new Date();var todayM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
+  // Build active PN contacts map: store raw case names for matching
+  var activePNCaseNames={};
+  var today=new Date();
   pn.r.forEach(function(r){
     var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
     var co=gv(r,1);if(!co)return;
@@ -570,20 +570,12 @@ function processGAS(casesT,contactsT,pnT){
     if(!start||!end)return;
     var sd2=new Date(start.replace(/\//g,'-')),ed2=new Date(end.replace(/\//g,'-'));
     if(isNaN(sd2)||isNaN(ed2))return;
-    // Check if contract is active today
     if(today>=sd2&&today<=ed2){
-      var nmFull2=gv(r,2);
-      // Extract contact name from case name (format: "name様_theme" or "name_theme")
-      var contactName='';
-      if(nmFull2.indexOf('様_')>=0){contactName=nmFull2.split('様_')[0].trim();}
-      else if(nmFull2.indexOf('_')>=0){contactName=nmFull2.split('_')[0].trim();}
-      if(contactName){
-        if(!activePNContacts[co])activePNContacts[co]=new Set();
-        activePNContacts[co].add(contactName.replace(/\s/g,''));
-      }
+      if(!activePNCaseNames[co])activePNCaseNames[co]=[];
+      activePNCaseNames[co].push(gv(r,2).replace(/\s/g,''));
     }
   });
-  console.log('Active PN contacts:', Object.keys(activePNContacts).map(function(k){return k+': '+Array.from(activePNContacts[k]).join(',');}));
+  console.log('Active PN cases:', Object.keys(activePNCaseNames).map(function(k){return k+'('+activePNCaseNames[k].length+'件): '+activePNCaseNames[k].slice(0,3).join(', ');}));
 
   var SO2={'won':0,'active':1,'meeting':2,'deal':3,'prospect':4,'contacted':5,'dead':6,'registered':7};
   var matchLog=0;
@@ -608,9 +600,14 @@ function processGAS(casesT,contactsT,pnT){
       var my=cses.filter(function(c){var cl=c.lead,cl2=cl.replace(/\s/g,'');return cl===nm||cl===nmR||cl2===nm2||cl2===nmR2;});
       var mx=Math.max.apply(null,my.map(function(c){return c.pn;}).concat([0]));
       var dead=my.length>0&&my.every(function(c){return c.pn===-1;});
-      // Check if contact has active PN contract today
+      // Check if contact has active PN contract today (match surname in PN case names)
       var isActivePN=false;
-      if(activePNContacts[co]){var apSet=activePNContacts[co];var parts=[nm2,nmR2];for(var pi=0;pi<parts.length;pi++){if(apSet.has(parts[pi])){isActivePN=true;break;}apSet.forEach(function(ap){if(parts[pi].indexOf(ap)>=0||ap.indexOf(parts[pi])>=0)isActivePN=true;});}}
+      if(activePNCaseNames[co]){
+        var sei2=c2.n.split(/\s/)[0];  // surname (姓)
+        if(sei2.length>=2){
+          activePNCaseNames[co].forEach(function(cn){if(cn.indexOf(sei2)>=0)isActivePN=true;});
+        }
+      }
       var st=isActivePN?'active':mx===8?'won':mx>=4?'meeting':mx>=2?'deal':mx>=1?'prospect':dead?'dead':my.length>0?'contacted':'registered';
       if(matchLog<5&&my.length>0){console.log('Match: contact='+nm+' / '+nmR+' → cases='+my.length+' st='+st);matchLog++;}
       var d=c2.dept||'(不明)';deptMap[d]=deptMap[d]||[];
