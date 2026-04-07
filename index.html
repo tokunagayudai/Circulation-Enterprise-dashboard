@@ -55,7 +55,7 @@
 .drill-row .nm{min-width:70px;font-weight:600}.drill-row .th{color:var(--ink2);flex:1;font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drill-row .dt{font-family:var(--mono);font-size:9px;color:var(--ink3)}.drill-row .sf{font-size:8px;color:var(--blue);font-weight:600}
 .pill{font-size:8px;padding:1px 6px;border-radius:8px;font-weight:600;white-space:nowrap}
-.pill-g{background:var(--grn-bg);color:var(--grn)}.pill-b{background:#ddf4ff;color:var(--blue)}.pill-o{background:#fff8c5;color:var(--org)}.pill-r{background:#ffebe9;color:var(--red)}.pill-ws{background:#f0e6ff;color:var(--purple)}
+.pill-g{background:var(--grn-bg);color:var(--grn)}.pill-a{background:#e0f2fe;color:#0ea5e9}.pill-b{background:#ddf4ff;color:var(--blue)}.pill-o{background:#fff8c5;color:var(--org)}.pill-r{background:#ffebe9;color:var(--red)}.pill-ws{background:#f0e6ff;color:var(--purple)}
 .rev-drill{max-height:0;overflow:hidden;transition:.2s;margin-top:8px}.rev-drill.show{max-height:2000px;overflow-y:auto}
 
 /* Company grid - MF style */
@@ -110,7 +110,7 @@
 .pc:hover{box-shadow:0 1px 4px rgba(0,0,0,.08)}
 .pc[draggable=true]{cursor:grab}.pc[draggable=true]:active{cursor:grabbing}
 .pc.dragging{opacity:.3}
-.sw3{background:rgba(26,127,55,.06)}.sm3{background:rgba(191,135,0,.06)}.sd3{background:rgba(0,121,192,.06)}.sp3{background:rgba(210,153,34,.06)}
+.sw3{background:rgba(26,127,55,.06)}.sa3{background:rgba(14,165,233,.08)}.sm3{background:rgba(191,135,0,.06)}.sd3{background:rgba(0,121,192,.06)}.sp3{background:rgba(210,153,34,.06)}
 .sc3{background:rgba(139,148,158,.04)}.sx3{background:rgba(207,34,46,.04)}.sr3{background:transparent}
 .pa{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
 .pi{min-width:0;flex:1}.pi-n{font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -161,10 +161,10 @@ var deltaMode=0;
 var DELTA_LABELS=['先週比','今月','先月比','下期(2月〜)'];
 
 function lg(c){return '';}
-var SA={'won':'aw','meeting':'am','deal':'ad','prospect':'ap','contacted':'ac2','dead':'ax','registered':'ar','whitespace':'ar'};
-var SL={'won':'受注','meeting':'面談済','deal':'案件化','prospect':'商談','contacted':'接触','dead':'DEAD','registered':'登録のみ','whitespace':'WS'};
-var SS={'won':'pill-g','meeting':'pill-o','deal':'pill-b','prospect':'pill-o','dead':'pill-r','registered':'','contacted':'','whitespace':'pill-ws'};
-var SC3={'won':'sw3','meeting':'sm3','deal':'sd3','prospect':'sp3','contacted':'sc3','dead':'sx3','registered':'sr3','whitespace':'sr3'};
+var SA={'won':'aw','active':'aa','meeting':'am','deal':'ad','prospect':'ap','contacted':'ac2','dead':'ax','registered':'ar','whitespace':'ar'};
+var SL={'won':'受注','active':'稼働中','meeting':'面談済','deal':'案件化','prospect':'商談','contacted':'接触','dead':'DEAD','registered':'登録のみ','whitespace':'WS'};
+var SS={'won':'pill-g','active':'pill-a','meeting':'pill-o','deal':'pill-b','prospect':'pill-o','dead':'pill-r','registered':'','contacted':'','whitespace':'pill-ws'};
+var SC3={'won':'sw3','active':'sa3','meeting':'sm3','deal':'sd3','prospect':'sp3','contacted':'sc3','dead':'sx3','registered':'sr3','whitespace':'sr3'};
 
 function showO(){document.querySelectorAll('.ni').forEach(function(e){e.classList.remove('act');});document.getElementById('no').classList.add('act');deptFilter='all';rO(cur);}
 
@@ -448,7 +448,7 @@ function rO(idx){
 
   var tree=hasCustomTree||buildDefaultTree(depts);
   var ck=getChecked();
-  function filterTree(nodes,mode){if(mode==='all')return nodes;var a=['won','meeting','deal','prospect'];return nodes.filter(function(n){var cn2=JSON.parse(JSON.stringify(n));if(cn2.children&&cn2.children.length){cn2.children=filterTree(cn2.children,mode);if(cn2.children.length){n.children=cn2.children;return true;}}if(mode==='active')return a.indexOf(n.best)>=0;if(mode==='idle')return a.indexOf(n.best)<0;if(mode==='checked'){if(n.leads){var cl=n.leads.filter(function(l){return ck[l.n];});if(cl.length){n.leads=cl;n.lc=cl.length;return true;}}return false;}return true;});}
+  function filterTree(nodes,mode){if(mode==='all')return nodes;var a=['won','active','meeting','deal','prospect'];return nodes.filter(function(n){var cn2=JSON.parse(JSON.stringify(n));if(cn2.children&&cn2.children.length){cn2.children=filterTree(cn2.children,mode);if(cn2.children.length){n.children=cn2.children;return true;}}if(mode==='active')return a.indexOf(n.best)>=0;if(mode==='idle')return a.indexOf(n.best)<0;if(mode==='checked'){if(n.leads){var cl=n.leads.filter(function(l){return ck[l.n];});if(cl.length){n.leads=cl;n.lc=cl.length;return true;}}return false;}return true;});}
   var fTree=JSON.parse(JSON.stringify(tree));if(deptFilter!=='all')fTree=filterTree(fTree,deptFilter);
   h+='<div class="org-canvas"><div class="org-root">';fTree.forEach(function(node){h+=renderCard(node,0);});h+='</div></div>';
   M.innerHTML=h;
@@ -558,7 +558,34 @@ function processGAS(casesT,contactsT,pnT){
   });
   console.log('PN: included='+pnOK+', skipped='+pnSkip+' (DEAD/no-rev/no-date)');
 
-  var SO2={'won':0,'meeting':1,'deal':2,'prospect':3,'contacted':4,'dead':5,'registered':6};
+  // Build active PN contacts map: contacts with running contracts as of today
+  var activePNContacts={};
+  var today=new Date();var todayM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
+  pn.r.forEach(function(r){
+    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
+    var co=gv(r,1);if(!co)return;
+    var start=gv(r,12).trim(),end=gv(r,13).trim();
+    var cancel=gv(r,21).trim();
+    if(cancel&&cancel.length>=7){var cd2=new Date(cancel.replace(/\//g,'-'));if(!isNaN(cd2)){var ed3=new Date(end.replace(/\//g,'-'));if(!isNaN(ed3)&&cd2<ed3)end=cancel;}}
+    if(!start||!end)return;
+    var sd2=new Date(start.replace(/\//g,'-')),ed2=new Date(end.replace(/\//g,'-'));
+    if(isNaN(sd2)||isNaN(ed2))return;
+    // Check if contract is active today
+    if(today>=sd2&&today<=ed2){
+      var nmFull2=gv(r,2);
+      // Extract contact name from case name (format: "name様_theme" or "name_theme")
+      var contactName='';
+      if(nmFull2.indexOf('様_')>=0){contactName=nmFull2.split('様_')[0].trim();}
+      else if(nmFull2.indexOf('_')>=0){contactName=nmFull2.split('_')[0].trim();}
+      if(contactName){
+        if(!activePNContacts[co])activePNContacts[co]=new Set();
+        activePNContacts[co].add(contactName.replace(/\s/g,''));
+      }
+    }
+  });
+  console.log('Active PN contacts:', Object.keys(activePNContacts).map(function(k){return k+': '+Array.from(activePNContacts[k]).join(',');}));
+
+  var SO2={'won':0,'active':1,'meeting':2,'deal':3,'prospect':4,'contacted':5,'dead':6,'registered':7};
   var matchLog=0;
   // Debug: show first company's contact names vs case lead names
   var debugDone=false;
@@ -581,12 +608,15 @@ function processGAS(casesT,contactsT,pnT){
       var my=cses.filter(function(c){var cl=c.lead,cl2=cl.replace(/\s/g,'');return cl===nm||cl===nmR||cl2===nm2||cl2===nmR2;});
       var mx=Math.max.apply(null,my.map(function(c){return c.pn;}).concat([0]));
       var dead=my.length>0&&my.every(function(c){return c.pn===-1;});
-      var st=mx===8?'won':mx>=4?'meeting':mx>=2?'deal':mx>=1?'prospect':dead?'dead':my.length>0?'contacted':'registered';
+      // Check if contact has active PN contract today
+      var isActivePN=false;
+      if(activePNContacts[co]){var apSet=activePNContacts[co];var parts=[nm2,nmR2];for(var pi=0;pi<parts.length;pi++){if(apSet.has(parts[pi])){isActivePN=true;break;}apSet.forEach(function(ap){if(parts[pi].indexOf(ap)>=0||ap.indexOf(parts[pi])>=0)isActivePN=true;});}}
+      var st=isActivePN?'active':mx===8?'won':mx>=4?'meeting':mx>=2?'deal':mx>=1?'prospect':dead?'dead':my.length>0?'contacted':'registered';
       if(matchLog<5&&my.length>0){console.log('Match: contact='+nm+' / '+nmR+' → cases='+my.length+' st='+st);matchLog++;}
       var d=c2.dept||'(不明)';deptMap[d]=deptMap[d]||[];
       deptMap[d].push({n:nm,r:c2.role,st:st,w:my.filter(function(c){return c.pn===8;}).length,sfid:c2.cid,la:c2.la,km:c2.km,d:c2.d});
     });
-    var dO=[];for(var dn in deptMap){var ls=deptMap[dn].sort(function(a,b){return(SO2[a.st]||9)-(SO2[b.st]||9);});dO.push({n:dn,leads:ls.slice(0,10),lc:ls.length,best:ls[0]?ls[0].st:'registered',hw:ls.some(function(l){return l.st==='won';})});}
+    var dO=[];for(var dn in deptMap){var ls=deptMap[dn].sort(function(a,b){return(SO2[a.st]||9)-(SO2[b.st]||9);});dO.push({n:dn,leads:ls.slice(0,10),lc:ls.length,best:ls[0]?ls[0].st:'registered',hw:ls.some(function(l){return l.st==='won'||l.st==='active';})});}
     var rv={};if(coRev[co]){for(var mm in coRev[co]){var d2=coRev[co][mm];rv[mm]=[d2[0],d2[0]-d2[1],d2[2],d2[0]?Math.round((d2[0]-d2[1])/d2[0]*1000)/10:0];}}
     var pnd2={};if(coPND[co]){for(var mm2 in coPND[co])pnd2[mm2]=coPND[co][mm2].slice(0,6);}
     var tRv=0,tGP=0;for(var k in rv){tRv+=rv[k][0];tGP+=rv[k][1];}
@@ -602,7 +632,7 @@ function processGAS(casesT,contactsT,pnT){
     });
     output[co]={s:[ctcts.length,dO.length,nr.filter(function(c){return c.pn===8;}).length,cses.reduce(function(s,c){return s+c.ck;},0),tRv,tGP],cs:allCS,nl:allNL,d:dO,rev:rv,pnd:pnd2,f:coFS2[co]||'',logo:fLogo(co),
       won:{leads:Object.keys(wonLeads),depts:Object.keys(wonDepts),cases:wonCases.map(function(c){return{n:c.lead,t:c.theme,ck:c.ck,d:c.date};})},
-      layer:[l2,dO.filter(function(d3){return d3.lc>=2;}).length,dO.filter(function(d3){return['won','meeting','deal','prospect'].indexOf(d3.best)>=0;}).length,dO.length]};
+      layer:[l2,dO.filter(function(d3){return d3.lc>=2;}).length,dO.filter(function(d3){return['won','active','meeting','deal','prospect'].indexOf(d3.best)>=0;}).length,dO.length]};
   });
   var gm2={},gpn2={};
   var aM=new Set();for(var co3 in coRev)for(var mm3 in coRev[co3])aM.add(mm3);
