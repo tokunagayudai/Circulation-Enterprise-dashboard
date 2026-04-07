@@ -386,6 +386,7 @@ function showMemoPopup(key,title){
   h+='<div class="memo-field"><label>ネクストアクション</label><div style="display:flex;gap:6px"><input type="date" id="mp_nextDate" style="width:140px;border:1px solid var(--bd);border-radius:6px;padding:6px 8px;font-size:12px" value="'+(m.nextDate||'')+'"><input type="text" id="mp_next" style="flex:1" placeholder="例: アポ打診 / 提案書送付" value="'+esc2(m.next||'')+'"></div></div>';
   h+='<div class="memo-btn-row"><button class="memo-btn" onclick="this.closest(\'.memo-overlay\').remove()">キャンセル</button>';
   if(m.note||m.rel||m.next)h+='<button class="memo-btn danger" onclick="clearMemo(\''+esc(key)+'\');this.closest(\'.memo-overlay\').remove()">クリア</button>';
+  h+='<button class="memo-btn" style="background:#4285f4;color:#fff;border-color:#4285f4" onclick="saveMemoAndCal(\''+esc(key)+'\',\''+esc(title)+'\');this.closest(\'.memo-overlay\').remove()">📅 保存+カレンダー</button>';
   h+='<button class="memo-btn primary" onclick="saveMemoFromPopup(\''+esc(key)+'\');this.closest(\'.memo-overlay\').remove()">保存</button></div>';
   var panel=document.createElement('div');panel.className='memo-panel';panel.innerHTML=h;
   ol.appendChild(panel);document.body.appendChild(ol);
@@ -402,6 +403,20 @@ function saveMemoFromPopup(key){
   saveMemos(cn,m);rO(cur);
 }
 function clearMemo(key){var cn=N[cur],m=getMemos(cn);delete m[key];saveMemos(cn,m);rO(cur);}
+function saveMemoAndCal(key,title){
+  saveMemoFromPopup(key);
+  var cn=N[cur],m=getMemos(cn),d=m[key]||{};
+  var dt=d.nextDate,act=d.next||'';
+  if(!dt){alert('カレンダー登録には日付を入力してください');return;}
+  var co=N[cur].replace(/株式会社/g,'').trim();
+  var evTitle='【'+co+'】'+(title.replace('lead_','').replace('dept_',''))+' '+act;
+  var ds=dt.replace(/-/g,'');
+  var url='https://calendar.google.com/calendar/render?action=TEMPLATE'
+    +'&text='+encodeURIComponent(evTitle)
+    +'&dates='+ds+'/'+ds
+    +'&details='+encodeURIComponent('企業: '+N[cur]+'\n担当: '+title.replace('lead_','').replace('dept_','')+'\nアクション: '+act+(d.note?'\n\nメモ: '+d.note:''));
+  window.open(url,'_blank');
+}
 function memoTooltip(e,key){
   var m=getMemo(key);if(!m.note&&!m.rel&&!m.next&&!m.nextDate)return;
   var tt=document.createElement('div');tt.className='memo-preview';tt.id='mtip';
@@ -440,7 +455,7 @@ function renderCard(node,depth){
       h+='<span class="memo-tag '+(hasLM?'has':'empty')+'" onclick="event.stopPropagation();showMemoPopup(\'lead_'+esc(l.n)+'\',\''+esc(l.n)+'\')" onmouseenter="memoTooltip(event,\'lead_'+esc(l.n)+'\')" onmouseleave="memoTooltipHide()">📋</span>';
       h+='</div>';
       if(l.r)h+='<div style="font-size:10px;color:var(--ink2);font-weight:500;margin:1px 0">'+l.r+'</div>';
-      if(lMemo.next)h+='<div style="font-size:8px;color:var(--blue);font-weight:500">▶ '+(lMemo.nextDate?lMemo.nextDate+' ':'')+ esc2(lMemo.next)+'</div>';
+      if(lMemo.next||lMemo.nextDate){var calUrl2='https://calendar.google.com/calendar/render?action=TEMPLATE&text='+encodeURIComponent('【'+N[cur].replace(/株式会社/g,'').trim()+'】'+l.n+' '+(lMemo.next||''))+'&dates='+(lMemo.nextDate||'').replace(/-/g,'')+'/'+(lMemo.nextDate||'').replace(/-/g,'');h+='<div style="font-size:8px;color:var(--blue);font-weight:500">▶ '+(lMemo.nextDate?lMemo.nextDate+' ':'')+esc2(lMemo.next||'')+' <a href="'+calUrl2+'" target="_blank" onclick="event.stopPropagation()" style="font-size:7px;color:#4285f4;text-decoration:none" title="Googleカレンダーに追加">📅</a></div>';}
       /* 登録日は非表示 */
       if(isWS){h+='<div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:8px;cursor:pointer;color:var(--blue)" onclick="event.stopPropagation();editLead(\''+dn+'\',\''+esc(l.n)+'\')">✏️編集</span><span style="font-size:8px;cursor:pointer;color:var(--red)" onclick="event.stopPropagation();deleteLead(\''+dn+'\',\''+esc(l.n)+'\')">🗑削除</span></div>';}
       h+='</div>';
