@@ -120,6 +120,33 @@
 .dc-drop{min-height:20px;border:1px dashed transparent;border-radius:6px;margin:4px 6px;transition:.15s}
 .dc-drop.active{border-color:var(--blue);background:rgba(0,121,192,.06)}
 
+/* Memo popup */
+.memo-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.3);z-index:1000;display:flex;align-items:center;justify-content:center}
+.memo-panel{background:#fff;border-radius:12px;width:400px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.15);padding:20px}
+.memo-panel h3{font-size:14px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.memo-field{margin-bottom:12px}.memo-field label{display:block;font-size:10px;font-weight:600;color:var(--ink2);margin-bottom:4px}
+.memo-field textarea{width:100%;border:1px solid var(--bd);border-radius:6px;padding:8px;font-size:12px;font-family:var(--sans);resize:vertical;min-height:60px}
+.memo-field select{width:100%;border:1px solid var(--bd);border-radius:6px;padding:6px 8px;font-size:12px;background:#fff}
+.memo-field input[type=text]{width:100%;border:1px solid var(--bd);border-radius:6px;padding:6px 8px;font-size:12px}
+.memo-btn-row{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.memo-btn{padding:6px 16px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--bd);background:#fff;color:var(--ink)}
+.memo-btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.memo-btn.danger{background:var(--red);color:#fff;border-color:var(--red)}
+.memo-tag{font-size:7px;padding:1px 4px;border-radius:3px;cursor:pointer;margin-left:2px}
+.memo-tag.has{background:#e0f2fe;color:#0ea5e9}.memo-tag.empty{background:var(--bg);color:var(--ink3)}
+.memo-preview{position:absolute;z-index:999;background:#1a1f2e;color:#fff;font-size:10px;padding:8px 10px;border-radius:6px;max-width:220px;line-height:1.5;pointer-events:none;white-space:pre-wrap;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+/* List view */
+.list-view{padding:8px 24px}
+.list-table{width:100%;border-collapse:collapse;background:var(--bg2);border-radius:10px;overflow:hidden;border:1px solid rgba(0,0,0,.04)}
+.list-table th{font-size:9px;font-weight:600;color:var(--ink3);text-align:left;padding:8px 10px;border-bottom:1px solid var(--bd);background:var(--bg)}
+.list-table td{font-size:11px;padding:7px 10px;border-bottom:1px solid rgba(0,0,0,.03)}
+.list-table tr:hover{background:rgba(0,121,192,.03)}
+.list-table .memo-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--ink2)}
+.view-toggle{display:flex;gap:0;border:1px solid var(--bd);border-radius:6px;overflow:hidden;margin-left:8px}
+.vt-btn{padding:4px 10px;font-size:9px;cursor:pointer;color:var(--ink3);border-right:1px solid var(--bd);transition:.1s}
+.vt-btn:last-child{border-right:none}
+.vt-btn:hover{color:var(--ink)}.vt-btn.act{background:var(--blue);color:#fff}
+
 /* Commerce (Funnel) view */
 .funnel-wrap{display:flex;gap:16px;padding:8px 24px;flex-wrap:wrap}
 .funnel-bar-area{flex:1;min-width:300px;background:var(--bg2);border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,.04)}
@@ -340,11 +367,57 @@ function setNotionLink(cn){var cur_link=getNotionLink(cn);var url=prompt('Notion
 var checkedLeads={};
 function getChecked(){try{var d=JSON.parse(localStorage.getItem('acplan_checked_'+N[cur])||'{}');return d;}catch(e){return {};}}
 function toggleCheck(ln){var cn=N[cur],ck=getChecked();if(ck[ln])delete ck[ln];else ck[ln]=true;try{localStorage.setItem('acplan_checked_'+cn,JSON.stringify(ck));}catch(e){}}
+// Memo functions (per lead/dept, localStorage)
+var orgViewMode='map'; // 'map' or 'list'
+var SO2={'won':0,'active':1,'meeting':2,'deal':3,'prospect':4,'contacted':5,'dead':6,'registered':7};
+function getMemos(cn){try{return JSON.parse(localStorage.getItem('acplan_memo_'+cn)||'{}');}catch(e){return {};}}
+function saveMemos(cn,m){try{localStorage.setItem('acplan_memo_'+cn,JSON.stringify(m));}catch(e){}}
+function getMemo(key){var cn=N[cur];var m=getMemos(cn);return m[key]||{note:'',rel:'',next:''};}
+function showMemoPopup(key,title){
+  var cn=N[cur],m=getMemo(key);
+  var ol=document.createElement('div');ol.className='memo-overlay';
+  ol.onclick=function(e){if(e.target===ol)ol.remove();};
+  var REL_OPTS=['','良好','普通','要注意','未接触'];
+  var h='<h3><span style="font-size:16px">📋</span>'+title+'</h3>';
+  h+='<div class="memo-field"><label>関係度合い</label><select id="mp_rel">';
+  REL_OPTS.forEach(function(o){h+='<option value="'+o+'"'+(m.rel===o?' selected':'')+'>'+(o||'選択してください')+'</option>';});
+  h+='</select></div>';
+  h+='<div class="memo-field"><label>メモ（関係性・経緯・注意点など）</label><textarea id="mp_note" rows="4" placeholder="例: 来週会食予定 / 過去お叱りあり注意 / 異動予定4月〜">'+esc2(m.note||'')+'</textarea></div>';
+  h+='<div class="memo-field"><label>ネクストアクション</label><input type="text" id="mp_next" placeholder="例: 4/15 アポ打診" value="'+esc2(m.next||'')+'"></div>';
+  h+='<div class="memo-btn-row"><button class="memo-btn" onclick="this.closest(\'.memo-overlay\').remove()">キャンセル</button>';
+  if(m.note||m.rel||m.next)h+='<button class="memo-btn danger" onclick="clearMemo(\''+esc(key)+'\');this.closest(\'.memo-overlay\').remove()">クリア</button>';
+  h+='<button class="memo-btn primary" onclick="saveMemoFromPopup(\''+esc(key)+'\');this.closest(\'.memo-overlay\').remove()">保存</button></div>';
+  var panel=document.createElement('div');panel.className='memo-panel';panel.innerHTML=h;
+  ol.appendChild(panel);document.body.appendChild(ol);
+  panel.querySelector('#mp_note').focus();
+}
+function esc2(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function saveMemoFromPopup(key){
+  var cn=N[cur],m=getMemos(cn);
+  var note=document.getElementById('mp_note').value.trim();
+  var rel=document.getElementById('mp_rel').value;
+  var next=document.getElementById('mp_next').value.trim();
+  if(!note&&!rel&&!next){delete m[key];}else{m[key]={note:note,rel:rel,next:next};}
+  saveMemos(cn,m);rO(cur);
+}
+function clearMemo(key){var cn=N[cur],m=getMemos(cn);delete m[key];saveMemos(cn,m);rO(cur);}
+function memoTooltip(e,key){
+  var m=getMemo(key);if(!m.note&&!m.rel&&!m.next)return;
+  var tt=document.createElement('div');tt.className='memo-preview';tt.id='mtip';
+  var t=[];if(m.rel)t.push('関係: '+m.rel);if(m.next)t.push('Next: '+m.next);if(m.note)t.push(m.note.slice(0,100));
+  tt.textContent=t.join('\n');
+  tt.style.left=(e.clientX+12)+'px';tt.style.top=(e.clientY-10)+'px';
+  document.body.appendChild(tt);
+}
+function memoTooltipHide(){var t=document.getElementById('mtip');if(t)t.remove();}
 function renderCard(node,depth){
   var hw=node.hw,dn=esc(node.name),dp=Math.min(depth,2);
-  var ck=getChecked();
+  var ck=getChecked();var memos=getMemos(N[cur]);
+  var dMemo=memos['dept_'+node.name]||{};var hasDM=dMemo.note||dMemo.rel||dMemo.next;
   var h='<div class="dc depth'+dp+'" draggable="true" ondragstart="deptDragStart(event,\''+dn+'\')" ondragover="deptDragOver(event)" ondragleave="deptDragLeave(event)" ondrop="deptDrop(event,\''+dn+'\')">';
-  h+='<div class="dc-hd'+(hw?' has-won':'')+'"><div class="dc-nm">'+node.name+'</div><div style="display:flex;gap:4px;align-items:center"><div class="dc-ct">'+node.lc+(hw?' ✅':'')+'</div>';
+  h+='<div class="dc-hd'+(hw?' has-won':'')+'"><div class="dc-nm">'+node.name+'</div><div style="display:flex;gap:4px;align-items:center">';
+  h+='<span class="memo-tag '+(hasDM?'has':'empty')+'" onclick="event.stopPropagation();showMemoPopup(\'dept_'+dn+'\',\''+dn+'\')" onmouseenter="memoTooltip(event,\'dept_'+dn+'\')" onmouseleave="memoTooltipHide()" title="部署メモ">📋</span>';
+  h+='<div class="dc-ct">'+node.lc+(hw?' ✅':'')+'</div>';
   if(depth>0)h+='<span style="font-size:8px;cursor:pointer;color:var(--ink3)" onclick="event.stopPropagation();extractDept(\''+dn+'\')" title="外に出す">↗</span>';
   h+='</div></div>';
   h+='<div class="dc-body">';
@@ -353,14 +426,20 @@ function renderCard(node,depth){
     node.leads.forEach(function(l){
       var st=l.st||'registered';
       var isWS=st==='whitespace';
-      var oc=l.sfid?'onclick="event.stopPropagation();window.open(\''+SFC+l.sfid+'/view\',\'_blank\')"':'';
-      h+='<div class="pc '+SC3[st]+'" draggable="true" ondragstart="event.stopPropagation();leadDragStart(event,\''+esc(l.n)+'\',\''+dn+'\')" ondragend="leadDragEnd(event)" '+(isWS?'':oc)+'>';
+      var lnKey='lead_'+l.n;var lMemo=memos[lnKey]||{};var hasLM=lMemo.note||lMemo.rel||lMemo.next;
+      var relBadge=lMemo.rel?'<span style="font-size:7px;padding:1px 3px;border-radius:3px;margin-left:2px;background:'+(lMemo.rel==='良好'?'var(--grn-bg);color:var(--grn)':lMemo.rel==='要注意'?'#ffebe9;color:var(--red)':'var(--bg);color:var(--ink3)')+'">'+lMemo.rel+'</span>':'';
+      h+='<div class="pc '+SC3[st]+'" draggable="true" ondragstart="event.stopPropagation();leadDragStart(event,\''+esc(l.n)+'\',\''+dn+'\')" ondragend="leadDragEnd(event)">';
       var avTxt=l.km==='決裁者'?'決':l.km==='チャンピオン'?'C':l.km==='キーマン'?'K':isWS?'?':'';
       var avCls=l.km==='決裁者'?'background:#7c3aed;color:#fff':l.km==='チャンピオン'?'background:var(--blue);color:#fff':l.km==='キーマン'?'background:var(--org);color:#fff':isWS?'background:#e8e0f0;color:var(--purple)':'';
       var kmLabel=l.km==='チャンピオン'?'<span style="font-size:8px;background:var(--blue);color:#fff;padding:1px 4px;border-radius:3px;margin-left:3px">チャンピオン</span>':l.km==='キーマン'?'<span style="font-size:8px;background:var(--org);color:#fff;padding:1px 4px;border-radius:3px;margin-left:3px">キーマン</span>':l.km==='決裁者'?'<span style="font-size:8px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;margin-left:3px">決裁者</span>':'';
       h+='<div class="pa '+SA[st]+'" style="'+(avCls||'')+'">'+avTxt+'</div>';
-      h+='<div class="pi"><div class="pi-n">'+l.n+(l.sfid?' <span style="font-size:7px;color:var(--blue)">↗</span>':'')+kmLabel+'</div>';
+      h+='<div class="pi"><div class="pi-n">';
+      h+='<span'+(l.sfid?' style="cursor:pointer" onclick="event.stopPropagation();window.open(\''+SFC+l.sfid+'/view\',\'_blank\')"':'')+'>'+l.n+(l.sfid?' <span style="font-size:7px;color:var(--blue)">↗</span>':'')+'</span>';
+      h+=kmLabel+relBadge;
+      h+='<span class="memo-tag '+(hasLM?'has':'empty')+'" onclick="event.stopPropagation();showMemoPopup(\'lead_'+esc(l.n)+'\',\''+esc(l.n)+'\')" onmouseenter="memoTooltip(event,\'lead_'+esc(l.n)+'\')" onmouseleave="memoTooltipHide()">📋</span>';
+      h+='</div>';
       if(l.r)h+='<div style="font-size:10px;color:var(--ink2);font-weight:500;margin:1px 0">'+l.r+'</div>';
+      if(lMemo.next)h+='<div style="font-size:8px;color:var(--blue);font-weight:500">▶ '+esc2(lMemo.next)+'</div>';
       h+='<div class="pi-d">'+(l.d||l.la||'')+'</div>';
       if(isWS){h+='<div style="display:flex;gap:4px;margin-top:2px"><span style="font-size:8px;cursor:pointer;color:var(--blue)" onclick="event.stopPropagation();editLead(\''+dn+'\',\''+esc(l.n)+'\')">✏️編集</span><span style="font-size:8px;cursor:pointer;color:var(--red)" onclick="event.stopPropagation();deleteLead(\''+dn+'\',\''+esc(l.n)+'\')">🗑削除</span></div>';}
       h+='</div>';
@@ -443,14 +522,44 @@ function rO(idx){
   var hasCustomTree=getTree(name);
   h+='<div class="org-toolbar"><span>組織マップ</span><span style="font-size:9px;color:var(--ink3);font-weight:400">部署ドラッグ→階層化　リードも移動可</span>';
   if(hasCustomTree)h+='<button onclick="resetTree()">リセット</button>';
-  h+='<span class="saved" id="sv">✓ 保存済</span></div>';
+  h+='<span class="saved" id="sv">✓ 保存済</span>';
+  h+='<div class="view-toggle"><div class="vt-btn'+(orgViewMode==='map'?' act':'')+'" onclick="orgViewMode=\'map\';rO('+idx+')">組織図</div><div class="vt-btn'+(orgViewMode==='list'?' act':'')+'" onclick="orgViewMode=\'list\';rO('+idx+')">リスト</div></div>';
+  h+='</div>';
   if(depts.length>5){h+='<div class="dept-filter">';h+='<div class="dept-btn'+(deptFilter==='all'?' act':'')+'" onclick="deptFilter=\'all\';rO('+idx+')">すべて('+depts.length+')</div>';h+='<div class="dept-btn'+(deptFilter==='active'?' act':'')+'" onclick="deptFilter=\'active\';rO('+idx+')">稼働中</div>';h+='<div class="dept-btn'+(deptFilter==='progress'?' act':'')+'" onclick="deptFilter=\'progress\';rO('+idx+')">進行中</div>';h+='<div class="dept-btn'+(deptFilter==='idle'?' act':'')+'" onclick="deptFilter=\'idle\';rO('+idx+')">未進展</div>';h+='<div class="dept-btn'+(deptFilter==='checked'?' act':'')+'" onclick="deptFilter=\'checked\';rO('+idx+')">☑ アプローチ対象</div></div>';}
 
   var tree=hasCustomTree||buildDefaultTree(depts);
   var ck=getChecked();
   function filterTree(nodes,mode){if(mode==='all')return nodes;var prog=['won','active','meeting','deal','prospect'];return nodes.filter(function(n){var cn2=JSON.parse(JSON.stringify(n));if(cn2.children&&cn2.children.length){cn2.children=filterTree(cn2.children,mode);if(cn2.children.length){n.children=cn2.children;return true;}}if(mode==='active'){if(n.leads){var al2=n.leads.filter(function(l){return l.st==='active';});if(al2.length){n.leads=al2;n.lc=al2.length;return true;}}return false;}if(mode==='progress')return prog.indexOf(n.best)>=0;if(mode==='idle')return prog.indexOf(n.best)<0;if(mode==='checked'){if(n.leads){var cl=n.leads.filter(function(l){return ck[l.n];});if(cl.length){n.leads=cl;n.lc=cl.length;return true;}}return false;}return true;});}
   var fTree=JSON.parse(JSON.stringify(tree));if(deptFilter!=='all')fTree=filterTree(fTree,deptFilter);
-  h+='<div class="org-canvas"><div class="org-root">';fTree.forEach(function(node){h+=renderCard(node,0);});h+='</div></div>';
+  if(orgViewMode==='list'){
+    // List view: all leads sorted by keyman priority then status
+    var KO={'決裁者':0,'チャンピオン':1,'キーマン':2};
+    var allLeads=[];
+    function collectLeads(nodes,path){nodes.forEach(function(n){var p=path?path+' > '+n.name:n.name;(n.leads||[]).forEach(function(l){allLeads.push({dept:p,n:l.n,r:l.r||'',st:l.st||'registered',km:l.km||'',sfid:l.sfid||'',la:l.la||'',d:l.d||''});});if(n.children)collectLeads(n.children,p);});}
+    collectLeads(fTree,'');
+    allLeads.sort(function(a,b){var ka=(KO[a.km]!==undefined?KO[a.km]:9)-(KO[b.km]!==undefined?KO[b.km]:9);if(ka!==0)return ka;return(SO2[a.st]||9)-(SO2[b.st]||9);});
+    var memos=getMemos(name);var ck2=getChecked();
+    h+='<div class="list-view"><table class="list-table"><thead><tr><th style="width:28px">☑</th><th>氏名</th><th>役職</th><th>部署</th><th>関係</th><th>メモ</th><th>Next</th><th>ステータス</th><th>最終活動</th></tr></thead><tbody>';
+    allLeads.forEach(function(l){
+      var lm=memos['lead_'+l.n]||{};
+      var kmB=l.km?'<span class="pill '+(l.km==='決裁者'?'pill-r':l.km==='チャンピオン'?'pill-b':'pill-o')+'">'+l.km+'</span> ':'';
+      var relC=lm.rel==='良好'?'color:var(--grn)':lm.rel==='要注意'?'color:var(--red)':'';
+      h+='<tr>';
+      h+='<td><input type="checkbox" '+(ck2[l.n]?'checked':'')+' style="cursor:pointer;accent-color:var(--blue)" onclick="toggleCheck(\''+esc(l.n)+'\')"></td>';
+      h+='<td style="font-weight:600">'+kmB+'<span'+(l.sfid?' style="cursor:pointer;color:var(--blue)" onclick="window.open(\''+SFC+l.sfid+'/view\',\'_blank\')"':'')+'>'+l.n+'</span> <span class="memo-tag '+(lm.note||lm.rel||lm.next?'has':'empty')+'" style="cursor:pointer" onclick="showMemoPopup(\'lead_'+esc(l.n)+'\',\''+esc(l.n)+'\')">📋</span></td>';
+      h+='<td style="font-size:10px;color:var(--ink2)">'+l.r+'</td>';
+      h+='<td style="font-size:10px;color:var(--ink2);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+l.dept+'</td>';
+      h+='<td style="font-size:10px;'+(relC||'')+'">'+(lm.rel||'-')+'</td>';
+      h+='<td class="memo-cell">'+(lm.note?lm.note.slice(0,40):'')+'</td>';
+      h+='<td style="font-size:10px;color:var(--blue)">'+(lm.next||'')+'</td>';
+      h+='<td><span class="pill '+SS[l.st]+'">'+SL[l.st]+'</span></td>';
+      h+='<td style="font-size:9px;color:var(--ink3);font-family:var(--mono)">'+(l.la||l.d||'')+'</td>';
+      h+='</tr>';
+    });
+    h+='</tbody></table></div>';
+  }else{
+    h+='<div class="org-canvas"><div class="org-root">';fTree.forEach(function(node){h+=renderCard(node,0);});h+='</div></div>';
+  }
   M.innerHTML=h;
 }
 
@@ -576,7 +685,6 @@ function processGAS(casesT,contactsT,pnT){
   });
   console.log('Active PN IDs: '+activePNIds.size+'件');
 
-  var SO2={'won':0,'active':1,'meeting':2,'deal':3,'prospect':4,'contacted':5,'dead':6,'registered':7};
   var matchLog=0;
   // Debug: show first company's contact names vs case lead names
   var debugDone=false;
