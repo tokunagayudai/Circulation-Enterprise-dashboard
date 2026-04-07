@@ -447,8 +447,8 @@ function renderCard(node,depth){
       var lnKey='lead_'+l.n;var lMemo=memos[lnKey]||{};var hasLM=lMemo.note||lMemo.rel||lMemo.next;
       var relBadge=lMemo.rel?'<span style="font-size:7px;padding:1px 3px;border-radius:3px;margin-left:2px;background:'+(lMemo.rel==='良好'?'var(--grn-bg);color:var(--grn)':lMemo.rel==='要注意'?'#ffebe9;color:var(--red)':'var(--bg);color:var(--ink3)')+'">'+lMemo.rel+'</span>':'';
       h+='<div class="pc '+SC3[st]+'" draggable="true" ondragstart="event.stopPropagation();leadDragStart(event,\''+esc(l.n)+'\',\''+dn+'\')" ondragend="leadDragEnd(event)">';
-      var avTxt=l.km==='決裁者'?'決':l.km==='チャンピオン'?'C':l.km==='キーマン'?'K':isWS?'?':'';
-      var avCls=l.km==='決裁者'?'background:#7c3aed;color:#fff':l.km==='チャンピオン'?'background:var(--blue);color:#fff':l.km==='キーマン'?'background:var(--org);color:#fff':isWS?'background:#e8e0f0;color:var(--purple)':'';
+      var avTxt=l.km==='決裁者'?'決':l.km==='チャンピオン'?'C':l.km==='キーマン'?'K':l.km==='外'?'外':l.km==='不'?'不':l.km==='-'?'-':isWS?'?':'';
+      var avCls=l.km==='決裁者'?'background:#7c3aed;color:#fff':l.km==='チャンピオン'?'background:var(--blue);color:#fff':l.km==='キーマン'?'background:var(--org);color:#fff':l.km==='外'?'background:var(--bg);color:var(--ink3);border:1px solid var(--bd)':l.km==='不'?'background:var(--bg);color:var(--ink3);border:1px solid var(--bd)':l.km==='-'?'background:var(--bg);color:var(--ink3);border:1px solid var(--bd)':isWS?'background:#e8e0f0;color:var(--purple)':'';
       var kmLabel=l.km==='チャンピオン'?'<span style="font-size:8px;background:var(--blue);color:#fff;padding:1px 4px;border-radius:3px;margin-left:3px">チャンピオン</span>':l.km==='キーマン'?'<span style="font-size:8px;background:var(--org);color:#fff;padding:1px 4px;border-radius:3px;margin-left:3px">キーマン</span>':l.km==='決裁者'?'<span style="font-size:8px;background:#7c3aed;color:#fff;padding:1px 4px;border-radius:3px;margin-left:3px">決裁者</span>':'';
       h+='<div class="pa '+SA[st]+'" style="'+(avCls||'')+'">'+avTxt+'</div>';
       h+='<div class="pi"><div class="pi-n">';
@@ -647,7 +647,7 @@ function processGAS(casesT,contactsT,pnT){
     var co=gv(r,0);if(!co||!allCo.has(co))return;
     var mei=gv(r,2).trim(),sei=gv(r,3).trim();var nm=(sei+' '+mei).trim();var nmR=(mei+' '+sei).trim();if(!nm||nm.indexOf('ダミー')>=0||nm.indexOf('ABM')>=0)return;
     var cat=gv(r,16),km='';
-    if(cat.indexOf('決裁者')>=0)km='決裁者';else if(cat.indexOf('チャンピオン')>=0)km='チャンピオン';else if(cat.indexOf('キーマン')>=0)km='キーマン';
+    if(cat.indexOf('決裁者')>=0)km='決裁者';else if(cat.indexOf('チャンピオン')>=0)km='チャンピオン';else if(cat.indexOf('キーマン')>=0)km='キーマン';else if(cat.indexOf('ターゲット外')>=0)km='外';else if(cat.indexOf('不明')>=0)km='不';else if(!cat||cat.trim()==='')km='-';
     if(!contacts[co])contacts[co]=[];
     contacts[co].push({n:nm,nr:nmR,role:gv(r,4).slice(0,18),d:gv(r,9).slice(0,10),la:gv(r,15).slice(0,10),km:km,cid:gv(r,10),coid:gv(r,18),dept:gv(r,1).slice(0,40)});
   });
