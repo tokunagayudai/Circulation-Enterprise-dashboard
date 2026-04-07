@@ -619,7 +619,7 @@ function processGAS(casesT,contactsT,pnT){
   var cs=pCSV(casesT),ct=pCSV(contactsT),pn=pCSV(pnT);
   // Cases columns: 0:主担当者 1:取引先名 2:案件名 3:顧客担当者氏名 4:CK 5:フェーズ 10:新規/継続 12:作成日 13:案件ID
   // Contacts columns: 0:取引先名 1:所属部署 2:名 3:姓 4:役職 7:取引先所有者 9:作成日 10:取引先ID 15:最終活動日 16:ターゲット
-  var TEAM=['中村','栫','徳永','岡部','福本'];
+  var TEAM=['徳永','栫','中村','岡部','福本'];
   // PN columns: 0:主担当者 1:取引先名 2:案件名 3:フェーズ 5:CK 10:月額顧客請求額 11:月額専門家支払額 12:契約開始日 13:契約終了日 21:解約日
 
   function isTeam(n){if(!n)return false;for(var i=0;i<TEAM.length;i++)if(n.indexOf(TEAM[i])>=0)return true;return false;}
