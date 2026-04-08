@@ -696,12 +696,15 @@ function rO(idx){
     function collectLeads(nodes,path){nodes.forEach(function(n){var p=path?path+' > '+n.name:n.name;(n.leads||[]).forEach(function(l){allLeads.push({dept:p,n:l.n,r:l.r||'',st:l.st||'registered',km:l.km||'',sfid:l.sfid||'',accid:l.accid||'',la:l.la||'',d:l.d||''});});if(n.children)collectLeads(n.children,p);});}
     collectLeads(fTree,'');
     allLeads.sort(function(a,b){var ka=(KO[a.km]!==undefined?KO[a.km]:9)-(KO[b.km]!==undefined?KO[b.km]:9);if(ka!==0)return ka;return(SO2[a.st]||9)-(SO2[b.st]||9);});
-    var memos=getMemos(name);var ck2=getChecked();
-    h+='<div class="list-view"><table class="list-table"><thead><tr><th style="width:28px">☑</th><th>氏名</th><th>役職</th><th>部署</th><th>関係</th><th>メモ</th><th>Next</th><th>ステータス</th><th>最終活動</th></tr></thead><tbody>';
+    var memos=getMemos(name);var ck2=getChecked();var pjtData=getPjtMembers(name);
+    // Build reverse PJT map: leadName → [caseName, ...]
+    var pjtReverse={};for(var pk2 in pjtData){pjtData[pk2].forEach(function(m){if(!pjtReverse[m])pjtReverse[m]=[];pjtReverse[m].push(pk2);});}
+    h+='<div class="list-view"><table class="list-table"><thead><tr><th style="width:28px">☑</th><th>氏名</th><th>役職</th><th>部署</th><th>関係</th><th>メモ</th><th>Next</th><th>PJT案件</th><th>ステータス</th></tr></thead><tbody>';
     allLeads.forEach(function(l){
       var lm=memos['lead_'+l.n]||{};
-      var kmB=l.km?'<span class="pill '+(l.km==='決裁者'?'pill-r':l.km==='チャンピオン'?'pill-b':'pill-o')+'">'+l.km+'</span> ':'';
+      var kmB=l.km&&l.km.length>1?'<span class="pill '+(l.km==='決裁者'?'pill-r':l.km==='チャンピオン'?'pill-b':'pill-o')+'">'+l.km+'</span> ':'';
       var relC=lm.rel==='良好'?'color:var(--grn)':lm.rel==='要注意'?'color:var(--red)':'';
+      var myPjt=pjtReverse[l.n]||[];
       h+='<tr>';
       h+='<td><input type="checkbox" '+(ck2[l.n]?'checked':'')+' style="cursor:pointer;accent-color:var(--blue)" onclick="toggleCheck(\''+esc(l.n)+'\')"></td>';
       var sfU=sfLink(l.sfid,l.accid);h+='<td style="font-weight:600">'+kmB+'<span'+(sfU?' style="cursor:pointer;color:var(--blue)" onclick="window.open(\''+sfU+'\',\'_blank\')"':'')+'>'+l.n+'</span> <span class="memo-tag '+(lm.note||lm.rel||lm.next?'has':'empty')+'" style="cursor:pointer" onclick="showMemoPopup(\'lead_'+esc(l.n)+'\',\''+esc(l.n)+'\')">📋</span></td>';
@@ -710,8 +713,8 @@ function rO(idx){
       h+='<td style="font-size:10px;'+(relC||'')+'">'+(lm.rel||'-')+'</td>';
       h+='<td class="memo-cell">'+(lm.note?lm.note.slice(0,40):'')+'</td>';
       h+='<td style="font-size:10px;color:var(--blue)">'+(lm.nextDate?'<span style="color:var(--ink3)">'+lm.nextDate+'</span> ':'')+(lm.next||'')+'</td>';
+      h+='<td style="font-size:9px">'+(myPjt.length?myPjt.map(function(p){return'<span style="display:inline-block;padding:1px 5px;background:rgba(0,121,192,.08);border-radius:8px;color:var(--blue);margin:1px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+p+'</span>';}).join(''):'')+'</td>';
       h+='<td><span class="pill '+SS[l.st]+'">'+SL[l.st]+'</span></td>';
-      h+='<td style="font-size:9px;color:var(--ink3);font-family:var(--mono)">'+(l.la||l.d||'')+'</td>';
       h+='</tr>';
     });
     h+='</tbody></table></div>';
