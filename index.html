@@ -95,7 +95,8 @@
 .dept-btn{padding:3px 8px;font-size:9px;border:1px solid var(--bd);border-radius:12px;background:var(--bg2);cursor:pointer;color:var(--ink2);transition:.1s}
 .dept-btn:hover{border-color:var(--blue)}.dept-btn.act{background:var(--blue);color:#fff;border-color:var(--blue)}
 .org-canvas{padding:8px 24px 16px;overflow-x:auto;overflow-y:auto;max-height:70vh;-webkit-overflow-scrolling:touch}
-.org-root{display:flex;gap:10px;flex-wrap:nowrap;align-items:flex-start;min-width:max-content}
+.org-root{display:flex;gap:16px;flex-wrap:nowrap;align-items:flex-start;min-width:max-content}
+.dc-wrap{display:flex;flex-direction:column;align-items:center;position:relative}
 .dc{background:var(--bg2);border-radius:10px;border:1px solid var(--bd);min-width:170px;max-width:420px;transition:.15s;cursor:grab;user-select:none}
 .dc:active{cursor:grabbing}
 .dc.drag-over-dc{border:2px dashed var(--blue);background:rgba(0,121,192,.03)}
@@ -116,7 +117,14 @@
 .pi{min-width:0;flex:1}.pi-n{font-weight:600;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pi-r{font-size:8px;color:var(--ink2)}.pi-d{font-size:7px;color:var(--ink3);font-family:var(--mono)}
 .ps{flex-shrink:0}
-.dc-children{display:flex;gap:6px;flex-wrap:wrap;padding:6px;border-top:1px solid rgba(0,0,0,.04)}
+.dc-children{display:flex;gap:12px;justify-content:center;padding-top:20px;position:relative}
+.dc-children::before{content:'';position:absolute;top:0;left:50%;width:0;height:20px;border-left:2px solid var(--bd)}
+.dc-children>.dc-wrap{position:relative}
+.dc-children>.dc-wrap::before{content:'';position:absolute;top:-20px;left:0;right:0;height:20px;border-top:2px solid var(--bd)}
+.dc-children>.dc-wrap:first-child::before{left:50%;border-left:2px solid var(--bd)}
+.dc-children>.dc-wrap:last-child::before{right:50%;left:0;border-right:2px solid var(--bd)}
+.dc-children>.dc-wrap:only-child::before{left:50%;right:auto;width:0;border-left:2px solid var(--bd);border-top:none}
+.dc-children>.dc-wrap:not(:first-child):not(:last-child)::before{border-top:2px solid var(--bd)}
 .dc-drop{min-height:20px;border:1px dashed transparent;border-radius:6px;margin:4px 6px;transition:.15s}
 .dc-drop.active{border-color:var(--blue);background:rgba(0,121,192,.06)}
 
@@ -529,7 +537,7 @@ function renderCard(node,depth){
   var hw=node.hw,dn=esc(node.name),dp=Math.min(depth,2);
   var ck=getChecked();var memos=getMemos(N[cur]);
   var dMemo=memos['dept_'+node.name]||{};var hasDM=dMemo.note||dMemo.rel||dMemo.next;
-  var h='<div class="dc depth'+dp+'" draggable="true" ondragstart="deptDragStart(event,\''+dn+'\')" ondragover="deptDragOver(event)" ondragleave="deptDragLeave(event)" ondrop="deptDrop(event,\''+dn+'\')">';
+  var h='<div class="dc-wrap"><div class="dc depth'+dp+'" draggable="true" ondragstart="deptDragStart(event,\''+dn+'\')" ondragover="deptDragOver(event)" ondragleave="deptDragLeave(event)" ondrop="deptDrop(event,\''+dn+'\')">';
   h+='<div class="dc-hd'+(hw?' has-won':'')+'"><div class="dc-nm">'+node.name+'</div><div style="display:flex;gap:4px;align-items:center">';
   h+='<span class="memo-tag '+(hasDM?'has':'empty')+'" onclick="event.stopPropagation();showMemoPopup(\'dept_'+dn+'\',\''+dn+'\')" onmouseenter="memoTooltip(event,\'dept_'+dn+'\')" onmouseleave="memoTooltipHide()" title="部署メモ">📋</span>';
   h+='<div class="dc-ct">'+node.lc+(hw?' ✅':'')+'</div>';
@@ -567,8 +575,9 @@ function renderCard(node,depth){
   }else{h+='<div class="dc-drop" ondragover="leadDropZoneDragOver(event)" ondragleave="leadDropZoneDragLeave(event)" ondrop="leadDrop(event,\''+dn+'\')"></div>';}
   h+='<div style="padding:4px 8px"><button style="font-size:9px;padding:2px 8px;border:1px dashed var(--bd);background:none;border-radius:4px;cursor:pointer;color:var(--ink3)" onclick="event.stopPropagation();addWhitespace(\''+dn+'\')">＋ 担当者</button></div>';
   h+='</div>';
+  h+='</div>'; // close .dc
   if(node.children&&node.children.length){h+='<div class="dc-children">';node.children.forEach(function(c){h+=renderCard(c,depth+1);});h+='</div>';}
-  h+='</div>';return h;
+  h+='</div>';return h; // close .dc-wrap
 }
 
 function rO(idx){
