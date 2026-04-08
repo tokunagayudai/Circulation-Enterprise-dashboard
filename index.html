@@ -146,6 +146,26 @@
 .vt-btn{padding:4px 10px;font-size:9px;cursor:pointer;color:var(--ink3);border-right:1px solid var(--bd);transition:.1s}
 .vt-btn:last-child{border-right:none}
 .vt-btn:hover{color:var(--ink)}.vt-btn.act{background:var(--blue);color:#fff}
+/* Tree org chart */
+.tree-wrap{padding:16px 24px;overflow:auto;max-height:70vh}
+.tree-node{display:flex;flex-direction:column;align-items:center;position:relative}
+.tree-box{background:var(--bg2);border:1px solid var(--bd);border-radius:8px;padding:8px 14px;text-align:center;min-width:100px;max-width:200px;position:relative;z-index:1}
+.tree-box.has-won{border-color:var(--grn);background:var(--grn-bg)}
+.tree-box .tb-name{font-size:11px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-box .tb-count{font-size:9px;color:var(--ink3)}
+.tree-box .tb-lead{font-size:9px;color:var(--ink2);margin-top:2px;cursor:pointer}
+.tree-box .tb-lead:hover{color:var(--blue)}
+.tree-person{display:flex;flex-direction:column;align-items:center;margin-bottom:4px}
+.tree-person .tp-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;border:2px solid var(--bd)}
+.tree-person .tp-nm{font-size:9px;font-weight:600;margin-top:2px;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-person .tp-role{font-size:7px;color:var(--ink3)}
+.tree-children{display:flex;justify-content:center;gap:8px;position:relative;padding-top:20px}
+.tree-children::before{content:'';position:absolute;top:0;left:50%;width:0;height:20px;border-left:1px solid var(--bd)}
+.tree-children>*{position:relative}
+.tree-children>*::before{content:'';position:absolute;top:-20px;left:50%;width:50%;height:20px;border-top:1px solid var(--bd)}
+.tree-children>*:first-child::before{left:50%;width:50%;border-left:1px solid var(--bd);border-top:1px solid var(--bd)}
+.tree-children>*:last-child::before{right:50%;left:auto;width:50%;border-right:1px solid var(--bd);border-top:1px solid var(--bd)}
+.tree-children>*:only-child::before{left:50%;width:0;border-left:1px solid var(--bd);border-top:none}
 
 /* Commerce (Funnel) view */
 .funnel-wrap{display:flex;gap:16px;padding:8px 24px;flex-wrap:wrap}
@@ -298,7 +318,7 @@ function tgGRC(el){var sub=el.nextElementSibling;if(sub)sub.style.display=sub.st
 function tgWon(id,idx){var el=document.getElementById(id);if(el.classList.contains('show')){el.classList.remove('show');return;}document.querySelectorAll('#wl,#wd,#wc').forEach(function(e){e.classList.remove('show');});var d=D[N[idx]],won=d.won||{},h='';
   if(id==='wl'){h='<div style="font-weight:700;color:var(--grn);margin-bottom:6px">受注済リード ('+won.leads.length+'名)</div>';(won.leads||[]).forEach(function(l){var su3=sfLink(l.coid,l.accid),oc3=su3?'onclick="window.open(\''+su3+'\',\'_blank\')"':'';h+='<div class="drill-row" style="cursor:pointer" '+oc3+'><span class="nm">'+l.n+'</span>';if(su3)h+='<span class="sf">↗SF</span>';h+='</div>';});}
   else if(id==='wd'){h='<div style="font-weight:700;color:var(--grn);margin-bottom:6px">受注済部署 ('+won.depts.length+')</div>';(won.depts||[]).forEach(function(dp){h+='<div class="drill-row"><span class="nm">'+dp+'</span></div>';});}
-  else if(id==='wc'){h='<div style="font-weight:700;color:var(--grn);margin-bottom:6px">受注案件 全期間 ('+won.cases.length+'件)</div>';(won.cases||[]).forEach(function(c){var oc4=c.aid?'onclick="window.open(\''+SFO+c.aid+'/view\',\'_blank\')"':'';h+='<div class="drill-row" style="cursor:pointer" '+oc4+'><span class="nm">'+c.n+'</span><span class="th">'+c.t+'</span>';if(c.aid)h+='<span class="sf">↗SF</span>';h+='<span style="color:var(--grn);font-weight:600;margin-left:auto;font-family:var(--mono)">CK '+fmt$(c.ck)+'</span><span class="dt">'+c.d+'</span></div>';});}
+  else if(id==='wc'){var pjt=getPjtMembers(N[idx]);h='<div style="font-weight:700;color:var(--grn);margin-bottom:6px">受注案件 全期間 ('+won.cases.length+'件) <span style="font-size:9px;color:var(--ink3);font-weight:400">👥ボタンでPJTメンバー紐付け</span></div>';(won.cases||[]).forEach(function(c){var cKey=c.t||c.n;var pm=pjt[cKey]||[];var oc4=c.aid?'onclick="window.open(\''+SFO+c.aid+'/view\',\'_blank\')"':'';h+='<div style="border-bottom:1px solid rgba(0,0,0,.03)"><div class="drill-row" style="cursor:pointer" '+oc4+'><span class="nm">'+c.n+'</span><span class="th">'+c.t+'</span>';if(c.aid)h+='<span class="sf">↗SF</span>';h+='<span style="color:var(--grn);font-weight:600;font-family:var(--mono)">CK '+fmt$(c.ck)+'</span><span class="dt">'+c.d+'</span></div>';h+='<div style="padding:2px 12px 6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">';h+='<span style="font-size:9px;cursor:pointer;color:var(--blue);font-weight:600" onclick="event.stopPropagation();showPjtPopup(\''+esc(cKey)+'\',\''+esc(c.t||c.n)+'\')">👥'+(pm.length?pm.length+'名':'紐付')+'</span>';pm.forEach(function(m){h+='<span style="font-size:9px;padding:1px 6px;background:rgba(0,121,192,.08);border-radius:8px;color:var(--blue)">'+m+'</span>';});h+='</div></div>';});}
   el.innerHTML=h;el.classList.add('show');}
 function tgGR(m){var el=document.getElementById('grd');if(el.classList.contains('show')&&el.getAttribute('data-m')===m){el.classList.remove('show');return;}el.setAttribute('data-m',m);var gpn=MT.gpn[m]||[];
   // Group by company
@@ -436,6 +456,75 @@ function memoTooltip(e,key){
   document.body.appendChild(tt);
 }
 function memoTooltipHide(){var t=document.getElementById('mtip');if(t)t.remove();}
+// Tree view rendering
+function renderTreeNode(node){
+  var h='<div class="tree-node">';
+  // Top lead (highest priority person in this dept)
+  var topLead=node.leads&&node.leads.length?node.leads[0]:null;
+  if(topLead){
+    var st2=topLead.st||'registered';
+    var avTxt2=topLead.km==='決裁者'?'決':topLead.km==='チャンピオン'?'C':topLead.km==='キーマン'?'K':topLead.km==='外'?'外':topLead.km==='不'?'不':topLead.km==='-'?'-':'';
+    var avBg=topLead.km==='決裁者'?'background:#7c3aed;color:#fff;border-color:#7c3aed':topLead.km==='チャンピオン'?'background:var(--blue);color:#fff;border-color:var(--blue)':topLead.km==='キーマン'?'background:var(--org);color:#fff;border-color:var(--org)':'';
+    var sfU2=sfLink(topLead.sfid,topLead.accid);
+    h+='<div class="tree-person"><div class="tp-av" style="'+(avBg||'')+'">'+avTxt2+'</div>';
+    h+='<div class="tp-nm"'+(sfU2?' style="cursor:pointer;color:var(--blue)" onclick="window.open(\''+sfU2+'\',\'_blank\')"':'')+'>'+topLead.n+'</div>';
+    if(topLead.r)h+='<div class="tp-role">'+topLead.r+'</div>';
+    h+='</div>';
+  }
+  // Department box
+  h+='<div class="tree-box'+(node.hw?' has-won':'')+'"><div class="tb-name">'+node.name+'</div>';
+  h+='<div class="tb-count">'+node.lc+'名'+(node.hw?' ✅':'')+'</div>';
+  // Other leads (collapsed, show on click)
+  if(node.leads&&node.leads.length>1){
+    var oId='tl_'+node.name.replace(/[^a-zA-Z0-9]/g,'_');
+    h+='<div class="tb-lead" onclick="var e=document.getElementById(\''+oId+'\');e.style.display=e.style.display===\'none\'?\'block\':\'none\'">他'+(node.leads.length-1)+'名 ▾</div>';
+    h+='<div id="'+oId+'" style="display:none;text-align:left;margin-top:4px;border-top:1px solid rgba(0,0,0,.06);padding-top:4px">';
+    node.leads.slice(1).forEach(function(l2){
+      var sfU3=sfLink(l2.sfid,l2.accid);
+      h+='<div style="font-size:9px;padding:1px 0"><span'+(sfU3?' style="cursor:pointer;color:var(--blue)" onclick="window.open(\''+sfU3+'\',\'_blank\')"':'')+'>'+l2.n+'</span>';
+      if(l2.r)h+='<span style="color:var(--ink3);margin-left:4px">'+l2.r+'</span>';
+      h+='<span class="pill '+SS[l2.st||'registered']+'" style="margin-left:4px;font-size:7px">'+SL[l2.st||'registered']+'</span></div>';
+    });
+    h+='</div>';
+  }
+  h+='</div>';
+  // Children
+  if(node.children&&node.children.length){
+    h+='<div class="tree-children">';
+    node.children.forEach(function(c){h+=renderTreeNode(c);});
+    h+='</div>';
+  }
+  h+='</div>';return h;
+}
+
+// PJT member linking
+function getPjtMembers(cn){try{return JSON.parse(localStorage.getItem('acplan_pjt_'+cn)||'{}');}catch(e){return {};}}
+function savePjtMembers(cn,m){try{localStorage.setItem('acplan_pjt_'+cn,JSON.stringify(m));}catch(e){}}
+function showPjtPopup(caseKey,caseName){
+  var cn=N[cur],pjt=getPjtMembers(cn),members=pjt[caseKey]||[];
+  var allLeads=[];var d=D[cn];(d.d||[]).forEach(function(dept){(dept.leads||[]).forEach(function(l){allLeads.push(l.n);});});
+  var ol=document.createElement('div');ol.className='memo-overlay';
+  ol.onclick=function(e){if(e.target===ol)ol.remove();};
+  var h='<h3>👥 '+caseName+'</h3>';
+  h+='<div style="font-size:10px;color:var(--ink2);margin-bottom:8px">プロジェクトメンバーを選択</div>';
+  h+='<div style="max-height:300px;overflow-y:auto">';
+  allLeads.forEach(function(ln){
+    var checked=members.indexOf(ln)>=0;
+    h+='<label style="display:flex;align-items:center;gap:6px;padding:4px 0;font-size:11px;cursor:pointer"><input type="checkbox" class="pjt-cb" value="'+esc2(ln)+'" '+(checked?'checked':'')+' style="accent-color:var(--blue)">'+ln+'</label>';
+  });
+  h+='</div>';
+  h+='<div class="memo-btn-row"><button class="memo-btn" onclick="this.closest(\'.memo-overlay\').remove()">キャンセル</button>';
+  h+='<button class="memo-btn primary" onclick="savePjtFromPopup(\''+esc(caseKey)+'\');this.closest(\'.memo-overlay\').remove()">保存</button></div>';
+  var panel=document.createElement('div');panel.className='memo-panel';panel.innerHTML=h;
+  ol.appendChild(panel);document.body.appendChild(ol);
+}
+function savePjtFromPopup(caseKey){
+  var cn=N[cur],pjt=getPjtMembers(cn),cbs=document.querySelectorAll('.pjt-cb'),members=[];
+  cbs.forEach(function(cb){if(cb.checked)members.push(cb.value);});
+  if(members.length)pjt[caseKey]=members;else delete pjt[caseKey];
+  savePjtMembers(cn,pjt);rO(cur);
+}
+
 function renderCard(node,depth){
   var hw=node.hw,dn=esc(node.name),dp=Math.min(depth,2);
   var ck=getChecked();var memos=getMemos(N[cur]);
@@ -569,7 +658,7 @@ function rO(idx){
   h+='<div class="org-toolbar"><span>組織マップ</span><span style="font-size:9px;color:var(--ink3);font-weight:400">部署ドラッグ→階層化　リードも移動可</span>';
   if(hasCustomTree)h+='<button onclick="resetTree()">リセット</button>';
   h+='<span class="saved" id="sv">✓ 保存済</span>';
-  h+='<div class="view-toggle"><div class="vt-btn'+(orgViewMode==='map'?' act':'')+'" onclick="orgViewMode=\'map\';rO('+idx+')">組織図</div><div class="vt-btn'+(orgViewMode==='list'?' act':'')+'" onclick="orgViewMode=\'list\';rO('+idx+')">リスト</div></div>';
+  h+='<div class="view-toggle"><div class="vt-btn'+(orgViewMode==='map'?' act':'')+'" onclick="orgViewMode=\'map\';rO('+idx+')">カード</div><div class="vt-btn'+(orgViewMode==='tree'?' act':'')+'" onclick="orgViewMode=\'tree\';rO('+idx+')">ツリー</div><div class="vt-btn'+(orgViewMode==='list'?' act':'')+'" onclick="orgViewMode=\'list\';rO('+idx+')">リスト</div></div>';
   h+='</div>';
   if(depts.length>5){h+='<div class="dept-filter">';h+='<div class="dept-btn'+(deptFilter==='all'?' act':'')+'" onclick="deptFilter=\'all\';rO('+idx+')">すべて('+depts.length+')</div>';h+='<div class="dept-btn'+(deptFilter==='active'?' act':'')+'" onclick="deptFilter=\'active\';rO('+idx+')">稼働中</div>';h+='<div class="dept-btn'+(deptFilter==='progress'?' act':'')+'" onclick="deptFilter=\'progress\';rO('+idx+')">進行中</div>';h+='<div class="dept-btn'+(deptFilter==='idle'?' act':'')+'" onclick="deptFilter=\'idle\';rO('+idx+')">未進展</div>';h+='<div class="dept-btn'+(deptFilter==='checked'?' act':'')+'" onclick="deptFilter=\'checked\';rO('+idx+')">☑ アプローチ対象</div></div>';}
 
@@ -577,7 +666,11 @@ function rO(idx){
   var ck=getChecked();
   function filterTree(nodes,mode){if(mode==='all')return nodes;var prog=['won','active','meeting','deal','prospect'];return nodes.filter(function(n){var cn2=JSON.parse(JSON.stringify(n));if(cn2.children&&cn2.children.length){cn2.children=filterTree(cn2.children,mode);if(cn2.children.length){n.children=cn2.children;return true;}}if(mode==='active'){if(n.leads){var al2=n.leads.filter(function(l){return l.st==='active';});if(al2.length){n.leads=al2;n.lc=al2.length;return true;}}return false;}if(mode==='progress')return prog.indexOf(n.best)>=0;if(mode==='idle')return prog.indexOf(n.best)<0;if(mode==='checked'){if(n.leads){var cl=n.leads.filter(function(l){return ck[l.n];});if(cl.length){n.leads=cl;n.lc=cl.length;return true;}}return false;}return true;});}
   var fTree=JSON.parse(JSON.stringify(tree));if(deptFilter!=='all')fTree=filterTree(fTree,deptFilter);
-  if(orgViewMode==='list'){
+  if(orgViewMode==='tree'){
+    h+='<div class="tree-wrap"><div style="display:flex;justify-content:center;gap:12px">';
+    fTree.forEach(function(node){h+=renderTreeNode(node);});
+    h+='</div></div>';
+  }else if(orgViewMode==='list'){
     // List view: all leads sorted by keyman priority then status
     var KO={'決裁者':0,'チャンピオン':1,'キーマン':2};
     var allLeads=[];
