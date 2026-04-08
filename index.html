@@ -101,6 +101,8 @@
 .dc:active{cursor:grabbing}
 .dc.drag-over-dc{border:2px dashed var(--blue);background:rgba(0,121,192,.03)}
 .dc.depth0{border-color:rgba(0,0,0,.08)}.dc.depth1{border-color:rgba(0,121,192,.2)}.dc.depth2{border-color:rgba(191,135,0,.2)}
+.dc.grp-co{border:2px solid var(--blue);background:rgba(0,121,192,.03)}
+.dc.grp-co>.dc-hd{background:rgba(0,121,192,.08);border-radius:9px 9px 0 0}
 .dc-hd{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid rgba(0,0,0,.04)}
 .dc-hd.has-won{background:var(--grn-bg);border-radius:9px 9px 0 0}
 .dc-nm{font-size:11px;font-weight:700;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -501,7 +503,7 @@ function renderTreeNode(node){
     h+='</div>';
   }
   // Department box
-  h+='<div class="tree-box'+(node.hw?' has-won':'')+'"><div class="tb-name">'+node.name+'</div>';
+  h+='<div class="tree-box'+(node.hw?' has-won':'')+(node.isGroup?' grp-co':'')+'"><div class="tb-name">'+(node.isGroup?'🏢 ':'')+node.name+'</div>';
   h+='<div class="tb-count">'+node.lc+'名'+(node.hw?' ✅':'')+'</div>';
   // Other leads (collapsed, show on click)
   if(node.leads&&node.leads.length>1){
@@ -558,8 +560,9 @@ function renderCard(node,depth){
   var hw=node.hw,dn=esc(node.name),dp=Math.min(depth,2);
   var ck=getChecked();var memos=getMemos(N[cur]);
   var dMemo=memos['dept_'+node.name]||{};var hasDM=dMemo.note||dMemo.rel||dMemo.next;
-  var h='<div class="dc-wrap"><div class="dc depth'+dp+'" draggable="true" ondragstart="deptDragStart(event,\''+dn+'\')" ondragover="deptDragOver(event)" ondragleave="deptDragLeave(event)" ondrop="deptDrop(event,\''+dn+'\')">';
-  h+='<div class="dc-hd'+(hw?' has-won':'')+'"><div class="dc-nm">'+node.name+'</div><div style="display:flex;gap:4px;align-items:center">';
+  var isGrp=node.isGroup;
+  var h='<div class="dc-wrap"><div class="dc depth'+dp+(isGrp?' grp-co':'')+'" draggable="true" ondragstart="deptDragStart(event,\''+dn+'\')" ondragover="deptDragOver(event)" ondragleave="deptDragLeave(event)" ondrop="deptDrop(event,\''+dn+'\')">';
+  h+='<div class="dc-hd'+(hw?' has-won':'')+(isGrp?' has-won" style="background:rgba(0,121,192,.1)':'')+'"><div class="dc-nm">'+(isGrp?'🏢 ':'')+node.name+'</div><div style="display:flex;gap:4px;align-items:center">';
   h+='<span class="memo-tag '+(hasDM?'has':'empty')+'" onclick="event.stopPropagation();showMemoPopup(\'dept_'+dn+'\',\''+dn+'\')" onmouseenter="memoTooltip(event,\'dept_'+dn+'\')" onmouseleave="memoTooltipHide()" title="部署メモ">📋</span>';
   h+='<div class="dc-ct">'+node.lc+(hw?' ✅':'')+'</div>';
   if(depth>0)h+='<span style="font-size:8px;cursor:pointer;color:var(--ink3)" onclick="event.stopPropagation();extractDept(\''+dn+'\')" title="外に出す">↗</span>';
@@ -734,6 +737,18 @@ function rO(idx){
   if(depts.length>5){h+='<div class="dept-filter">';h+='<div class="dept-btn'+(deptFilter==='all'?' act':'')+'" onclick="deptFilter=\'all\';rO('+idx+')">すべて('+depts.length+')</div>';h+='<div class="dept-btn'+(deptFilter==='active'?' act':'')+'" onclick="deptFilter=\'active\';rO('+idx+')">稼働中</div>';h+='<div class="dept-btn'+(deptFilter==='progress'?' act':'')+'" onclick="deptFilter=\'progress\';rO('+idx+')">進行中</div>';h+='<div class="dept-btn'+(deptFilter==='idle'?' act':'')+'" onclick="deptFilter=\'idle\';rO('+idx+')">未進展</div>';h+='<div class="dept-btn'+(deptFilter==='checked'?' act':'')+'" onclick="deptFilter=\'checked\';rO('+idx+')">☑ アプローチ対象</div></div>';}
 
   var tree=hasCustomTree||buildDefaultTree(depts);
+  // Append group company departments as top-level cards
+  var grpCos2=getGroupCos(name);
+  grpCos2.forEach(function(gc){
+    var gd=D[gc];if(!gd||!gd.d||!gd.d.length)return;
+    var gcShort=gc.replace(/株式会社/g,'').trim();
+    var gcLeads=[];var gcChildren=[];
+    gd.d.forEach(function(dept){
+      gcChildren.push({name:dept.n,children:[],leads:dept.leads,lc:dept.lc,best:dept.best,hw:dept.hw});
+      (dept.leads||[]).forEach(function(l){gcLeads.push(l);});
+    });
+    tree.push({name:gcShort,children:gcChildren,leads:[],lc:gcLeads.length,best:gcChildren[0]?gcChildren[0].best:'registered',hw:gcChildren.some(function(c){return c.hw;}),isGroup:true});
+  });
   var ck=getChecked();
   function filterTree(nodes,mode){if(mode==='all')return nodes;var prog=['won','active','meeting','deal','prospect'];return nodes.filter(function(n){var cn2=JSON.parse(JSON.stringify(n));if(cn2.children&&cn2.children.length){cn2.children=filterTree(cn2.children,mode);if(cn2.children.length){n.children=cn2.children;return true;}}if(mode==='active'){if(n.leads){var al2=n.leads.filter(function(l){return l.st==='active';});if(al2.length){n.leads=al2;n.lc=al2.length;return true;}}return false;}if(mode==='progress')return prog.indexOf(n.best)>=0;if(mode==='idle')return prog.indexOf(n.best)<0;if(mode==='checked'){if(n.leads){var cl=n.leads.filter(function(l){return ck[l.n];});if(cl.length){n.leads=cl;n.lc=cl.length;return true;}}return false;}return true;});}
   var fTree=JSON.parse(JSON.stringify(tree));if(deptFilter!=='all')fTree=filterTree(fTree,deptFilter);
