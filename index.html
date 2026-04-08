@@ -429,8 +429,29 @@ function addGroupCo(cn){var all=N.filter(function(n){return n!==cn&&getGroupCos(
 function removeGroupCo(cn,target){var g1=getGroupCos(cn).filter(function(n){return n!==target;});try{localStorage.setItem('acplan_group_'+cn,JSON.stringify(g1));}catch(e){}var g2=getGroupCos(target).filter(function(n){return n!==cn;});try{localStorage.setItem('acplan_group_'+target,JSON.stringify(g2));}catch(e){}rO(cur);}
 // File/URL attachments per company
 function getAttachments(cn){try{return JSON.parse(localStorage.getItem('acplan_files_'+cn)||'[]');}catch(e){return [];}}
-function addAttachment(cn){var url=prompt('URLを入力（Googleドライブ、SF等）:');if(!url)return;var label=prompt('ラベル（任意）:')||url.slice(0,30);var a=getAttachments(cn);a.push({url:url,label:label,date:TODAY});try{localStorage.setItem('acplan_files_'+cn,JSON.stringify(a));}catch(e){}rO(cur);}
+function addAttachment(cn){var url=prompt('URLを入力（Googleドライブ、SF等）:');if(!url)return;var label=prompt('ラベル（任意）:')||url.slice(0,30);var a=getAttachments(cn);a.push({url:url,label:label,date:TODAY,type:'url'});try{localStorage.setItem('acplan_files_'+cn,JSON.stringify(a));}catch(e){}rO(cur);}
+function addFileAttachment(cn,file){
+  if(!file)return;var label=file.name;var reader=new FileReader();
+  reader.onload=function(e){
+    var dataUrl=e.target.result;
+    // Check size (localStorage limit ~5MB total)
+    if(dataUrl.length>2*1024*1024){alert('ファイルが大きすぎます（2MB以下にしてください）');return;}
+    var a=getAttachments(cn);a.push({url:dataUrl,label:label,date:TODAY,type:file.type.indexOf('pdf')>=0?'pdf':'file'});
+    try{localStorage.setItem('acplan_files_'+cn,JSON.stringify(a));}catch(e2){alert('保存容量を超えました。不要な添付を削除してください');}rO(cur);
+  };reader.readAsDataURL(file);
+}
 function removeAttachment(cn,idx){var a=getAttachments(cn);a.splice(idx,1);try{localStorage.setItem('acplan_files_'+cn,JSON.stringify(a));}catch(e){}rO(cur);}
+function previewAttachment(idx){
+  var cn=N[cur],a=getAttachments(cn),att=a[idx];if(!att)return;
+  var ol=document.createElement('div');ol.className='memo-overlay';ol.onclick=function(e){if(e.target===ol)ol.remove();};
+  var panel=document.createElement('div');panel.className='memo-panel';panel.style.width='700px';panel.style.maxWidth='95vw';panel.style.maxHeight='90vh';
+  if(att.type==='pdf'&&att.url.indexOf('data:')===0){
+    panel.innerHTML='<h3>📄 '+esc2(att.label)+'<span style="margin-left:auto;cursor:pointer;font-size:14px" onclick="this.closest(\'.memo-overlay\').remove()">✕</span></h3><iframe src="'+att.url+'" style="width:100%;height:70vh;border:1px solid var(--bd);border-radius:6px"></iframe>';
+  }else{
+    panel.innerHTML='<h3>📄 '+esc2(att.label)+'<span style="margin-left:auto;cursor:pointer;font-size:14px" onclick="this.closest(\'.memo-overlay\').remove()">✕</span></h3><div style="text-align:center;padding:20px"><a href="'+att.url+'" target="_blank" style="color:var(--blue)">新しいタブで開く ↗</a></div>';
+  }
+  ol.appendChild(panel);document.body.appendChild(ol);
+}
 function saveMemoFromPopup(key){
   var cn=N[cur],m=getMemos(cn);
   var note=document.getElementById('mp_note').value.trim();
@@ -645,17 +666,48 @@ function rO(idx){
   // Group company links
   var grpCos=getGroupCos(name);
   if(grpCos.length){
-    h+='<div style="margin:4px 24px;padding:8px 12px;background:rgba(0,121,192,.04);border-radius:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span style="font-size:10px;font-weight:600;color:var(--ink2)">🏢 グループ会社:</span>';
+    h+='<div style="margin:4px 24px;padding:10px 12px;background:rgba(0,121,192,.04);border-radius:8px">';
+    h+='<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px"><span style="font-size:10px;font-weight:600;color:var(--ink2)">🏢 グループ会社:</span>';
     grpCos.forEach(function(gc){var gi=N.indexOf(gc);if(gi>=0)h+='<span style="font-size:10px;padding:2px 8px;background:var(--bg2);border:1px solid var(--bd);border-radius:12px;cursor:pointer;color:var(--blue);font-weight:500" onclick="rO('+gi+')">'+gc.replace(/株式会社/g,'').trim()+' <span style="font-size:7px;color:var(--ink3)" onclick="event.stopPropagation();removeGroupCo(\''+esc(name)+'\',\''+esc(gc)+'\')">✕</span></span>';});
     h+='<span style="font-size:9px;cursor:pointer;color:var(--blue)" onclick="addGroupCo(\''+esc(name)+'\')">＋追加</span></div>';
+    // Show key people and cases from group companies
+    grpCos.forEach(function(gc){
+      var gd=D[gc];if(!gd)return;var gi=N.indexOf(gc);
+      var keyLeads=[];(gd.d||[]).forEach(function(dept){(dept.leads||[]).forEach(function(l){if(l.km==='決裁者'||l.km==='チャンピオン'||l.km==='キーマン'||l.st==='won'||l.st==='active')keyLeads.push({n:l.n,km:l.km||'',st:l.st,r:l.r||'',dept:dept.n,sfid:l.sfid,accid:l.accid});});});
+      if(!keyLeads.length)return;
+      h+='<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(0,0,0,.06)">';
+      h+='<div style="font-size:9px;font-weight:600;color:var(--ink2);margin-bottom:3px;cursor:pointer" onclick="rO('+gi+')">'+gc.replace(/株式会社/g,'').trim()+' のキーパーソン ('+keyLeads.length+'名)</div>';
+      h+='<div style="display:flex;gap:4px;flex-wrap:wrap">';
+      keyLeads.slice(0,8).forEach(function(kl){
+        var kmC=kl.km==='決裁者'?'#7c3aed':kl.km==='チャンピオン'?'var(--blue)':kl.km==='キーマン'?'var(--org)':kl.st==='won'?'var(--grn)':'var(--ink3)';
+        var sfU4=sfLink(kl.sfid,kl.accid);
+        h+='<span style="font-size:9px;padding:2px 6px;background:var(--bg2);border:1px solid var(--bd);border-radius:6px;display:inline-flex;align-items:center;gap:3px">';
+        h+='<span style="width:6px;height:6px;border-radius:50%;background:'+kmC+'"></span>';
+        h+='<span'+(sfU4?' style="cursor:pointer;color:var(--blue)" onclick="window.open(\''+sfU4+'\',\'_blank\')"':'')+'>'+kl.n+'</span>';
+        if(kl.r)h+='<span style="color:var(--ink3);font-size:7px">'+kl.r+'</span>';
+        h+='</span>';
+      });
+      if(keyLeads.length>8)h+='<span style="font-size:8px;color:var(--ink3)">...他'+(keyLeads.length-8)+'名</span>';
+      h+='</div></div>';
+    });
+    h+='</div>';
   }
 
   // File/URL attachments
   var atts=getAttachments(name);
   h+='<div style="margin:4px 24px;padding:8px 12px;background:var(--bg2);border-radius:8px;border:1px solid rgba(0,0,0,.04)">';
-  h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:700;color:var(--ink2)">📎 添付資料</span><button onclick="addAttachment(\''+esc(name)+'\')" style="font-size:9px;padding:2px 8px;border:1px dashed var(--bd);background:none;border-radius:4px;cursor:pointer;color:var(--ink3)">＋ URL追加</button></div>';
-  if(atts.length){atts.forEach(function(a,ai){h+='<div style="display:flex;gap:6px;align-items:center;padding:2px 0;font-size:10px"><a href="'+a.url+'" target="_blank" style="color:var(--blue);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 '+esc2(a.label)+'</a><span style="color:var(--ink3);font-size:8px">'+a.date+'</span><span style="cursor:pointer;color:var(--red);font-size:8px" onclick="removeAttachment(\''+esc(name)+'\','+ai+')">✕</span></div>';});}
-  else{h+='<div style="font-size:9px;color:var(--ink3)">GoogleドライブやSFのURLを追加できます</div>';}
+  h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:10px;font-weight:700;color:var(--ink2)">📎 添付資料</span>';
+  h+='<button onclick="addAttachment(\''+esc(name)+'\')" style="font-size:9px;padding:2px 8px;border:1px dashed var(--bd);background:none;border-radius:4px;cursor:pointer;color:var(--ink3)">＋ URL追加</button>';
+  h+='<button onclick="document.getElementById(\'fileUp\').click()" style="font-size:9px;padding:2px 8px;border:1px dashed var(--bd);background:none;border-radius:4px;cursor:pointer;color:var(--ink3)">📄 ファイル追加</button>';
+  h+='<input type="file" id="fileUp" accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx,.pptx" style="display:none" onchange="addFileAttachment(\''+esc(name)+'\',this.files[0]);this.value=\'\'"></div>';
+  if(atts.length){atts.forEach(function(a,ai){
+    var icon=a.type==='pdf'?'📕':a.type==='file'?'📎':'🔗';
+    var isLocal=a.url&&a.url.indexOf('data:')===0;
+    h+='<div style="display:flex;gap:6px;align-items:center;padding:3px 0;font-size:10px">';
+    if(isLocal){h+='<span style="cursor:pointer;color:var(--blue);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="previewAttachment('+ai+')">'+icon+' '+esc2(a.label)+'</span>';}
+    else{h+='<a href="'+a.url+'" target="_blank" style="color:var(--blue);text-decoration:none;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+icon+' '+esc2(a.label)+'</a>';}
+    h+='<span style="color:var(--ink3);font-size:8px">'+a.date+'</span><span style="cursor:pointer;color:var(--red);font-size:8px" onclick="removeAttachment(\''+esc(name)+'\','+ai+')">✕</span></div>';});}
+  else{h+='<div style="font-size:9px;color:var(--ink3)">URL追加 or PDF/画像ファイルをアップロード</div>';}
   h+='</div>';
 
   h+='<div class="dz" onclick="document.getElementById(\'fi\').click()" ondragover="event.preventDefault()" ondrop="event.preventDefault();doAI(event.dataTransfer.files[0])">🏢 組織図ドロップ→AIがホワイトスペース特定<input type="file" id="fi" accept="image/*" style="display:none" onchange="doAI(this.files[0])"></div>';
