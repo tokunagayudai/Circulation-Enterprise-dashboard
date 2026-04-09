@@ -1,0 +1,2976 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>エンプラ営業管理 | Circulation</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0f0f0d;--ink2:#4a4a46;--ink3:#8a8a84;--ink4:#c8c8c0;
+  --paper:#f7f6f2;--surface:#fff;--surface2:#f1f0ea;--border:#e4e3dc;
+  --blue:#1a5fb4;--blue-l:#dce8f8;--blue-m:#3584e4;
+  --teal:#0d6e56;--teal-l:#d8f0e9;--teal-m:#1c9e75;
+  --amber:#7a4800;--amber-l:#fef0d4;--amber-m:#e5900a;
+  --red:#9a1c1c;--red-l:#fde8e8;--red-m:#df3b3b;
+  --green:#2d6a14;--green-l:#e4f3db;--green-m:#4caf28;
+  --purple:#4a3aab;--purple-l:#eeebfc;--purple-m:#7c6fe0;
+  --coral:#993c1d;--coral-l:#faece7;--coral-m:#d85a30;
+  --r:8px;--r-lg:14px;--sh:0 1px 3px rgba(0,0,0,.06);
+  --font:'DM Sans',-apple-system,'Hiragino Sans',sans-serif;
+  --mono:'DM Mono',monospace;
+  --sb:216px; /* sidebar width */
+}
+body{font-family:var(--font);background:var(--paper);color:var(--ink);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* ===== LAYOUT ===== */
+.app{display:flex;min-height:100vh}
+.sidebar{width:var(--sb);background:var(--ink);flex-shrink:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;overflow-y:auto;z-index:100;transition:transform .25s}
+.main{flex:1;margin-left:var(--sb);min-width:0;transition:margin .25s}
+.logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.07)}
+.logo-co{font-size:9px;font-weight:500;color:rgba(255,255,255,.28);text-transform:uppercase;letter-spacing:.12em;margin-bottom:2px}
+.logo-nm{font-size:14px;font-weight:600;color:#fff}.logo-nm em{color:var(--teal-m);font-style:normal}
+.nav{padding:10px 8px;flex:1}
+.nav-sec{font-size:9px;font-weight:600;color:rgba(255,255,255,.2);text-transform:uppercase;letter-spacing:.12em;padding:0 10px;margin:10px 0 4px}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:var(--r);cursor:pointer;font-size:12px;font-weight:500;color:rgba(255,255,255,.5);transition:all .14s;margin-bottom:1px;border:none;background:none;width:100%;text-align:left}
+.ni:hover{background:rgba(255,255,255,.06);color:rgba(255,255,255,.85)}.ni.on{background:rgba(255,255,255,.1);color:#fff}
+.ni .ico{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.sb-bot{padding:10px 8px;border-top:1px solid rgba(255,255,255,.07)}
+.drop-zone{border:1.5px dashed rgba(255,255,255,.18);border-radius:var(--r);padding:10px;cursor:pointer;transition:all .2s;position:relative;text-align:center}
+.drop-zone:hover,.drop-zone.over{border-color:rgba(28,158,117,.7);background:rgba(28,158,117,.06)}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-ico{font-size:16px;margin-bottom:2px}.dz-ttl{font-size:11px;font-weight:600;color:rgba(255,255,255,.65);margin-bottom:1px}
+.dz-sub{font-size:10px;color:rgba(255,255,255,.3)}.dz-loaded{font-size:10px;color:var(--teal-m);margin-top:5px;min-height:13px}
+
+/* ===== TOPBAR ===== */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:50;gap:10px;flex-wrap:wrap}
+.topbar-l{flex:1;min-width:0}
+.topbar-l h2{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-l p{font-size:11px;color:var(--ink3);margin-top:1px}
+.topbar-r{display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap}
+.filter-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+select.fsel{padding:5px 8px;border:1px solid var(--border);border-radius:var(--r);font-size:12px;font-weight:500;background:var(--surface);color:var(--ink);cursor:pointer;max-width:140px}
+.data-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;padding:3px 9px;border-radius:10px;white-space:nowrap}
+.data-badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.7}
+.badge-live{background:var(--teal-l);color:var(--teal)}.badge-demo{background:var(--amber-l);color:var(--amber)}
+.hamburger{display:none;padding:6px;border:none;background:none;cursor:pointer;flex-direction:column;gap:4px}
+.hamburger span{display:block;width:18px;height:2px;background:var(--ink2);border-radius:1px}
+
+/* ===== CONTENT ===== */
+.content{padding:18px 20px 56px}
+.panel{display:none}.panel.on{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+.panel.on>*{animation:fadeUp .2s ease both}
+
+/* ===== KPI ROW ===== */
+.kpi-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.kc{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:13px 15px;box-shadow:var(--sh);position:relative;overflow:hidden}
+.kc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--r-lg) var(--r-lg) 0 0}
+.kc.cb::before{background:var(--blue-m)}.kc.ct::before{background:var(--teal-m)}.kc.ca::before{background:var(--amber-m)}.kc.cp::before{background:var(--purple-m)}
+.kc-lbl{font-size:9px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.kc-val{font-size:22px;font-weight:600;color:var(--ink);font-family:var(--mono);line-height:1}
+.kc-val .u{font-size:11px;font-weight:500;margin-left:2px;color:var(--ink2)}
+.kc-sub{font-size:11px;color:var(--ink3);margin-top:4px}
+
+/* ===== CARDS ===== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:13px;box-shadow:var(--sh)}
+.card-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px;flex-wrap:wrap;gap:6px}
+.card-ttl{font-size:11px;font-weight:600;color:var(--ink2);text-transform:uppercase;letter-spacing:.06em}
+.card-hint{font-size:11px;color:var(--ink3)}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.three-col{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+
+/* ===== TABLE ===== */
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{font-size:9px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;padding:6px 8px;text-align:center;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--surface2)}
+th:first-child{text-align:left}
+td{padding:8px 8px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle}
+td:first-child{text-align:left;font-weight:500}
+tr:last-child td{border-bottom:none}
+tr.avg-row td{background:var(--surface2);font-style:italic}
+tr:hover:not(.avg-row) td{background:#fafaf8}
+.chip{display:inline-block;padding:2px 8px;border-radius:10px;font-weight:600;font-size:11px;font-family:var(--mono)}
+
+/* ===== BARS ===== */
+.br{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bn{font-size:12px;font-weight:500;min-width:52px}
+.bb{flex:1;height:14px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.bf{height:100%;border-radius:3px;transition:width .5s cubic-bezier(.4,0,.2,1)}
+.bv{font-size:12px;font-weight:600;min-width:40px;text-align:right;font-family:var(--mono)}
+.stk{flex:1;display:flex;height:12px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.seg{height:100%;transition:width .4s}
+
+/* ===== ALERTS ===== */
+.alert{border-radius:var(--r);padding:10px 12px;font-size:12px;margin-bottom:11px;display:flex;gap:8px;align-items:flex-start}
+.ai{font-size:15px;flex-shrink:0;margin-top:1px}
+.ab strong{font-weight:600;display:block;margin-bottom:2px}.ab p{color:var(--ink2);line-height:1.5}
+.a-ok{background:var(--green-l);border:1px solid #7bc96a;color:var(--green)}
+.a-warn{background:var(--amber-l);border:1px solid #f4b942;color:var(--amber)}
+.a-bad{background:var(--red-l);border:1px solid #f08080;color:var(--red)}
+.a-info{background:var(--blue-l);border:1px solid #90bce8;color:var(--blue)}
+
+/* ===== FUNNEL VIZ ===== */
+.funnel-viz{display:flex;align-items:flex-end;gap:5px;height:100px;margin-bottom:8px}
+.fv-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.fv-bar{width:100%;border-radius:4px 4px 0 0;transition:height .5s cubic-bezier(.4,0,.2,1);min-height:4px}
+.fv-lbl{font-size:9px;color:var(--ink3);text-align:center;white-space:nowrap}
+.fv-val{font-size:11px;font-weight:600;font-family:var(--mono);text-align:center}
+.fv-rate{font-size:9px;color:var(--ink3);text-align:center}
+
+/* ===== MONTHLY TREND ===== */
+.trend-wrap{overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.trend-chart{display:flex;align-items:flex-end;gap:3px;min-width:500px;height:120px;padding-top:20px}
+.trend-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative;cursor:pointer}
+.trend-col:hover .trend-bar{filter:brightness(1.1)}
+.trend-bar{width:100%;border-radius:3px 3px 0 0;transition:height .5s cubic-bezier(.4,0,.2,1);min-height:2px;position:relative}
+.trend-val{font-size:9px;font-weight:600;color:var(--ink3);position:absolute;top:-16px;width:100%;text-align:center}
+.trend-lbl{font-size:9px;color:var(--ink3);text-align:center;white-space:nowrap;margin-top:4px}
+.trend-lbl.cur{color:var(--teal);font-weight:600}
+.trend-legend{display:flex;gap:12px;margin-top:8px;font-size:10px;color:var(--ink3)}
+.trend-legend span{display:flex;align-items:center;gap:4px}
+.ldot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+
+/* ===== MEMBER DETAIL ===== */
+.member-selector{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.member-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--surface);color:var(--ink2);cursor:pointer;transition:all .14s;white-space:nowrap}
+.member-btn:hover{border-color:var(--blue-m);color:var(--blue)}
+.member-btn.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.member-btn.mgr-btn.on{background:var(--purple-m);border-color:var(--purple-m)}
+.member-btn.mgr-btn{color:var(--purple)}
+.detail-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.detail-ms{background:var(--surface2);border-radius:var(--r);padding:12px;text-align:center}
+.detail-ms-lbl{font-size:9px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.detail-ms-val{font-size:20px;font-weight:600;font-family:var(--mono)}
+.detail-ms-sub{font-size:10px;color:var(--ink3);margin-top:2px}
+.funnel-pipeline{display:flex;align-items:center;gap:0;margin:12px 0;overflow-x:auto;padding-bottom:4px}
+.fp-stage{flex:1;min-width:70px;text-align:center;padding:10px 6px;background:var(--surface2);border-radius:var(--r);margin:0 2px;position:relative}
+.fp-stage::after{content:'→';position:absolute;right:-10px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--ink4);z-index:1}
+.fp-stage:last-child::after{display:none}
+.fp-count{font-size:18px;font-weight:600;font-family:var(--mono)}
+.fp-label{font-size:9px;color:var(--ink3);margin-top:2px}
+.fp-rate{font-size:10px;font-weight:600;margin-top:3px;padding:1px 6px;border-radius:8px;display:inline-block}
+
+/* ===== DEAD ===== */
+.dead-row{display:flex;align-items:center;gap:10px;margin-bottom:7px}
+.dead-lbl{font-size:12px;min-width:110px;color:var(--ink)}
+.dead-bg{flex:1;height:12px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.dead-fill{height:100%;border-radius:3px}
+.dead-pct{font-size:12px;font-weight:600;font-family:var(--mono);min-width:36px;text-align:right}
+
+/* ===== KGI TREE ===== */
+.tree{display:flex;flex-direction:column;align-items:center}
+.tree-lv{display:flex;gap:10px;justify-content:center;width:100%;margin-bottom:4px}
+.tn{border-radius:var(--r-lg);padding:12px 16px;text-align:center;flex:1;max-width:190px}
+.tn-type{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;opacity:.6;margin-bottom:2px}
+.tn-lbl{font-size:11px;font-weight:600;margin-bottom:4px}
+.tn-val{font-size:19px;font-weight:600;font-family:var(--mono);line-height:1}
+.tn-tgt{font-size:9px;opacity:.6;margin-top:2px}
+.tn.kgi{background:var(--ink);color:#fff}.tn.kpi{background:var(--blue-l);color:var(--blue)}.tn.ksf{background:var(--teal-l);color:var(--teal)}
+.t-arr{text-align:center;font-size:18px;color:var(--ink4);padding:2px 0;line-height:1}
+.t-sub{display:block;font-size:9px;color:var(--ink4)}
+
+/* ===== SIM ===== */
+.sim-wrap{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.sg{margin-bottom:14px}
+.sh2{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+.sn{font-size:13px}.sv{font-size:14px;font-weight:600;color:var(--blue-m);font-family:var(--mono)}
+.shint{display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-top:3px}
+input[type=range]{width:100%;accent-color:var(--blue-m)}
+.sim-out{background:var(--surface2);border-radius:var(--r-lg);padding:18px;display:flex;flex-direction:column;gap:11px}
+.so-row{display:flex;justify-content:space-between;align-items:center}
+.so-lbl{font-size:12px;color:var(--ink2)}.so-val{font-size:18px;font-weight:600;font-family:var(--mono)}
+.sdiv{height:1px;background:var(--border)}
+.sfv{display:flex;align-items:flex-end;gap:5px;height:64px;margin-top:8px}
+.sfvb{flex:1;border-radius:4px 4px 0 0;transition:height .4s cubic-bezier(.4,0,.2,1);display:flex;align-items:flex-end;justify-content:center;padding-bottom:3px;position:relative}
+.sfvl{position:absolute;top:-14px;font-size:8px;color:var(--ink3);width:100%;text-align:center}
+.sfvn{font-size:9px;font-weight:600;color:#fff}
+
+/* ===== GAUGE METER ===== */
+.gauge-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.gauge-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;box-shadow:var(--sh);text-align:center}
+.gauge-lbl{font-size:10px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.gauge-wrap{position:relative;width:100px;height:54px;margin:0 auto 10px}
+.gauge-svg{width:100%;height:100%}
+.gauge-val{font-size:18px;font-weight:600;font-family:var(--mono);color:var(--ink)}
+.gauge-sub{font-size:11px;color:var(--ink3);margin-top:3px}
+.gauge-nums{display:flex;justify-content:space-between;font-size:10px;color:var(--ink3);margin-top:4px}
+
+/* ===== COMPARE ===== */
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:14px}
+.cmp-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;box-shadow:var(--sh)}
+.cmp-label{font-size:10px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.cmp-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--border)}
+.cmp-row:last-child{border-bottom:none}
+.cmp-metric{font-size:12px;color:var(--ink2)}
+.cmp-vals{display:flex;align-items:center;gap:8px}
+.cmp-val{font-size:13px;font-weight:600;font-family:var(--mono)}
+.cmp-arrow{font-size:11px;font-weight:600;padding:1px 6px;border-radius:6px}
+.cmp-up{background:var(--green-l);color:var(--green)}
+.cmp-dn{background:var(--red-l);color:var(--red)}
+.cmp-eq{background:var(--surface2);color:var(--ink3)}
+
+/* ===== CK TREND ===== */
+.ck-stack-wrap{overflow-x:auto;padding-bottom:4px}
+.ck-stack-chart{display:flex;align-items:flex-end;gap:4px;min-width:420px;height:110px;padding-top:20px}
+.ck-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:0}
+.ck-bar-wrap{width:100%;display:flex;flex-direction:column;border-radius:3px 3px 0 0;overflow:hidden}
+.ck-seg-top{width:100%;transition:height .5s cubic-bezier(.4,0,.2,1)}
+.ck-seg-mid{width:100%}
+.ck-seg-bot{width:100%}
+.ck-lbl{font-size:9px;color:var(--ink3);text-align:center;margin-top:4px;white-space:nowrap}
+.ck-lbl.cur{color:var(--teal);font-weight:600}
+.ck-total-lbl{font-size:9px;font-weight:600;color:var(--ink2);position:absolute;top:-16px;width:100%;text-align:center}
+
+/* ===== MOBILE ===== *//* ===== MOBILE ===== */
+@media(max-width:768px){
+  :root{--sb:0px}
+  .sidebar{transform:translateX(-216px);width:216px}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .hamburger{display:flex}
+  .kpi-row,.detail-grid{grid-template-columns:repeat(2,1fr)}
+  .two-col,.three-col,.sim-wrap{grid-template-columns:1fr}
+  .content{padding:14px 14px 64px}
+  .topbar{padding:10px 14px}
+  .funnel-pipeline{gap:0}
+  .fp-stage{min-width:60px;padding:8px 4px}
+  /* モバイル下部ナビ */
+  .mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:200;padding:8px 0 max(8px,env(safe-area-inset-bottom))}
+  .mob-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:9px;font-weight:500;color:var(--ink3);cursor:pointer;border:none;background:none;padding:2px}
+  .mob-nav-item.on{color:var(--blue-m)}
+  .mob-nav-item .mico{font-size:18px}
+}
+@media(min-width:769px){
+  .mob-nav{display:none}
+}
+/* overlay */
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:99}
+.sb-overlay.on{display:block}
+
+.tgt-lbl { font-size:11px; font-weight:600; color:var(--ink2); display:block; margin-bottom:5px; }
+.tgt-inp { width:100%; padding:7px 10px; border:1px solid var(--border); border-radius:var(--r); font-size:14px; font-family:var(--mono); background:var(--surface2); color:var(--ink); }
+.tgt-inp:focus { outline:2px solid var(--teal-m); border-color:var(--teal-m); }
+.tgt-hint { font-size:10px; color:var(--ink3); margin-top:3px; }
+.nm { font-family:var(--mono); font-size:12px; text-align:right; }
+.badge-actual { font-size:9px; font-weight:700; padding:2px 6px; border-radius:6px; background:var(--teal-l); color:var(--teal); }
+.badge-fcst   { font-size:9px; font-weight:700; padding:2px 6px; border-radius:6px; background:var(--blue-l); color:var(--blue); }
+.badge-outlook{ font-size:9px; font-weight:700; padding:2px 6px; border-radius:6px; background:var(--purple-l); color:var(--purple); }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="logo">
+    <div class="logo-co">Circulation Enterprise</div>
+    <div class="logo-nm">エンプラ<em>管理</em></div>
+  </div>
+  <div class="nav">
+    <div class="nav-sec">分析</div>
+    <button class="ni on" onclick="sw('funnel')"><span class="ico">🔽</span>ファネル分析</button>
+    <button class="ni" onclick="sw('trend')"><span class="ico">📈</span>月別推移</button>
+    <button class="ni" onclick="sw('member')"><span class="ico">👤</span>担当者別詳細</button>
+    <button class="ni" onclick="sw('dead')"><span class="ico">📉</span>DEAD分析</button>
+    <button class="ni" onclick="sw('channel')"><span class="ico">📡</span>チャネル分析</button>
+    <button class="ni" onclick="sw('kgi')"><span class="ico">🎯</span>KGI / KPI</button>
+    <button class="ni" onclick="sw('sim')"><span class="ico">🧮</span>目標逆算</button>
+    <button class="ni" onclick="sw('gauge')"><span class="ico">🎯</span>達成メーター</button>
+    <button class="ni" onclick="sw('compare')"><span class="ico">↔️</span>期間比較</button>
+    <button class="ni" onclick="sw('cktrend')"><span class="ico">💰</span>CK推移</button>
+    <button class="ni" onclick="sw('risk')"><span class="ico">⚠️</span>継続リスク</button>
+    <button class="ni" onclick="sw('exec')"><span class="ico">📊</span>経営報告</button>
+    <button class="ni" onclick="sw('sales')"><span class="ico">💹</span>売上管理</button>
+    <div class="nav-sec">設定</div>
+    <button class="ni" onclick="sw('settings')"><span class="ico">⚙️</span>目標値設定</button>
+  </div>
+  <div class="sb-bot">
+    <label class="drop-zone" id="dz">
+      <input type="file" accept=".csv" multiple onchange="loadFiles(this.files)">
+      <div class="dz-ico">📂</div>
+      <div class="dz-ttl">CSVをドロップ</div>
+      <div class="dz-sub">SFレポートCSV</div>
+    </label>
+    <div class="dz-loaded" id="dz-status">デモデータ表示中</div>
+  </div>
+</nav>
+<div class="sb-overlay" id="sb-overlay" onclick="closeSb()"></div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px;min-width:0;flex:1">
+      <button class="hamburger" onclick="toggleSb()" aria-label="メニュー">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="topbar-l">
+        <h2 id="pg-title">ファネル分析</h2>
+        <p id="pg-sub" style="font-size:10px;color:var(--teal);font-weight:500"></p>
+      </div>
+    </div>
+    <div class="topbar-r">
+      <div class="filter-bar">
+        <select id="period-filter" class="fsel" onchange="renderAll()">
+          <option value="all">今期全体 ▸移行率</option>
+          <option value="1h">上期（8〜1月） ▸移行率</option>
+          <option value="2h">下期（2〜7月） ▸移行率</option>
+          <option value="3m">直近3ヶ月 ▸移行率</option>
+          <option value="1m">先月 ▸現在地</option>
+          <option value="0m" selected>今月 ▸現在地</option>
+        </select>
+        <select id="member-filter" class="fsel" onchange="renderAll()">
+          <option value="all">全メンバー</option>
+        </select>
+      </div>
+      <div class="data-badge badge-demo" id="data-badge">デモ</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ====== FUNNEL ====== -->
+    <div id="panel-funnel" class="panel on">
+      <div class="kpi-row">
+        <div class="kc cb"><div class="kc-lbl">P1 初回商談</div><div class="kc-val" id="kpi-p1">—</div><div class="kc-sub">累計案件数</div></div>
+        <div class="kc ct"><div class="kc-lbl">P4 面談実施</div><div class="kc-val" id="kpi-p4">—</div><div class="kc-sub" id="kpi-p4-sub">移行率 —</div></div>
+        <div class="kc ca"><div class="kc-lbl">P8 受注</div><div class="kc-val" id="kpi-p8">—</div><div class="kc-sub" id="kpi-p8-sub">最終CR —</div></div>
+        <div class="kc cp"><div class="kc-lbl">CK合計</div><div class="kc-val" id="kpi-ck">—<span class="u">万円</span></div><div class="kc-sub" id="kpi-ck-sub">—件</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">チーム全体 ファネル</div><div class="card-hint">最終到達フェーズ別</div></div>
+        <div class="funnel-viz" id="funnel-viz"></div>
+        <div id="funnel-alert"></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">メンバー別 移行率ヒートマップ <span style="font-size:10px;font-weight:400;color:var(--ink3)">継続除く</span></div></div>
+        <div class="tw">
+          <table>
+            <thead><tr><th>メンバー</th><th>P1</th><th>P1→P2</th><th>P2→P3</th><th>P3→P4</th><th>P1→P4</th><th>P4→P8</th><th>P1→P8</th><th>P8</th><th>CK</th><th>判定</th></tr></thead>
+            <tbody id="hm-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin:-8px 0 12px 0" id="funnel-note">※ 継続案件除く・新規/既顧客新規のみ集計</div>
+      <div class="two-col">
+        <div class="card"><div class="card-hd"><div class="card-ttl">問題分類</div></div><div id="prob-type"></div></div>
+        <div class="card"><div class="card-hd"><div class="card-ttl">メンバー別 CK金額</div></div><div id="ck-bars"></div></div>
+      </div>
+    </div>
+
+    <!-- ====== TREND ====== -->
+    <div id="panel-trend" class="panel">
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">月別 P8受注数（チーム・Mgr除く）</div><div class="card-hint">棒グラフ</div></div>
+        <div class="trend-wrap"><div class="trend-chart" id="trend-p8"></div></div>
+        <div class="trend-legend"><span><span class="ldot" style="background:var(--teal-m)"></span>P8受注</span></div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-hd"><div class="card-ttl">月別 移行率推移</div><div class="card-hint">P1→P8 最終CR</div></div>
+          <div class="trend-wrap"><div class="trend-chart" id="trend-cr"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-ttl">月別 P1商談数</div></div>
+          <div class="trend-wrap"><div class="trend-chart" id="trend-p1"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">メンバー別 月次 P8受注数</div><div class="card-hint">Mgr除く</div></div>
+        <div class="tw">
+          <table>
+            <thead><tr id="trend-mbr-head"></tr></thead>
+            <tbody id="trend-mbr-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== MEMBER DETAIL ====== -->
+    <div id="panel-member" class="panel">
+      <div class="member-selector" id="member-selector"></div>
+      <div id="member-detail-content"></div>
+    </div>
+
+    <!-- ====== DEAD ====== -->
+    <div id="panel-dead" class="panel">
+      <div class="kpi-row">
+        <div class="kc cb"><div class="kc-lbl">総DEAD件数</div><div class="kc-val" id="dead-total">—</div><div class="kc-sub">累計</div></div>
+        <div class="kc ca"><div class="kc-lbl">No Opportunity</div><div class="kc-val" id="dead-noop">—</div><div class="kc-sub">機会なし</div></div>
+        <div class="kc" style="border-top:3px solid var(--red-m)"><div class="kc-lbl">Lost（失注）</div><div class="kc-val" id="dead-lost">—</div><div class="kc-sub">競合負け等</div></div>
+        <div class="kc cp"><div class="kc-lbl">DEAD率</div><div class="kc-val" id="dead-rate">—<span class="u">%</span></div><div class="kc-sub">全案件中</div></div>
+      </div>
+      <div class="two-col">
+        <div class="card"><div class="card-hd"><div class="card-ttl">DEAD理由内訳</div></div><div id="dead-reasons"></div></div>
+        <div class="card"><div class="card-hd"><div class="card-ttl">メンバー別 DEAD件数</div></div>
+          <div class="tw"><table><thead><tr><th>メンバー</th><th>P1</th><th>DEAD数</th><th>DEAD率</th><th>うちLost</th></tr></thead><tbody id="dead-mbr-tbl"></tbody></table></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== CHANNEL ====== -->
+    <div id="panel-channel" class="panel">
+      <div class="kpi-row">
+        <div class="kc cb"><div class="kc-lbl">FS P8受注</div><div class="kc-val" id="ch-fs-p8">—</div><div class="kc-sub" id="ch-fs-cr">CR —%</div></div>
+        <div class="kc ct"><div class="kc-lbl">IS P8受注</div><div class="kc-val" id="ch-is-p8">—</div><div class="kc-sub" id="ch-is-cr">CR —%</div></div>
+        <div class="kc ca"><div class="kc-lbl">FS/IS CR差</div><div class="kc-val" id="ch-diff">—<span class="u">pt</span></div><div class="kc-sub">FSがISの何倍</div></div>
+        <div class="kc cp"><div class="kc-lbl">新規比率</div><div class="kc-val" id="ch-type">—<span class="u">%</span></div><div class="kc-sub">受注案件中</div></div>
+      </div>
+      <div class="card"><div class="card-hd"><div class="card-ttl">FS vs IS 転換率比較</div></div>
+        <div class="tw"><table><thead><tr><th>チャネル</th><th>P1商談</th><th>P4面談</th><th>P8受注</th><th>P1→P4率</th><th>P4→P8率</th><th>P1→P8率</th></tr></thead><tbody id="ch-table"></tbody></table></div>
+        <div id="ch-alert" class="alert" style="margin-top:10px;margin-bottom:0"></div>
+      </div>
+      <div class="two-col">
+        <div class="card"><div class="card-hd"><div class="card-ttl">メンバー別 FS/IS受注</div></div><div id="ch-mbr-bars"></div></div>
+        <div class="card"><div class="card-hd"><div class="card-ttl">案件種別内訳</div></div><div id="type-bars"></div></div>
+      </div>
+    </div>
+
+    <!-- ====== KGI ====== -->
+    <div id="panel-kgi" class="panel">
+      <div class="card"><div class="card-hd"><div class="card-ttl">KGI → KPI → KSF ツリー</div></div>
+        <div class="tree">
+          <div class="tree-lv"><div class="tn kgi" style="max-width:240px">
+            <div class="tn-type">KGI</div><div class="tn-lbl">P8 受注（決定数）</div>
+            <div class="tn-val" id="kgi-v">—<span style="font-size:12px">件</span></div><div class="tn-tgt">目標 <span id="kgi-t">—</span>件/月</div>
+          </div></div>
+          <div class="t-arr">↑<span class="t-sub">クロージング率</span></div>
+          <div class="tree-lv"><div class="tn kpi" style="max-width:240px">
+            <div class="tn-type">KPI</div><div class="tn-lbl">P4 面談実施</div>
+            <div class="tn-val" id="kpi-v">—<span style="font-size:12px">件</span></div><div class="tn-tgt">目標 <span id="kpi-t">—</span>件/月</div>
+          </div></div>
+          <div class="t-arr">↑<span class="t-sub">提案→面談率</span></div>
+          <div class="tree-lv" style="gap:8px">
+            <div class="tn ksf"><div class="tn-type">KSF</div><div class="tn-lbl">P3 提案</div><div class="tn-val" id="ksf1-v">—</div><div class="tn-tgt">P3→P4 <span id="ksf1-r">—</span></div></div>
+            <div class="tn ksf"><div class="tn-type">KSF</div><div class="tn-lbl">P2 案件化</div><div class="tn-val" id="ksf2-v">—</div><div class="tn-tgt">P1→P2 <span id="ksf2-r">—</span></div></div>
+            <div class="tn ksf"><div class="tn-type">KSF</div><div class="tn-lbl">P1 商談</div><div class="tn-val" id="ksf3-v">—</div><div class="tn-tgt">月平均 <span id="ksf3-a">—</span>件</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card"><div class="card-hd"><div class="card-ttl">ギャップ分析</div></div><div id="gap-anal"></div></div>
+    </div>
+
+    <!-- ====== SIM ====== -->
+    <div id="panel-sim" class="panel">
+      <div style="display:inline-flex;align-items:center;gap:7px;background:var(--teal-l);color:var(--teal);font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;margin-bottom:14px">🎯 月間受注目標 <strong id="sim-goal-lbl" style="margin-left:4px">—件</strong></div>
+      <div class="sim-wrap">
+        <div class="card">
+          <div class="card-ttl" style="margin-bottom:13px">転換率パラメーター</div>
+          <div class="sg"><div class="sh2"><span class="sn">P1→P2 案件化率</span><span class="sv" id="sv1">—%</span></div><input type="range" min="5" max="80" value="47" step="1" id="s1" oninput="upd()"><div class="shint"><span id="sh1">実績: —%</span></div></div>
+          <div class="sg"><div class="sh2"><span class="sn">P2→P4 面談率</span><span class="sv" id="sv2">—%</span></div><input type="range" min="5" max="99" value="50" step="1" id="s2" oninput="upd()"><div class="shint"><span id="sh2">実績: —%</span></div></div>
+          <div class="sg"><div class="sh2"><span class="sn">P4→P8 クロージング率</span><span class="sv" id="sv3">—%</span></div><input type="range" min="10" max="90" value="56" step="1" id="s3" oninput="upd()"><div class="shint"><span id="sh3">実績: —%</span></div></div>
+          <div style="padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;margin-top:4px">
+            <span style="font-size:12px;color:var(--ink2)">月間目標</span>
+            <input type="number" id="goal-in" value="12" min="1" max="100" oninput="upd()" style="width:60px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;font-weight:600;font-family:var(--mono);text-align:center">
+            <span style="font-size:12px;color:var(--ink2)">件/月</span>
+          </div>
+        </div>
+        <div class="sim-out">
+          <div style="font-size:10px;font-weight:600;color:var(--ink3);text-transform:uppercase;letter-spacing:.06em">必要数 逆算（月次）</div>
+          <div class="sdiv"></div>
+          <div class="so-row"><span class="so-lbl">目標 P8受注</span><span class="so-val" style="color:var(--teal-m)" id="sim-g">— 件</span></div>
+          <div class="so-row"><span class="so-lbl">必要 P4面談数</span><span class="so-val" id="sn-p4">—</span></div>
+          <div class="so-row"><span class="so-lbl">必要 P2案件化数</span><span class="so-val" id="sn-p2">—</span></div>
+          <div class="so-row"><span class="so-lbl">必要 P1商談数</span><span class="so-val" id="sn-p1" style="font-size:22px">— 件</span></div>
+          <div class="sdiv"></div>
+          <div class="so-row"><span class="so-lbl">現ペース対比</span><span id="pace-lbl" style="font-size:12px;font-weight:600">—</span></div>
+          <div class="sfv">
+            <div class="sfvb" id="sfvb1" style="background:var(--blue)"><span class="sfvl">P1</span><span class="sfvn" id="sfvn1">—</span></div>
+            <div class="sfvb" id="sfvb2" style="background:var(--teal-m)"><span class="sfvl">P2</span><span class="sfvn" id="sfvn2">—</span></div>
+            <div class="sfvb" id="sfvb3" style="background:var(--amber-m)"><span class="sfvl">P4</span><span class="sfvn" id="sfvn3">—</span></div>
+            <div class="sfvb" style="background:var(--teal);height:44px"><span class="sfvl">P8</span><span class="sfvn" id="sfvn-g">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== GAUGE ====== -->
+    <div id="panel-gauge" class="panel">
+      <div class="gauge-grid" id="gauge-grid"></div>
+      <div class="card" id="gauge-member-section">
+        <div class="card-hd"><div class="card-ttl">メンバー別 達成状況</div><div class="card-hint" id="gauge-period-hint"></div></div>
+        <div class="tw"><table>
+          <thead><tr><th>メンバー</th><th>P1商談</th><th>P4面談</th><th>P4達成率</th><th>P8受注</th><th>P8達成率</th><th>最終CR</th></tr></thead>
+          <tbody id="gauge-mbr-tbl"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ====== COMPARE ====== -->
+    <div id="panel-compare" class="panel">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+        <span style="font-size:12px;font-weight:500;color:var(--ink2)">比較：</span>
+        <div class="ptabs" style="display:flex;background:var(--surface2);border-radius:var(--r);padding:2px;gap:1px">
+          <button class="ptab on" onclick="setCmpMode('hh',this)">上期 vs 下期</button>
+          <button class="ptab" onclick="setCmpMode('mm',this)">先月 vs 今月</button>
+          <button class="ptab" onclick="setCmpMode('3m',this)">直近3ヶ月 vs 前3ヶ月</button>
+        </div>
+      </div>
+      <div class="compare-grid">
+        <div class="cmp-card">
+          <div class="cmp-label" id="cmp-lbl-a">上期</div>
+          <div id="cmp-col-a"></div>
+        </div>
+        <div class="cmp-card">
+          <div class="cmp-label" id="cmp-lbl-b">下期</div>
+          <div id="cmp-col-b"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">差異サマリー</div><div id="cmp-hint" class="card-hint"></div></div>
+        <div class="tw"><table>
+          <thead><tr><th>指標</th><th id="cmp-th-a">上期</th><th id="cmp-th-b">下期</th><th>変化</th><th>評価</th></tr></thead>
+          <tbody id="cmp-tbl"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ====== CK TREND ====== -->
+    <div id="panel-cktrend" class="panel">
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">月別 CK金額推移（新規 / 既顧客新規）</div><div class="card-hint">Mgr除く</div></div>
+        <div class="ck-stack-wrap"><div class="ck-stack-chart" id="ck-stack-chart"></div></div>
+        <div style="display:flex;gap:14px;margin-top:10px;font-size:10px;color:var(--ink3)">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--blue);margin-right:3px"></span>新規案件</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--teal-m);margin-right:3px"></span>既顧客新規</span>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-hd"><div class="card-ttl">月別 P8受注数 × CK単価</div></div>
+          <div class="tw"><table>
+            <thead><tr><th>月</th><th>P8受注数</th><th>CK合計</th><th>平均CK単価</th><th>新規比率</th></tr></thead>
+            <tbody id="ck-monthly-tbl"></tbody>
+          </table></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-ttl">メンバー別 CK内訳（累計）</div></div>
+          <div id="ck-mbr-breakdown"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ====== RISK ====== -->
+    <div id="panel-risk" class="panel">
+      <div class="kpi-row">
+        <div class="kc cb"><div class="kc-lbl">今月終了件数</div><div class="kc-val" id="risk-this-count">—</div><div class="kc-sub" id="risk-this-ck">CK —万円</div></div>
+        <div class="kc ca"><div class="kc-lbl">来月終了件数</div><div class="kc-val" id="risk-next-count">—</div><div class="kc-sub" id="risk-next-ck">CK —万円</div></div>
+        <div class="kc ct"><div class="kc-lbl">新規獲得カバー率</div><div class="kc-val" id="risk-cover">—<span class="u">%</span></div><div class="kc-sub">直近2ヶ月の新規CK</div></div>
+        <div class="kc cp"><div class="kc-lbl">P5-7 見込案件</div><div class="kc-val" id="risk-p57">—</div><div class="kc-sub" id="risk-p57-ck">CK —万円</div></div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">契約終了月別 件数・CK</div><div class="card-hint">稼働終了予定</div></div>
+        <div class="trend-wrap"><div class="trend-chart" id="risk-end-chart" style="min-width:400px;height:100px;padding-top:20px"></div></div>
+        <div style="display:flex;gap:14px;margin-top:8px;font-size:10px;color:var(--ink3)">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--red-m);margin-right:3px"></span>終了件数</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--amber-m);margin-right:3px"></span>今月</span>
+        </div>
+      </div>
+      <div class="two-col">
+        <div class="card">
+          <div class="card-hd"><div class="card-ttl">直近終了案件（3ヶ月）</div><div class="card-hint">継続更新要フォロー</div></div>
+          <div class="tw"><table>
+            <thead><tr><th>担当者</th><th>案件名</th><th>終了月</th><th>CK</th></tr></thead>
+            <tbody id="risk-end-table"></tbody>
+          </table></div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><div class="card-ttl">P5-7 見込案件一覧</div><div class="card-hint">今月受注見込みの継続</div></div>
+          <div class="tw"><table>
+            <thead><tr><th>担当者</th><th>案件名</th><th>フェーズ</th><th>CK</th></tr></thead>
+            <tbody id="risk-p57-table"></tbody>
+          </table></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">メンバー別 継続リスクサマリー</div></div>
+        <div class="tw"><table>
+          <thead><tr><th>メンバー</th><th>今月終了</th><th>来月終了</th><th>P5-7見込</th><th>直近新規CK</th><th>リスク評価</th></tr></thead>
+          <tbody id="risk-member-table"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ====== EXEC ====== -->
+    <div id="panel-exec" class="panel">
+
+      <!-- アラートバナー -->
+      <div class="alert a-warn" style="margin-bottom:16px">
+        <div class="ai">📋</div>
+        <div class="ab">
+          <strong>経営報告用サマリー</strong>
+          <p>上期（8〜1月）vs 下期（2〜3月）の比較。徳永さんのMgr転換による影響を数値で可視化します。</p>
+        </div>
+      </div>
+
+      <!-- KPI比較カード -->
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px" id="exec-kpi-row"></div>
+
+      <!-- ファネル比較テーブル -->
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-ttl">ファネル比較：上期 vs 下期</div>
+          <div class="card-hint">徳永さんMgr転換の影響分析</div>
+        </div>
+        <div class="tw"><table>
+          <thead><tr>
+            <th>指標</th>
+            <th>上期（8〜1月）<br>全員・確定値</th>
+            <th>下期（2月〜）<br>Mgr除く・CSV</th>
+            <th>変化</th>
+            <th>評価</th>
+          </tr></thead>
+          <tbody id="exec-funnel-tbl"></tbody>
+        </table></div>
+      </div>
+
+      <div class="two-col">
+        <!-- 徳永さん貢献分析 -->
+        <div class="card">
+          <div class="card-hd"><div class="card-ttl">徳永さん 上期貢献（確定値）</div><div class="card-hint">上期は通常メンバーとして活躍</div></div>
+          <div id="exec-mgr-contrib"></div>
+          <div class="alert a-info" style="margin-top:12px;margin-bottom:0">
+            <div class="ai">💡</div>
+            <div class="ab"><p>上記が下期に失われた活動量。新規4名でのカバー状況を右のグラフで確認。</p></div>
+          </div>
+        </div>
+
+        <!-- 月別P1商談数推移 -->
+        <div class="card">
+          <div class="card-hd"><div class="card-ttl">月別 P1商談数推移</div><div class="card-hint">Mgr転換タイミングを可視化</div></div>
+          <div class="trend-wrap"><div class="trend-chart" id="exec-p1-trend" style="min-width:420px;height:110px;padding-top:20px"></div></div>
+          <div style="display:flex;gap:10px;margin-top:8px;font-size:10px;color:var(--ink3);flex-wrap:wrap" id="exec-p1-legend"></div>
+        </div>
+      </div>
+
+      <!-- CKポートフォリオ推移 -->
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">月別 CKポートフォリオ（受注日ベース）</div><div class="card-hint">新規 / 既顧客新規 / 継続の構成変化</div></div>
+        <div class="ck-stack-wrap"><div class="ck-stack-chart" id="exec-ck-stack" style="min-width:500px"></div></div>
+        <div style="display:flex;gap:14px;margin-top:10px;font-size:10px;color:var(--ink3)">
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--blue);margin-right:3px"></span>新規案件</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--teal-m);margin-right:3px"></span>既顧客新規</span>
+          <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--purple-m);margin-right:3px"></span>継続</span>
+        </div>
+      </div>
+
+      <!-- 売上・PK 予算対比（月別）-->
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">売上・PK 予算対比（月別）</div><div class="card-hint">社内展開Budget vs ELON実績/Fcst</div></div>
+        <div class="tw"><table>
+          <thead><tr>
+            <th>月</th><th>種別</th>
+            <th>売上予算</th><th>売上実績/Fcst</th><th>達成率</th>
+            <th>PK予算</th><th>PK実績/Fcst</th><th>達成率</th>
+            <th>PN予算</th><th>PN実績/Fcst</th>
+          </tr></thead>
+          <tbody id="exec-budget-tbl"></tbody>
+        </table></div>
+      </div>
+
+      <!-- メンバー別月別P8推移テーブル -->
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">月別 P8受注数（メンバー別）</div><div class="card-hint">受注日ベース</div></div>
+        <div class="tw"><table>
+          <thead><tr id="exec-p8-head"></tr></thead>
+          <tbody id="exec-p8-body"></tbody>
+        </table></div>
+      </div>
+
+    </div>
+
+    <!-- ====== SALES ====== -->
+    <div id="panel-sales" class="panel">
+
+      <!-- KPIカード：今月の予算対比 -->
+      <div id="sales-kpi-row" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px"></div>
+
+      <!-- 売上・PK推移グラフ（予算vs実績） -->
+      <div class="card">
+        <div class="card-hd">
+          <div class="card-ttl">月別 売上推移（予算 vs 実績）</div>
+          <div class="card-hint">PNPLシート「社内展開Budget」</div>
+        </div>
+        <div class="ck-stack-wrap"><div class="ck-stack-chart" id="sales-trend-chart" style="min-width:500px;height:120px;padding-top:24px"></div></div>
+        <div style="display:flex;gap:14px;margin-top:8px;font-size:10px;color:var(--ink3)">
+          <span><span style="display:inline-block;width:24px;height:3px;background:var(--teal-m);margin-right:4px;vertical-align:middle"></span>実績/Fcst</span>
+          <span><span style="display:inline-block;width:24px;height:3px;background:var(--ink4);border-top:2px dashed var(--ink3);margin-right:4px;vertical-align:middle"></span>予算</span>
+          <span style="margin-left:8px">★ 予算比▲ = 上振れ / ▼ = 下振れ</span>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <!-- PK推移 -->
+        <div class="card">
+          <div class="card-hd"><div class="card-ttl">月別 PK（粗利）推移</div><div class="card-hint">予算 vs 実績</div></div>
+          <div class="trend-wrap"><div class="trend-chart" id="pk-trend-chart" style="min-width:360px;height:100px;padding-top:20px"></div></div>
+        </div>
+        <!-- PN稼働数推移 -->
+        <div class="card">
+          <div class="card-hd"><div class="card-ttl">月初 PN稼働数推移</div><div class="card-hint">予算 vs 実績</div></div>
+          <div class="trend-wrap"><div class="trend-chart" id="pn-trend-chart" style="min-width:360px;height:100px;padding-top:20px"></div></div>
+        </div>
+      </div>
+
+      <!-- 月別詳細テーブル -->
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">月別 詳細テーブル（予算対比）</div></div>
+        <div class="tw"><table>
+          <thead><tr>
+            <th>月</th><th>種別</th>
+            <th>売上予算</th><th>売上実績</th><th>売上達成率</th>
+            <th>PK予算</th><th>PK実績</th><th>PK達成率</th>
+            <th>PN予算</th><th>PN実績</th><th>PN差</th>
+          </tr></thead>
+          <tbody id="sales-detail-tbl"></tbody>
+        </table></div>
+      </div>
+
+    </div>
+
+    <!-- ====== SETTINGS ====== -->
+    <div id="panel-settings" class="panel">
+
+      <!-- Google Sheets URL設定 -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-ttl">🔗 Google Sheets連携設定</div><div class="card-hint">GASで自動同期後のURLを設定</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div>
+            <label class="tgt-lbl">ファネル分析CSV URL</label>
+            <input type="text" id="sheets-url-funnel" value="https://script.google.com/macros/s/AKfycbwuB-bko02MczlRorWD0qQ7Ch80fLoZd5Gmtwb2BWKDfOLOlOBokjiBNjodupe-r2VF/exec?sheet=funnel" 
+              class="tgt-inp" style="font-size:10px" oninput="saveSheetUrls()">
+            <div class="tgt-hint">GASのgetPublishUrls()で取得 → funnelシートのURL</div>
+          </div>
+          <div>
+            <label class="tgt-lbl">受注管理CSV URL</label>
+            <input type="text" id="sheets-url-juchu" value="https://script.google.com/macros/s/AKfycbwuB-bko02MczlRorWD0qQ7Ch80fLoZd5Gmtwb2BWKDfOLOlOBokjiBNjodupe-r2VF/exec?sheet=juchu"
+              class="tgt-inp" style="font-size:10px" oninput="saveSheetUrls()">
+            <div class="tgt-hint">GASのgetPublishUrls()で取得 → juchuシートのURL</div>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <button id="sheets-test-btn" onclick="syncFromSheets()" style="padding:7px 16px;background:var(--teal-m);color:white;border:none;border-radius:var(--r);font-weight:600;cursor:pointer;font-size:12px">
+            🔄 今すぐ取得テスト
+          </button>
+          <span id="sheets-test-status" style="font-size:11px;color:var(--ink3);margin-left:10px"></span>
+        </div>
+      </div>
+
+      <!-- ELON Fcst プリセット説明 -->
+      <div class="alert a-info" style="margin-bottom:16px">
+        <div class="ai">📊</div>
+        <div class="ab"><strong>ELONシート（Fcst/Outlook）をデフォルト値として設定済み</strong><p>数値は自由に変更できます。変更は即座に全タブに反映されます。</p></div>
+      </div>
+
+      <!-- 月次目標（チーム全体） -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-hd"><div class="card-ttl">月次目標（チーム全体）</div><div class="card-hint">ELONシートFcst値をデフォルト設定</div></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px">
+          <div>
+            <label class="tgt-lbl">P8受注目標（件/月）</label>
+            <input type="number" id="tgt-p8" value="12" class="tgt-inp" oninput="renderAll()">
+            <div class="tgt-hint">チーム12件/月（一人3件）</div>
+          </div>
+          <div>
+            <label class="tgt-lbl">P4面談目標（件/月）</label>
+            <input type="number" id="tgt-p4" value="24" class="tgt-inp" oninput="renderAll()">
+            <div class="tgt-hint">チーム24件/月（一人6件）</div>
+          </div>
+          <div>
+            <label class="tgt-lbl">P1商談目標（件/月）</label>
+            <input type="number" id="tgt-p1" value="65" class="tgt-inp" oninput="renderAll()">
+            <div class="tgt-hint">ELONFcst: 訪問65件/月</div>
+          </div>
+          <div>
+            <label class="tgt-lbl">集計月数</label>
+            <input type="number" id="tgt-months" value="6" min="1" max="24" class="tgt-inp" oninput="renderAll()">
+            <div class="tgt-hint">達成メーター用</div>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+          <div>
+            <label class="tgt-lbl">CK金額目標（万円/月）</label>
+            <input type="number" id="tgt-ck-m" value="2000" class="tgt-inp" oninput="renderAll()">
+            <div class="tgt-hint">新規+既顧客受注CK合計</div>
+          </div>
+          <div>
+            <label class="tgt-lbl">売上目標（万円/月）</label>
+            <input type="number" id="tgt-sales" value="10147" class="tgt-inp" oninput="renderAll()">
+            <div class="tgt-hint">予算: 3月¥10,147万 / Fcst¥8,859万</div>
+          </div>
+          <div>
+            <label class="tgt-lbl">PK（粗利）目標（万円/月）</label>
+            <input type="number" id="tgt-pk" value="4368" class="tgt-inp" oninput="renderAll()">
+            <div class="tgt-hint">予算: 3月¥4,368万 / Fcst¥3,422万</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 月次 ELON Fcst参照テーブル -->
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">ELONシート 今期計画値（参考）</div><div class="card-hint">Actual=実績 / Fcst=計画 / Outlook=見通し</div></div>
+        <div class="tw"><table>
+          <thead><tr>
+            <th>月</th><th>種別</th>
+            <th>売上目標</th><th>PK目標</th>
+            <th>PN稼働数</th><th>決定数目標</th>
+            <th>面談数目標</th><th>訪問数目標</th>
+          </tr></thead>
+          <tbody>
+            <tr><td>2025/08</td><td><span class="badge-actual">Actual</span></td><td class="nm">¥7,433万</td><td class="nm">¥2,986万</td><td class="nm">89件</td><td class="nm">18件</td><td class="nm">17件</td><td class="nm">80件</td></tr>
+            <tr><td>2025/09</td><td><span class="badge-actual">Actual</span></td><td class="nm">¥7,553万</td><td class="nm">¥2,986万</td><td class="nm">90件</td><td class="nm">34件</td><td class="nm">29件</td><td class="nm">99件</td></tr>
+            <tr><td>2025/10</td><td><span class="badge-actual">Actual</span></td><td class="nm">¥7,532万</td><td class="nm">¥2,999万</td><td class="nm">84件</td><td class="nm">28件</td><td class="nm">29件</td><td class="nm">117件</td></tr>
+            <tr><td>2025/11</td><td><span class="badge-actual">Actual</span></td><td class="nm">¥8,241万</td><td class="nm">¥3,410万</td><td class="nm">97件</td><td class="nm">24件</td><td class="nm">23件</td><td class="nm">78件</td></tr>
+            <tr><td>2025/12</td><td><span class="badge-actual">Actual</span></td><td class="nm">¥8,945万</td><td class="nm">¥3,668万</td><td class="nm">102件</td><td class="nm">27件</td><td class="nm">20件</td><td class="nm">88件</td></tr>
+            <tr><td>2026/01</td><td><span class="badge-actual">Actual</span></td><td class="nm">¥8,609万</td><td class="nm">¥3,394万</td><td class="nm">92件</td><td class="nm">24件</td><td class="nm">19件</td><td class="nm">91件</td></tr>
+            <tr><td>2026/02</td><td><span class="badge-actual">Actual</span></td><td class="nm">¥9,330万</td><td class="nm">¥3,481万</td><td class="nm">95件</td><td class="nm">20件</td><td class="nm">16件</td><td class="nm">66件</td></tr>
+            <tr style="background:rgba(56,189,170,.06)"><td><strong>2026/03</strong></td><td><span class="badge-fcst">Fcst</span></td><td class="nm"><strong>¥8,859万</strong></td><td class="nm"><strong>¥3,422万</strong></td><td class="nm"><strong>92件</strong></td><td class="nm"><strong>41件</strong></td><td class="nm"><strong>24件</strong></td><td class="nm"><strong>65件</strong></td></tr>
+            <tr style="background:rgba(56,189,170,.04)"><td>2026/04</td><td><span class="badge-fcst">Fcst</span></td><td class="nm">¥9,146万</td><td class="nm">¥3,590万</td><td class="nm">94件</td><td class="nm">12件</td><td class="nm">34件</td><td class="nm">66件</td></tr>
+            <tr style="background:rgba(56,189,170,.04)"><td>2026/05</td><td><span class="badge-fcst">Fcst</span></td><td class="nm">¥10,244万</td><td class="nm">¥4,097万</td><td class="nm">105件</td><td class="nm">17件</td><td class="nm">33件</td><td class="nm">66件</td></tr>
+            <tr><td>2026/06</td><td><span class="badge-outlook">Outlook</span></td><td class="nm">¥11,137万</td><td class="nm">¥4,502万</td><td class="nm">110件</td><td class="nm">32件</td><td class="nm">34件</td><td class="nm">66件</td></tr>
+            <tr><td>2026/07</td><td><span class="badge-outlook">Outlook</span></td><td class="nm">¥11,025万</td><td class="nm">¥4,591万</td><td class="nm">108件</td><td class="nm">17件</td><td class="nm">34件</td><td class="nm">66件</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mob-nav">
+  <button class="mob-nav-item on" onclick="sw('funnel')"><span class="mico">🔽</span>ファネル</button>
+  <button class="mob-nav-item" onclick="sw('trend')"><span class="mico">📈</span>推移</button>
+  <button class="mob-nav-item" onclick="sw('member')"><span class="mico">👤</span>担当者</button>
+  <button class="mob-nav-item" onclick="sw('dead')"><span class="mico">📉</span>DEAD</button>
+  <button class="mob-nav-item" onclick="sw('sim')"><span class="mico">🧮</span>逆算</button>
+</nav>
+</div>
+
+<script>
+// ============================================================
+// CONSTANTS
+// ============================================================
+
+// ============================================================
+// ELON BUDGET DATA（社内展開Budget・予算）
+// ============================================================
+const ELON_BUDGET = {
+  '2025/08': { sales: 74327690,  pk: 29857829,  pn: 88.5,  unit: 839861  },
+  '2025/09': { sales: 75530315,  pk: 29862616,  pn: 90.0,  unit: 839226  },
+  '2025/10': { sales: 74597160,  pk: 30261616,  pn: 88.0,  unit: 847695  },
+  '2025/11': { sales: 78699882,  pk: 32813821,  pn: 91.5,  unit: 860108  },
+  '2025/12': { sales: 82776825,  pk: 33466790,  pn: 95.0,  unit: 871335  },
+  '2026/01': { sales: 82561276,  pk: 32885370,  pn: 98.0,  unit: 842462  },
+  '2026/02': { sales: 102318944, pk: 44993104,  pn: 104.0, unit: 983836  },
+  '2026/03': { sales: 101470244, pk: 43683742,  pn: 103.0, unit: 985148  },
+  '2026/04': { sales: 100953237, pk: 43124677,  pn: 101.0, unit: 999537  },
+  '2026/05': { sales: 107315120, pk: 42918040,  pn: 110.0, unit: 975592  },
+  '2026/06': { sales: 111368400, pk: 45023770,  pn: 110.0, unit: 1012440 },
+  '2026/07': { sales: 110247804, pk: 45908640,  pn: 108.0, unit: 1020813 },
+};
+// ELON 実績/Fcst（ELONシートのActua&Fcst/Outlook列）
+const ELON_ACTUAL = {
+  '2025/08': { sales: 74327690,  pk: 29857829,  pn: 88.5  },
+  '2025/09': { sales: 75530315,  pk: 29862616,  pn: 90.0  },
+  '2025/10': { sales: 75323881,  pk: 29992877,  pn: 83.5  },
+  '2025/11': { sales: 82411114,  pk: 34097477,  pn: 96.5  },
+  '2025/12': { sales: 89448340,  pk: 36675410,  pn: 101.5 },
+  '2026/01': { sales: 86089093,  pk: 33937669,  pn: 91.5  },
+  '2026/02': { sales: 93296048,  pk: 34808099,  pn: 95.0  },
+  '2026/03': { sales: 88593056,  pk: 34217928,  pn: 92.0, kind: 'Fcst' },
+  '2026/04': { sales: 91458992,  pk: 35901796,  pn: 94.0, kind: 'Fcst' },
+  '2026/05': { sales: 102437160, pk: 40967220,  pn: 105.0, kind: 'Fcst' },
+  '2026/06': { sales: 111368400, pk: 45023770,  pn: 110.0, kind: 'Outlook' },
+  '2026/07': { sales: 110247804, pk: 45908640,  pn: 108.0, kind: 'Outlook' },
+};
+
+const SF_PHASE_MAP = {
+  '01-Identifying an Opportunity':'P1','02-Determining Problem,Impact,Ideal':'P2',
+  '03-Validating Benefits & Value':'P3','04-Confirming Value With Power':'P4',
+  '05-Negotiating $$ & Mutual Plan':'P5','06-Drafting & Reviewing Contract':'P6','06-Finalizing Closure':'P6',
+  '07-Pending':'P7','08-Closed':'P8',
+};
+const PHASE_ORDER = ['P1','P2','P3','P4','P5','P7','P8'];
+const DEAD_LABELS = {'DEAD-No Opportunity':'機会なし','DEAD-Lost':'失注（競合等）','DEAD-Missing':'連絡途絶','DEAD-No Decision':'意思決定なし','DEAD-No Appointment':'アポなし'};
+const DEAD_COLORS = {'DEAD-No Opportunity':'#E24B4A','DEAD-Lost':'#EF9F27','DEAD-Missing':'#7F77DD','DEAD-No Decision':'#378ADD','DEAD-No Appointment':'#888780'};
+
+
+// ============================================================
+// 上期確定データ（2025年8月〜2026年1月・スプレッドシート確定値）
+// 主担当者付け替え後も正確な値を保持
+// ============================================================
+const UPPER_FIXED = {
+  // ファネル（全案件・継続除く）
+  funnel: {
+    '徳永 雄大': { p1:75,  p2:17, p3:18, p4:11, p5:1, p7:0, p8:29,
+                  r12:50, r23:78, r34:69, r14:27, r48:71, r18:19 },
+    '栫 英輝':   { p1:72,  p2:16, p3:1,  p4:19, p5:0, p7:0, p8:18,
+                  r12:43, r23:70, r34:97, r14:29, r48:49, r18:14 },
+    '中村 春香': { p1:35,  p2:30, p3:8,  p4:8,  p5:0, p7:1, p8:16,
+                  r12:64, r23:52, r34:76, r14:26, r48:64, r18:16 },
+    '岡部 瑛美': { p1:49,  p2:8,  p3:2,  p4:5,  p5:1, p7:1, p8:7,
+                  r12:33, r23:67, r34:88, r14:19, r48:50, r18:10 },
+    '福本 悠太': { p1:63,  p2:14, p3:7,  p4:15, p5:0, p7:0, p8:10,
+                  r12:42, r23:70, r34:78, r14:23, r48:40, r18:9  },
+  },
+  // FS経由
+  funnel_fs: {
+    '徳永 雄大': { p1:2,  p2:6,  p3:10, p4:6,  p8:22, r12:96, r48:76, r18:47 },
+    '栫 英輝':   { p1:2,  p2:4,  p3:1,  p4:8,  p8:17, r12:94, r48:68, r18:53 },
+    '中村 春香': { p1:7,  p2:4,  p3:4,  p4:5,  p8:11, r12:77, r48:69, r18:35 },
+    '岡部 瑛美': { p1:3,  p2:3,  p3:2,  p4:3,  p8:6,  r12:84, r48:55, r18:32 },
+    '福本 悠太': { p1:0,  p2:1,  p3:1,  p4:9,  p8:7,  r12:100,r48:44, r18:39 },
+  },
+  // IS経由
+  funnel_is: {
+    '徳永 雄大': { p1:73, p2:11, p3:8,  p4:5,  p8:7,  r12:30, r48:58, r18:7  },
+    '栫 英輝':   { p1:70, p2:12, p3:0,  p4:11, p8:1,  r12:26, r48:8,  r18:1  },
+    '中村 春香': { p1:28, p2:26, p3:4,  p4:3,  p8:5,  r12:58, r48:56, r18:7  },
+    '岡部 瑛美': { p1:46, p2:5,  p3:0,  p4:2,  p8:1,  r12:15, r48:33, r18:2  },
+    '福本 悠太': { p1:63, p2:13, p3:6,  p4:6,  p8:3,  r12:31, r48:33, r18:3  },
+  },
+  // 受注CK（継続含む・全種別）
+  ck: {
+    '徳永 雄大': { shinki:11968000, kikokyaku:17400000, keizoku:17232000, total:46984000 },
+    '栫 英輝':   { shinki:2095800,  kikokyaku:9092500,  keizoku:36104000, total:47292300 },
+    '中村 春香': { shinki:4740000,  kikokyaku:13612000, keizoku:11768750, total:30120750 },
+    '岡部 瑛美': { shinki:5297500,  kikokyaku:5795000,  keizoku:12038000, total:23130500 },
+    '福本 悠太': { shinki:4615000,  kikokyaku:9942494,  keizoku:12492494, total:27049988 },
+  },
+  // P8受注件数（継続含む）
+  p8_all: {
+    '徳永 雄大': { shinki:11, kikokyaku:14, keizoku:17, total:42 },
+    '栫 英輝':   { shinki:2,  kikokyaku:16, keizoku:33, total:51 },
+    '中村 春香': { shinki:6,  kikokyaku:10, keizoku:10, total:26 },
+    '岡部 瑛美': { shinki:3,  kikokyaku:4,  keizoku:10, total:17 },
+    '福本 悠太': { shinki:4,  kikokyaku:6,  keizoku:12, total:22 },
+  },
+};
+// チーム合計（Mgr除く）- SSのチーム合計値を直接使用
+UPPER_FIXED.team = {
+  p1: 219, p2: 68, p3: 18, p4: 47, p8: 51,
+  // SSの正確な移行率（P4とP8の定義差異を吸収済み）
+  r12: 47, r23: 68, r34: 80, r14: 25, r48: 56, r18: 14,
+  ck: Object.entries(UPPER_FIXED.ck).filter(([m])=>m!=='徳永 雄大').reduce((s,[,v])=>s+(v.shinki+v.kikokyaku),0),
+};
+// 全員合計（Mgr含む）
+UPPER_FIXED.team_all = {
+  p1: 294, p2: 85, p3: 36, p4: 58, p8: 80,
+  r12: 47, r23: 68, r34: 80, r14: 25, r48: 56, r18: 14,
+};
+const MGR_LIST = ['徳永 雄大'];
+const isMgr = m => MGR_LIST.includes(m);
+const sortMembers = arr => [...arr].sort((a,b) => {
+  const am=MGR_LIST.includes(a), bm=MGR_LIST.includes(b);
+  if (am!==bm) return am?1:-1;
+  return a.localeCompare(b,'ja');
+});
+
+let ROWS = [];       // ファネル分析CSV
+let JUCHU_ROWS = []; // 受注管理CSV
+let IS_LIVE = false;
+let ACTIVE_MEMBER_DETAIL = null; // 担当者詳細で選択中のメンバー
+
+// ============================================================
+// HELPERS
+// ============================================================
+// ヘルパー：COL_MAPがあれば列名ベース、なければ旧インデックスで fallback
+const getPhase    = r => { const raw=(getColVal(r,'lastPhase')||r[2]||'').trim(); return SF_PHASE_MAP[raw]||((raw).startsWith('DEAD')?'DEAD':'OTHER'); };
+const getCurPhase = r => (getColVal(r,'curPhase')||r[3]||'').trim();
+const getMember   = r => (getColVal(r,'member')||r[0]||'').trim();
+const getYM       = r => (getColVal(r,'date')||r[4]||'').substring(0,7);
+const getChannel  = r => { const ch=(getColVal(r,'channel')||r[6]||'').trim(); return ch.startsWith('FS')?'FS':'IS'; };
+const getDealType = r => (getColVal(r,'dealType')||r[5]||'').trim();
+const getCK       = r => { const raw=getColVal(r,'ck')||r[9]||'0'; const v=parseFloat(raw.replace(/[,¥\s]/g,'')); return isNaN(v)?0:v; };
+const getCKAccurate = r => {
+  const ck = getCK(r);
+  if (ck > 0) return ck;
+  const bill = getColVal(r,'totalBill') || '';
+  const pay  = getColVal(r,'totalPay')  || '';
+  const gross = parseFloat(bill.replace(/[,¥\s]/g,'')) - parseFloat(pay.replace(/[,¥\s]/g,''));
+  return (!isNaN(gross) && gross > 0) ? gross : 0;
+};
+const getCloseDate    = r => (getColVal(r,'closeDate')||'').substring(0,7);
+const getMendanDate   = r => (getColVal(r,'mendanDate')||'').substring(0,7);
+const getDealCategory = r => (getColVal(r,'dealCategory')||'').trim();
+const getTotalBill    = r => { const v=parseFloat((getColVal(r,'totalBill')||'0').replace(/[,¥\s]/g,'')); return isNaN(v)?0:v; };
+const getTotalPay     = r => { const v=parseFloat((getColVal(r,'totalPay')||'0').replace(/[,¥\s]/g,'')); return isNaN(v)?0:v; };
+const getLostReason   = r => (getColVal(r,'lostReason')||'').trim();
+const pct  = (a,b) => b>0?Math.round(a/b*100):0;
+const fmtM = v => (v/10000).toFixed(1);
+function $(id,v) { const el=document.getElementById(id); if(el) el.textContent=v; }
+function chipColor(v,lo,hi){ return v>=hi?['var(--green-l)','var(--green)']:v>=lo?['var(--amber-l)','var(--amber)']:['var(--red-l)','var(--red)']; }
+function heatChip(v,lo,hi){ const[bg,c]=chipColor(v,lo,hi); return `<span class="chip" style="background:${bg};color:${c}">${v}%</span>`; }
+function getTgt(id,def){ const el=document.getElementById(id); return el?parseFloat(el.value)||def:def; }
+
+// ============================================================
+// FILTER
+// ============================================================
+const getTgtP8   = () => parseInt(document.getElementById('tgt-p8')?.value||'12');
+const getTgtP4   = () => parseInt(document.getElementById('tgt-p4')?.value||'34');
+const getTgtP1   = () => parseInt(document.getElementById('tgt-p1')?.value||'65');
+const getTgtCKM  = () => parseInt(document.getElementById('tgt-ck-m')?.value||'2000') * 10000;
+const getTgtSales= () => {
+  const v = document.getElementById('tgt-sales')?.value;
+  if (v) return parseInt(v) * 10000;
+  const b = ELON_BUDGET[getTodayYM()];
+  return b ? b.sales : 88590000;
+};
+const getTgtPK   = () => {
+  const v = document.getElementById('tgt-pk')?.value;
+  if (v) return parseInt(v) * 10000;
+  const b = ELON_BUDGET[getTodayYM()];
+  return b ? b.pk : 34220000;
+};
+const getTgtMonths = () => parseInt(document.getElementById('tgt-months')?.value||'6');
+
+
+// ============================================================
+// Google Sheets連携（GAS自動同期後のデータ取得）
+// ============================================================
+const GAS_API = 'https://script.google.com/macros/s/AKfycbwuB-bko02MczlRorWD0qQ7Ch80fLoZd5Gmtwb2BWKDfOLOlOBokjiBNjodupe-r2VF/exec';
+const SHEETS_CONFIG = {
+  funnel: GAS_API + '?sheet=funnel',
+  juchu:  GAS_API + '?sheet=juchu',
+  pn:     GAS_API + '?sheet=pn',
+};
+
+async function syncFromSheets() {
+  const btn    = document.getElementById('sheets-sync-btn');
+  const status = document.getElementById('sheets-sync-status');
+  const testBtn = document.getElementById('sheets-test-btn') || btn;
+  const testStatus = document.getElementById('sheets-test-status') || status;
+
+  if (testBtn) { testBtn.disabled = true; testBtn.textContent = '🔄 取得中...'; }
+  if (testStatus) { testStatus.textContent = ''; testStatus.style.color = 'var(--ink3)'; }
+  if (btn && btn !== testBtn) { btn.disabled = true; btn.textContent = '🔄 取得中...'; }
+  
+  try {
+    const results = await Promise.allSettled([
+      SHEETS_CONFIG.funnel ? fetchSheetCSV(SHEETS_CONFIG.funnel, 'funnel') : Promise.resolve(null),
+      SHEETS_CONFIG.juchu  ? fetchSheetCSV(SHEETS_CONFIG.juchu,  'juchu')  : Promise.resolve(null),
+    ]);
+    
+    let loaded = 0;
+    results.forEach(r => { if (r.status === 'fulfilled' && r.value) loaded++; });
+    
+    IS_LIVE = true;
+    const badge = document.getElementById('data-badge');
+    if (badge) { badge.className = 'data-badge badge-live'; badge.textContent = 'LIVE'; }
+    const tb2 = document.getElementById('sheets-test-btn');
+    if (tb2) tb2.textContent = `✅ 取得完了（${loaded}件）`;
+    if (btn) btn.textContent = `✅ 取得完了（${loaded}件）`;
+    const ts2 = document.getElementById('sheets-test-status');
+    if (ts2) { ts2.textContent = new Date().toLocaleTimeString('ja-JP'); ts2.style.color = 'var(--teal)'; }
+    
+    ACTIVE_MEMBER_DETAIL = null;
+    renderAll();
+  } catch(e) {
+    if (btn) btn.textContent = '❌ エラー';
+    if (status) { status.textContent = e.message.substring(0, 40); status.style.color = 'var(--red)'; }
+    if (testStatus) { testStatus.textContent = '❌ ' + e.message.substring(0,30); testStatus.style.color = 'var(--red)'; }
+    console.error('syncFromSheets エラー:', e);
+    renderAll(); // エラーでもデモモードで表示
+  } finally {
+    setTimeout(() => {
+      if (btn) { btn.disabled = false; btn.textContent = '🔄 最新データを取得'; }
+    }, 3000);
+  }
+}
+
+async function fetchSheetCSV(url, type) {
+  const res = await fetch(url, {
+    method: 'GET',
+    redirect: 'follow',
+    cache: 'no-cache',
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const text = await res.text();
+  if (!text || text.trim().length === 0) throw new Error('データが空です');
+  
+  // COL_MAPを保護しながらパース
+  const savedColMap  = COL_MAP;
+  const savedCsvType = CSV_TYPE;
+  const rows = parseCSVText(text);
+  if (rows.length < 2) throw new Error(`行数不足: ${rows.length}行`);
+  
+  if (type === 'funnel') {
+    ROWS = rows;
+    // COL_MAPはparseCSVText内で設定済み（そのまま使う）
+  } else if (type === 'juchu') {
+    JUCHU_ROWS = rows;
+    // juchuパース後はCOL_MAPを元に戻す（funnelのCOL_MAPを保持）
+    COL_MAP  = savedColMap;
+    CSV_TYPE = 'funnel';
+  }
+  return rows;
+}
+
+function saveSheetUrls() {
+  SHEETS_CONFIG.funnel = document.getElementById('sheets-url-funnel')?.value || '';
+  SHEETS_CONFIG.juchu  = document.getElementById('sheets-url-juchu')?.value  || '';
+  try {
+    localStorage.setItem('sf_sheets_urls', JSON.stringify({
+      funnel: SHEETS_CONFIG.funnel, juchu: SHEETS_CONFIG.juchu
+    }));
+  } catch(e) {}
+}
+
+function loadSheetUrls() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('sf_sheets_urls') || '{}');
+    // 保存済みURLがあれば使う、なければGAS URLをデフォルトに
+    const funnelUrl = saved.funnel || SHEETS_CONFIG.funnel;
+    const juchuUrl  = saved.juchu  || SHEETS_CONFIG.juchu;
+    if (funnelUrl) {
+      SHEETS_CONFIG.funnel = funnelUrl;
+      const el = document.getElementById('sheets-url-funnel');
+      if (el) el.value = funnelUrl;
+    }
+    if (juchuUrl) {
+      SHEETS_CONFIG.juchu = juchuUrl;
+      const el = document.getElementById('sheets-url-juchu');
+      if (el) el.value = juchuUrl;
+    }
+  } catch(e) {}
+}
+
+
+// ============================================================
+// 受注管理CSV用ヘルパー
+// ============================================================
+const getJuchuMember    = r => (r[11] || r[0] || '').toString().trim();
+const getJuchuType      = r => (r[2] || '').toString().trim();
+const getJuchuCloseDate = r => (r[3] || '').toString().substring(0,7);
+const getJuchuCK        = r => { const v=parseFloat((r[6]||'0').toString().replace(/[,¥\s]/g,'')); return isNaN(v)?0:v; };
+const getJuchuChannel   = r => { const ch=(r[7]||'').toString().trim(); return ch.startsWith('FS')?'FS':'IS'; };
+const getJuchuContractEnd = r => (r[5]||'').toString().substring(0,7);
+
+function buildJuchuStats() {
+  const src = JUCHU_ROWS.length > 0 ? JUCHU_ROWS.slice(1) : []; // ヘッダー除く
+  const monthly = {};
+  const ensure = (ym, m) => {
+    if (!monthly[ym]) monthly[ym] = {};
+    if (!monthly[ym][m]) monthly[ym][m] = {count:0, ck:0, shinki:0, kikokyaku:0, keizoku:0};
+  };
+  src.forEach(r => {
+    const m  = getJuchuMember(r);
+    const ym = getJuchuCloseDate(r);
+    const ck = getJuchuCK(r);
+    const tp = getJuchuType(r);
+    if (!m || !ym || ym.length < 7) return;
+    ensure(ym, m);
+    monthly[ym][m].count++;
+    monthly[ym][m].ck += ck;
+    if (tp === '新規案件') monthly[ym][m].shinki += ck;
+    else if (tp === '既顧客新規案件') monthly[ym][m].kikokyaku += ck;
+    else if (tp.includes('継続')) monthly[ym][m].keizoku += ck;
+  });
+  return monthly;
+}
+
+function getTodayYM() {
+  // 実行日の年月を返す（CSV日付に左右されない）
+  const now = new Date();
+  return `${now.getFullYear()}/${String(now.getMonth()+1).padStart(2,'0')}`;
+}
+
+function getFilteredRows() {
+  const period = document.getElementById('period-filter')?.value||'all';
+  const member = document.getElementById('member-filter')?.value||'all';
+  // ★ 今月・先月はシステム日付ベース（CSVの日付に引っ張られない）
+  const latestYM = getTodayYM();
+  const [ly,lm] = latestYM.split('/').map(Number);
+  const prevYM = lm===1?`${ly-1}/12`:`${ly}/${String(lm-1).padStart(2,'0')}`;
+  const minus2 = (() => { let y=ly,m=lm-2; if(m<=0){y--;m+=12;} return `${y}/${String(m).padStart(2,'0')}`; })();
+  // フェーズに応じた日付で期間フィルター
+  // P8受注 → 受注日、P4面談 → 面談日、それ以外 → 初回アポイント日
+  const getRelevantYM = (row) => {
+    const phase = getPhase(row);
+    if (phase === 'P8') {
+      return getCloseDate(row) || getYM(row);
+    } else if (['P4','P5','P6','P7'].includes(phase)) {
+      return getMendanDate(row) || getYM(row);
+    }
+    return getYM(row);
+  };
+
+  const inRange = (ym) => {
+    if (!ym) return false;
+    switch(period) {
+      case 'all': return true;
+      case '1h':  return ym>='2025/08'&&ym<='2026/01';
+      case '2h':  return ym>='2026/02'&&ym<='2026/07';
+      case '3m':  return ym>=minus2&&ym<=latestYM;
+      case '1m':  return ym===prevYM;
+      case '0m':  return ym===latestYM;
+    }
+    return true;
+  };
+
+  return ROWS.filter(row => {
+    if (member!=='all' && getMember(row)!==member) return false;
+    return inRange(getRelevantYM(row));
+  });
+}
+function getPeriodLabel() {
+  const period = document.getElementById('period-filter')?.value||'all';
+  const member = document.getElementById('member-filter')?.value||'all';
+  const latestYM = getTodayYM();
+  const [ly,lm] = latestYM.split('/').map(Number);
+  const prevYM = lm===1?`${ly-1}/12`:`${ly}/${String(lm-1).padStart(2,'0')}`;
+  const labels = {all:'今期全体','1h':'上期（8〜1月）','2h':'下期（2〜7月）','3m':'直近3ヶ月','1m':`先月（${prevYM}）`,'0m':`今月（${latestYM}）`};
+  const pl = labels[period]||'今期全体';
+  const ml = member==='all'?'全メンバー':member;
+  return `${pl}  /  ${ml}`;
+}
+
+// ============================================================
+// STATS BUILDERS
+// ============================================================
+function buildMemberStats(rows) {
+  const stats = {};
+  rows.forEach(row => {
+    const m = getMember(row); if(!m) return;
+    if(!stats[m]) stats[m]={p1:0,p2:0,p3:0,p4:0,p5:0,p7:0,p8:0,dead:0,dead_lost:0,dead_noop:0,ck:0,fs:0,is:0,shinki:0,kikokyaku:0};
+    const phase=getPhase(row), cur=getCurPhase(row);
+    if(PHASE_ORDER.includes(phase)){ const idx=PHASE_ORDER.indexOf(phase); for(let i=0;i<=idx;i++) stats[m][PHASE_ORDER[i].toLowerCase()]++; }
+    if(cur.startsWith('DEAD')){ stats[m].dead++; if(cur==='DEAD-Lost')stats[m].dead_lost++; if(cur==='DEAD-No Opportunity')stats[m].dead_noop++; }
+    if(phase==='P8') stats[m].ck+=getCKAccurate(row); // P8受注のみCKカウント
+    if(getChannel(row)==='FS')stats[m].fs++; else stats[m].is++;
+    const tp=getDealType(row); if(tp==='新規案件')stats[m].shinki++; if(tp==='既顧客新規案件')stats[m].kikokyaku++;
+  });
+  return stats;
+}
+function buildChannelStats(rows) {
+  const ch={FS:{p1:0,p4:0,p8:0},IS:{p1:0,p4:0,p8:0}};
+  rows.forEach(row=>{
+    const c=getChannel(row),phase=getPhase(row);
+    if(!PHASE_ORDER.includes(phase))return;
+    const idx=PHASE_ORDER.indexOf(phase);
+    ch[c].p1++; if(idx>=3)ch[c].p4++; if(phase==='P8')ch[c].p8++;
+  });
+  return ch;
+}
+function buildDeadStats(rows) {
+  const dead={},phaseReached={};
+  rows.forEach(row=>{
+    const cur=getCurPhase(row),last=(row[2]||'').trim();
+    if(cur.startsWith('DEAD')){ dead[cur]=(dead[cur]||0)+1; phaseReached[last]=(phaseReached[last]||0)+1; }
+  });
+  return {dead,phaseReached};
+}
+function buildMonthlyStats() {
+  // 月別集計：各フェーズを正しい日付でカウント
+  // P1 = 初回アポイント日
+  // P4 = 面談日（なければ初回アポイント日）
+  // P8 = 受注日（なければ初回アポイント日）
+  const monthly = {}; // {ym: {member: {p1,p4,p8,ck}}}
+
+  const ensure = (ym, m) => {
+    if (!monthly[ym]) monthly[ym] = {};
+    if (!monthly[ym][m]) monthly[ym][m] = {p1:0,p2:0,p3:0,p4:0,p8:0,ck:0};
+  };
+
+  ROWS.forEach(row => {
+    const m = getMember(row);
+    const phase = getPhase(row);
+    if (!m || !PHASE_ORDER.includes(phase)) return;
+    const idx = PHASE_ORDER.indexOf(phase);
+
+    // P1: 初回アポイント日でカウント
+    const ymP1 = getYM(row);
+    if (ymP1) { ensure(ymP1, m); monthly[ymP1][m].p1++; }
+
+    // P2・P3: 初回アポイント日ベース
+    if (idx >= 1 && ymP1) monthly[ymP1][m].p2 = (monthly[ymP1][m].p2||0) + 1;
+    if (idx >= 2 && ymP1) monthly[ymP1][m].p3 = (monthly[ymP1][m].p3||0) + 1;
+
+    // P4: 面談日で正確にカウント（なければ初回アポイント日）
+    if (idx >= 3) {
+      const ymP4 = getMendanDate(row) || ymP1;
+      if (ymP4) { ensure(ymP4, m); monthly[ymP4][m].p4++; }
+    }
+
+    // P8: 受注日で正確にカウント（なければ初回アポイント日）
+    // ★ 受注日の月が初回アポイント日と違う場合もensureしてP8をカウント
+    if (phase === 'P8') {
+      const ymP8 = getCloseDate(row) || ymP1;
+      if (ymP8) {
+        ensure(ymP8, m); // ← 受注日の月にもキーを確保
+        monthly[ymP8][m].p8++;
+        monthly[ymP8][m].ck += getCKAccurate(row);
+      }
+    }
+  });
+  return monthly;
+}
+
+// ============================================================
+// RENDER ALL
+// ============================================================
+function updateMemberSelect() {
+  const sel=document.getElementById('member-filter'); if(!sel) return;
+  const cur=sel.value;
+  const members=sortMembers([...new Set(ROWS.map(r=>getMember(r)).filter(Boolean))]);
+  sel.innerHTML='<option value="all">全メンバー</option>'+
+    members.map(m=>`<option value="${m}">${m}${isMgr(m)?'（Mgr）':''}</option>`).join('');
+  if([...sel.options].some(o=>o.value===cur)) sel.value=cur;
+}
+
+function safeRender(fn, name) {
+  try { fn(); } catch(e) { console.warn('render error [' + name + ']:', e.message); }
+}
+
+function renderAll() {
+  if(!ROWS.length) loadDemo();
+  updateMemberSelect();
+  const sub=document.getElementById('pg-sub'); if(sub) sub.textContent=getPeriodLabel();
+  safeRender(renderFunnel,   'funnel');
+  safeRender(renderTrend,    'trend');
+  safeRender(renderDead,     'dead');
+  safeRender(renderChannel,  'channel');
+  safeRender(renderKgi,      'kgi');
+  safeRender(renderGauge,    'gauge');
+  safeRender(renderCompare,  'compare');
+  safeRender(renderCkTrend,  'cktrend');
+  safeRender(renderRisk,     'risk');
+  safeRender(renderExec,     'exec');
+  safeRender(renderSales,    'sales');
+  upd();
+  if(ACTIVE_MEMBER_DETAIL) safeRender(()=>renderMemberDetail(ACTIVE_MEMBER_DETAIL), 'member-detail');
+  else safeRender(renderMemberPanel, 'member-panel');
+}
+
+// ============================================================
+// FUNNEL
+// ============================================================
+function renderFunnel() {
+  const fRows=getFilteredRows(), stats=buildMemberStats(fRows);
+  const members=sortMembers(Object.keys(stats));
+  // 担当者フィルターで特定メンバーを選んでいる場合はMgr除外しない
+  const selectedMember = document.getElementById('member-filter')?.value || 'all';
+  const mbrOnly = selectedMember !== 'all'
+    ? members  // 個人指定時は全員（選んだ人）をそのまま使う
+    : members.filter(m=>!isMgr(m));  // 全員表示時はMgr除外
+  const tot={p1:0,p2:0,p3:0,p4:0,p8:0,ck:0};
+  mbrOnly.forEach(m=>{ ['p1','p2','p3','p4','p8'].forEach(k=>tot[k]+=stats[m][k]); tot.ck+=stats[m].ck; });
+
+  $('kpi-p1',tot.p1); $('kpi-p4',tot.p4); $('kpi-p4-sub',`P1→P4率 ${pct(tot.p4,tot.p1)}%`);
+  // P8確定 + P5-7見込み
+  const p57count = fRows.filter(r=>{
+    const p = getPhase(r);
+    return ['P5','P6','P7'].includes(p);
+  }).length;
+  $('kpi-p8', tot.p8);
+  $('kpi-p8-sub', `最終CR ${pct(tot.p8,tot.p1)}% ${p57count>0?'（見込+'+p57count+'件）':''}`);
+  // CKは受注管理CSV（JUCHU_ROWS）から取得。なければファネルCSVから計算
+  let p8CK = 0, p8CKcount = 0;
+  const todayYMf = getTodayYM();
+  if (JUCHU_ROWS.length > 0) {
+    const jStats = buildJuchuStats();
+    // フィルター期間に合わせて集計
+    const jMonths = Object.keys(jStats).filter(ym => {
+      const period = document.getElementById('period-filter')?.value||'all';
+      if (period==='all') return true;
+      if (period==='1h') return ym>='2025/08'&&ym<='2026/01';
+      if (period==='2h') return ym>='2026/02'&&ym<='2026/07';
+      if (period==='0m') return ym===todayYMf;
+      if (period==='1m') { const [y,m]=todayYMf.split('/').map(Number); const pym=m===1?`${y-1}/12`:`${y}/${String(m-1).padStart(2,'0')}`; return ym===pym; }
+      return true;
+    });
+    jMonths.forEach(ym => {
+      Object.values(jStats[ym]).forEach(s => { p8CK += s.ck; p8CKcount += s.count; });
+    });
+  } else {
+    p8CK = fRows.filter(r=>getPhase(r)==='P8').reduce((s,r)=>s+getCKAccurate(r),0);
+    p8CKcount = fRows.filter(r=>getPhase(r)==='P8').length;
+  }
+  $('kpi-ck',fmtM(p8CK)); $('kpi-ck-sub',`${p8CKcount}件`);
+
+  // ファネルビジュアル
+  const phases=[{k:'p1',l:'P1商談',c:'var(--blue)'},{k:'p2',l:'P2案件化',c:'var(--blue-m)'},{k:'p3',l:'P3提案',c:'var(--purple-m)'},{k:'p4',l:'P4面談',c:'var(--amber-m)'},{k:'p8',l:'P8受注',c:'var(--teal-m)'}];
+  const maxV=tot.p1||1;
+  document.getElementById('funnel-viz').innerHTML=phases.map((ph,i)=>{
+    const v=tot[ph.k], h=Math.max(6,Math.round(v/maxV*100));
+    const rate=i>0?`${pct(v,tot[phases[i-1].k])}%→`:'';
+    return `<div class="fv-col"><div class="fv-rate">${rate}</div><div class="fv-bar" style="height:${h}px;background:${ph.c}"></div><div class="fv-val">${v}</div><div class="fv-lbl">${ph.l}</div></div>`;
+  }).join('');
+
+  // ボトルネックアラート
+  const r12=pct(tot.p2,tot.p1),r23=pct(tot.p3,tot.p2),r34=pct(tot.p4,tot.p3),r48=pct(tot.p8,tot.p4);
+  const stages=[{n:'P1→P2',v:r12,lo:40,hi:55},{n:'P2→P3',v:r23,lo:60,hi:75},{n:'P3→P4',v:r34,lo:70,hi:85},{n:'P4→P8',v:r48,lo:50,hi:65}];
+  const worst=stages.reduce((a,b)=>(a.v/a.hi)<(b.v/b.hi)?a:b);
+  document.getElementById('funnel-alert').innerHTML = worst.v<worst.lo
+    ? `<div class="alert a-bad"><div class="ai">🚨</div><div class="ab"><strong>ボトルネック：${worst.n}（${worst.v}% / 基準${worst.lo}%）</strong><p>このフェーズが全体KPIを下げています。担当者別タブで個人ごとに確認してください。</p></div></div>`
+    : `<div class="alert a-ok"><div class="ai">✅</div><div class="ab"><strong>全フェーズ転換率は基準範囲内</strong><p>案件数の絶対量増加が次のレバーです。</p></div></div>`;
+
+  // ヒートマップ
+  const tbody=document.getElementById('hm-body'); tbody.innerHTML='';
+  // avgP1: 比較基準はMgr除くメンバーの平均（個人指定時も同じ基準を使う）
+  const mbrForAvg = members.filter(m=>!isMgr(m));
+  const avgP1 = mbrForAvg.length > 0
+    ? mbrForAvg.reduce((s,m)=>s+(stats[m]?.p1||0),0) / mbrForAvg.length
+    : 1;
+  members.forEach(m=>{
+    const s=stats[m];
+    const r1=pct(s.p2,s.p1),r2=pct(s.p3,s.p2),r3=pct(s.p4,s.p3),r4=pct(s.p8,s.p4),r18=pct(s.p8,s.p1);
+    const bns=[{n:'P1→P2',v:r1,lo:40,hi:55},{n:'P2→P3',v:r2,lo:60,hi:75},{n:'P3→P4',v:r3,lo:70,hi:85},{n:'P4→P8',v:r4,lo:50,hi:65}];
+    const bn=bns.reduce((a,b)=>(a.v/a.hi)<(b.v/b.hi)?a:b);
+    const isV=!isMgr(m)&&s.p1<avgP1*0.85, isR=!isMgr(m)&&bn.v<bn.lo;
+    const tr=document.createElement('tr');
+    if(isMgr(m)){
+      tr.style.opacity='0.5';
+      const r14m=pct(s.p4,s.p1);
+      tr.innerHTML=`<td><span style="display:inline-flex;align-items:center;gap:5px">${m}<span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:var(--purple-l);color:var(--purple)">Mgr</span></span></td><td style="color:var(--ink3)">${s.p1}</td><td>${heatChip(r1,40,55)}</td><td>${heatChip(r2,60,75)}</td><td>${heatChip(r3,70,85)}</td><td>${heatChip(r14m,15,30)}</td><td>${heatChip(r4,50,65)}</td><td>${heatChip(r18,8,14)}</td><td style="font-weight:600">${s.p8}</td><td style="font-size:11px;font-family:var(--mono)">¥${fmtM(s.ck)}M</td><td><span style="font-size:10px;color:var(--ink3);font-style:italic">参考</span></td>`;
+    } else {
+      const jt=isR&&isV?'両方問題':isR?'移行率':isV?'案件数':'良好';
+      const jc=(!isR&&!isV)?'var(--green)':isR&&isV?'var(--red)':'var(--amber)';
+      const jbg=(!isR&&!isV)?'var(--green-l)':isR&&isV?'var(--red-l)':'var(--amber-l)';
+      const r14=pct(s.p4,s.p1);
+      tr.innerHTML=`<td>${m}</td><td style="color:var(--ink3)">${s.p1}</td><td>${heatChip(r1,40,55)}</td><td>${heatChip(r2,60,75)}</td><td>${heatChip(r3,70,85)}</td><td>${heatChip(r14,15,30)}</td><td>${heatChip(r4,50,65)}</td><td>${heatChip(r18,8,14)}</td><td style="font-weight:600">${s.p8}</td><td style="font-size:11px;font-family:var(--mono)">¥${fmtM(s.ck)}M</td><td><span style="font-size:10px;font-weight:600;padding:3px 8px;border-radius:10px;background:${jbg};color:${jc}">${isR||isV?'⚠ '+jt:'✓ '+jt}</span></td>`;
+    }
+    tbody.appendChild(tr);
+  });
+  // avg row（Mgr除く）
+  const tM={p1:0,p2:0,p3:0,p4:0,p8:0,ck:0};
+  mbrOnly.forEach(m2=>{['p1','p2','p3','p4','p8'].forEach(k=>tM[k]+=stats[m2][k]);tM.ck+=stats[m2].ck;});
+  const avg=document.createElement('tr'); avg.className='avg-row';
+  avg.innerHTML=`<td><span style="display:flex;align-items:center;gap:4px">メンバー平均<span style="font-size:9px;color:var(--ink3);font-style:italic">Mgr除く</span></span></td><td style="color:var(--ink3)">${Math.round(tM.p1/(mbrOnly.length||1))}</td><td>${heatChip(pct(tM.p2,tM.p1),40,55)}</td><td>${heatChip(pct(tM.p3,tM.p2),60,75)}</td><td>${heatChip(pct(tM.p4,tM.p3),70,85)}</td><td>${heatChip(pct(tM.p4,tM.p1),15,30)}</td><td>${heatChip(pct(tM.p8,tM.p4),50,65)}</td><td>${heatChip(pct(tM.p8,tM.p1),8,14)}</td><td style="font-weight:600">${tM.p8}</td><td style="font-size:11px;font-family:var(--mono)">¥${fmtM(tM.ck/(mbrOnly.length||1))}M</td><td>—</td>`;
+  tbody.appendChild(avg);
+
+  // 問題分類
+  document.getElementById('prob-type').innerHTML=members.map(m=>{
+    const s=stats[m];
+    if(isMgr(m)) return `<div class="br" style="opacity:.5"><span class="bn">${m.split(' ')[0]}</span><span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:8px;background:var(--purple-l);color:var(--purple);margin-right:6px">Mgr</span><span style="flex:1;font-size:11px;color:var(--ink3);font-style:italic">参考（予算なし）</span></div>`;
+    const r1=pct(s.p2,s.p1),r4=pct(s.p8,s.p4),isR=r1<40||pct(s.p4,s.p3)<70||r4<50,isV=s.p1<avgP1*0.85;
+    const t=isR&&isV?'両方問題':isR?'移行率問題':isV?'案件数問題':'良好',c=t==='良好'?'var(--green)':t==='両方問題'?'var(--red)':'var(--amber)';
+    return `<div class="br"><span class="bn">${m.split(' ')[0]}</span><span style="flex:1;font-size:12px;font-weight:600;color:${c}">${t}</span><span style="font-size:11px;color:var(--ink3)">P8:${s.p8}</span></div>`;
+  }).join('');
+
+  // CKバー
+  const maxCK=Math.max(...members.map(m=>stats[m].ck))||1;
+  document.getElementById('ck-bars').innerHTML=members.map(m=>{
+    const v=stats[m].ck,p=pct(v,maxCK);
+    const mgrTag=isMgr(m)?`<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;background:var(--purple-l);color:var(--purple)">Mgr</span>`:'';
+    return `<div class="br" style="${isMgr(m)?'opacity:.5':''}"><span class="bn" style="display:flex;align-items:center;gap:3px;font-size:11px">${m.split(' ')[0]}${mgrTag}</span><div class="bb"><div class="bf" style="width:${p}%;background:${isMgr(m)?'var(--purple-l)':'var(--purple-m)'}"></div></div><span class="bv" style="font-size:11px;color:${isMgr(m)?'var(--ink3)':'var(--ink)'}">¥${fmtM(v)}M</span></div>`;
+  }).join('');
+}
+
+// ============================================================
+// MONTHLY TREND
+// ============================================================
+function renderTrend() {
+  if (!ROWS || ROWS.length === 0) return;
+  if (!COL_MAP || typeof COL_MAP !== 'object' || !Object.keys(COL_MAP).length) return;
+  try { if (COL_MAP.member === undefined) return; } catch(e) { return; }
+  let monthly;
+  try { monthly = buildMonthlyStats(); } catch(e) { return; }
+  if (!monthly) return;
+  // ★ 全ての関連日付（アポ日・面談日・受注日）から月一覧を生成
+  const allYMs = new Set();
+  ROWS.forEach(row => {
+    const ymP1 = getYM(row);
+    const ymP4 = getMendanDate(row);
+    const ymP8 = getCloseDate(row);
+    if (ymP1) allYMs.add(ymP1);
+    if (ymP4) allYMs.add(ymP4);
+    if (ymP8) allYMs.add(ymP8);
+  });
+  // monthlyのキーにも含める（ensureされた月）
+  Object.keys(monthly).forEach(ym => allYMs.add(ym));
+  const months = [...allYMs].filter(ym => ym >= '2025/08').sort();
+  const latestYM = getTodayYM();
+
+  // チーム月別集計（Mgr除く）
+  const teamMonthly = months.map(ym => {
+    const mData = monthly[ym];
+    let p1=0,p2=0,p4=0,p8=0;
+    Object.entries(mData||{}).forEach(([m,s])=>{ if(isMgr(m))return; p1+=s.p1;p2+=s.p2;p4+=s.p4;p8+=s.p8; });
+    return {ym, p1, p2, p4, p8, cr:pct(p8,p1)};
+  });
+
+  const renderBar = (containerId, dataFn, color, labelFn) => {
+    const data = teamMonthly.map(dataFn);
+    const max = Math.max(...data, 1);
+    document.getElementById(containerId).innerHTML = teamMonthly.map((d,i) => {
+      const v = dataFn(d), h = Math.max(4, Math.round(v/max*100));
+      const isCur = d.ym === latestYM;
+      const lbl = d.ym.replace('2025/','').replace('2026/','') + '月';
+      return `<div class="trend-col">
+        <div class="trend-bar" style="height:${h}px;background:${isCur?color:color+'99'};${isCur?'outline:2px solid var(--teal-m);outline-offset:1px':''}">
+          <span class="trend-val">${labelFn?labelFn(v):v}</span>
+        </div>
+        <div class="trend-lbl ${isCur?'cur':''}">${lbl}</div>
+      </div>`;
+    }).join('');
+  };
+
+  renderBar('trend-p8', d=>d.p8, 'var(--teal-m)', null);
+  renderBar('trend-cr', d=>d.cr, 'var(--purple-m)', v=>v+'%');
+  renderBar('trend-p1', d=>d.p1, 'var(--blue-m)', null);
+
+  // メンバー別月次テーブル
+  const allMembers = sortMembers([...new Set(ROWS.map(r=>getMember(r)).filter(Boolean))]).filter(m=>!isMgr(m));
+  const head = document.getElementById('trend-mbr-head');
+  head.innerHTML = '<th>メンバー</th>' + months.map(ym => {
+    const lbl = ym.replace('2025/','').replace('2026/','')+`月`;
+    return `<th style="${ym===latestYM?'color:var(--teal);font-weight:700':''}">${lbl}</th>`;
+  }).join('') + '<th>合計</th>';
+
+  document.getElementById('trend-mbr-body').innerHTML = allMembers.map(m => {
+    const vals = months.map(ym => monthly[ym]?.[m]?.p8||0);
+    const total = vals.reduce((a,b)=>a+b,0);
+    const cells = vals.map((v,i) => {
+      const c = v>=3?'var(--teal-m)':v>=1?'var(--ink)':'var(--ink4)';
+      return `<td style="font-family:var(--mono);color:${c};font-weight:${v>=3?600:400}">${v||'—'}</td>`;
+    }).join('');
+    return `<tr><td>${m}</td>${cells}<td style="font-weight:600;font-family:var(--mono)">${total}</td></tr>`;
+  }).join('');
+}
+
+// ============================================================
+// MEMBER DETAIL
+// ============================================================
+function renderMemberPanel() {
+  const allMembers = sortMembers([...new Set(ROWS.map(r=>getMember(r)).filter(Boolean))]);
+  // ボタン生成
+  document.getElementById('member-selector').innerHTML = allMembers.map(m =>
+    `<button class="member-btn ${isMgr(m)?'mgr-btn':''} ${m===ACTIVE_MEMBER_DETAIL?'on':''}" data-member="${m}" onclick="selectMember(this.dataset.member)">${m}${isMgr(m)?'<span style="font-size:9px;margin-left:4px;opacity:.7">Mgr</span>':''}</button>`
+  ).join('');
+
+  if (!ACTIVE_MEMBER_DETAIL) {
+    const first = allMembers.find(m=>!isMgr(m)) || allMembers[0];
+    if (first) selectMember(first);
+  } else {
+    renderMemberDetail(ACTIVE_MEMBER_DETAIL);
+  }
+}
+
+function selectMember(name) {
+  ACTIVE_MEMBER_DETAIL = name;
+  renderMemberPanel();
+}
+
+function renderMemberDetail(name) {
+  const allRows = ROWS.filter(r=>getMember(r)===name);
+  const stats = buildMemberStats(allRows)[name] || {p1:0,p2:0,p3:0,p4:0,p8:0,dead:0,dead_lost:0,ck:0,fs:0,is:0};
+  const monthly = buildMonthlyStats() || {};
+  const months = Object.keys(monthly).sort();
+
+  // KPI
+  const r12=pct(stats.p2,stats.p1),r23=pct(stats.p3,stats.p2),r34=pct(stats.p4,stats.p3),r48=pct(stats.p8,stats.p4),r18=pct(stats.p8,stats.p1);
+  const isMgrFlag = isMgr(name);
+  const mgrBadge = isMgrFlag ? `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:8px;background:var(--purple-l);color:var(--purple);margin-left:8px">Mgr・参考</span>` : '';
+
+  const deadRows = allRows.filter(r=>getCurPhase(r).startsWith('DEAD'));
+  const deadTotal = deadRows.length;
+  const deadLost = deadRows.filter(r=>getCurPhase(r)==='DEAD-Lost').length;
+  const deadNoop = deadRows.filter(r=>getCurPhase(r)==='DEAD-No Opportunity').length;
+
+  const html = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+      <h3 style="font-size:16px;font-weight:600">${name}</h3>${mgrBadge}
+      ${!isMgrFlag?`<span style="font-size:11px;padding:3px 10px;border-radius:10px;background:var(--surface2);color:var(--ink3)">最終CR ${r18}%</span>`:''}
+    </div>
+
+    <div class="detail-grid">
+      <div class="detail-ms"><div class="detail-ms-lbl">P1 商談数</div><div class="detail-ms-val">${stats.p1}</div><div class="detail-ms-sub">累計</div></div>
+      <div class="detail-ms"><div class="detail-ms-lbl">P4 面談数</div><div class="detail-ms-val" style="color:var(--amber-m)">${stats.p4}</div><div class="detail-ms-sub">P1→P4 ${pct(stats.p4,stats.p1)}%</div></div>
+      <div class="detail-ms"><div class="detail-ms-lbl">P8 受注数</div><div class="detail-ms-val" style="color:var(--teal-m)">${stats.p8}</div><div class="detail-ms-sub">P4→P8 ${r48}%</div></div>
+      <div class="detail-ms"><div class="detail-ms-lbl">CK金額</div><div class="detail-ms-val" style="font-size:16px">¥${fmtM(stats.ck)}M</div><div class="detail-ms-sub">累計</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><div class="card-ttl">フェーズパイプライン</div></div>
+      <div class="funnel-pipeline">
+        ${[{l:'P1商談',v:stats.p1,c:'var(--blue)',r:null},{l:'P2案件化',v:stats.p2,c:'var(--blue-m)',r:r12},{l:'P3提案',v:stats.p3,c:'var(--purple-m)',r:r23},{l:'P4面談',v:stats.p4,c:'var(--amber-m)',r:r34},{l:'P8受注',v:stats.p8,c:'var(--teal-m)',r:r48}].map(ph=>{
+          const [rbg,rc]=chipColor(ph.r||50,40,60);
+          return `<div class="fp-stage">
+            <div class="fp-count" style="color:${ph.c}">${ph.v}</div>
+            <div class="fp-label">${ph.l}</div>
+            ${ph.r!==null?`<div class="fp-rate" style="background:${rbg};color:${rc}">${ph.r}%</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">月別 P8受注推移</div></div>
+        <div class="trend-wrap">
+          <div class="trend-chart" style="min-width:300px" id="member-trend-chart-${name.replace(/ /g,'_')}">
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hd"><div class="card-ttl">DEAD分析</div></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+          <div class="detail-ms"><div class="detail-ms-lbl">DEAD総数</div><div class="detail-ms-val" style="color:var(--red-m)">${deadTotal}</div></div>
+          <div class="detail-ms"><div class="detail-ms-lbl">No Opp</div><div class="detail-ms-val">${deadNoop}</div></div>
+          <div class="detail-ms"><div class="detail-ms-lbl">Lost</div><div class="detail-ms-val" style="color:var(--amber-m)">${deadLost}</div></div>
+        </div>
+        <div class="dead-row"><span class="dead-lbl">No Opportunity</span><div class="dead-bg"><div class="dead-fill" style="width:${pct(deadNoop,deadTotal)}%;background:#E24B4A"></div></div><span class="dead-pct">${pct(deadNoop,deadTotal)}%</span></div>
+        <div class="dead-row"><span class="dead-lbl">Lost（失注）</span><div class="dead-bg"><div class="dead-fill" style="width:${pct(deadLost,deadTotal)}%;background:#EF9F27"></div></div><span class="dead-pct">${pct(deadLost,deadTotal)}%</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hd"><div class="card-ttl">チャネル・案件種別内訳</div></div>
+      <div class="two-col">
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:8px">FS vs IS（全案件）</div>
+          <div class="br"><span class="bn" style="color:var(--teal)">FS</span><div class="bb"><div class="bf" style="width:${pct(stats.fs,stats.fs+stats.is)}%;background:var(--teal-m)"></div></div><span class="bv">${stats.fs}件</span></div>
+          <div class="br"><span class="bn" style="color:var(--blue-m)">IS</span><div class="bb"><div class="bf" style="width:${pct(stats.is,stats.fs+stats.is)}%;background:var(--blue-m)"></div></div><span class="bv">${stats.is}件</span></div>
+        </div>
+        <div>
+          <div style="font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:8px">新規 vs 既顧客新規</div>
+          <div class="br"><span class="bn" style="color:var(--blue);font-size:11px">新規</span><div class="bb"><div class="bf" style="width:${pct(stats.shinki,stats.shinki+stats.kikokyaku)}%;background:var(--blue)"></div></div><span class="bv">${stats.shinki}件</span></div>
+          <div class="br"><span class="bn" style="color:var(--teal);font-size:11px">既顧客</span><div class="bb"><div class="bf" style="width:${pct(stats.kikokyaku,stats.shinki+stats.kikokyaku)}%;background:var(--teal-m)"></div></div><span class="bv">${stats.kikokyaku}件</span></div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('member-detail-content').innerHTML = html;
+
+  // 月別推移グラフを後から描画（IIFEを避けるため）
+  const chartId = 'member-trend-chart-'+name.replace(/ /g,'_');
+  const chartEl = document.getElementById(chartId);
+  if (chartEl) {
+    const vals = months.map(ym => monthly[ym]?.[name]?.p8 || 0);
+    const maxV = Math.max(...vals, 1);
+    const latestYM2 = getTodayYM();
+    chartEl.innerHTML = months.map(ym => {
+      const v = monthly[ym]?.[name]?.p8 || 0;
+      const h = Math.max(4, Math.round(v/maxV*100));
+      const lbl = ym.replace('2025/','').replace('2026/','') + '月';
+      const isCur = ym === latestYM2;
+      return '<div class="trend-col">'
+        + '<div class="trend-bar" style="height:'+h+'px;background:'+(isCur?'var(--teal-m)':'var(--teal-l)')+'">'
+        + '<span class="trend-val" style="color:var(--teal)">'+(v||'')+'</span></div>'
+        + '<div class="trend-lbl '+(isCur?'cur':'')+'">' + lbl + '</div>'
+        + '</div>';
+    }).join('');
+  }
+}
+
+// ============================================================
+// DEAD
+// ============================================================
+function renderDead() {
+  const fRows=getFilteredRows();
+  const {dead,phaseReached}=buildDeadStats(fRows);
+  const stats=buildMemberStats(fRows);
+  const members=sortMembers(Object.keys(stats));
+  const total=Object.values(dead).reduce((a,b)=>a+b,0);
+  const noop=dead['DEAD-No Opportunity']||0, lost=dead['DEAD-Lost']||0;
+  $('dead-total',total);$('dead-noop',noop);$('dead-lost',lost);$('dead-rate',pct(total,fRows.length));
+  document.getElementById('dead-reasons').innerHTML=Object.entries(dead).sort((a,b)=>b[1]-a[1]).map(([k,cnt])=>{
+    const p=pct(cnt,total),lbl=DEAD_LABELS[k]||k,col=DEAD_COLORS[k]||'#888';
+    return `<div class="dead-row"><span class="dead-lbl">${lbl}</span><div class="dead-bg"><div class="dead-fill" style="width:${p}%;background:${col}"></div></div><span class="dead-pct">${p}%</span></div>`;
+  }).join('');
+
+  // DEAD理由の詳細ブレークダウン（全DEADフェーズ対象）
+  const deadReasonRows = fRows.filter(r => getLostReason(r));
+  const deadReasonDiv = document.getElementById('dead-lost-detail');
+  if (deadReasonDiv) {
+    if (deadReasonRows.length > 0) {
+      // 「案件作成ミス」は分析から除外
+      const EXCLUDE = ['案件作成ミス'];
+      const reasons = {};
+      deadReasonRows.forEach(r => {
+        const lr = getLostReason(r);
+        if (EXCLUDE.includes(lr)) return;
+        reasons[lr] = (reasons[lr]||0) + 1;
+      });
+      const reasonTotal = Object.values(reasons).reduce((a,b)=>a+b,0);
+      const REASON_COLORS = {
+        '競合負けor自社推進': '#df3b3b',
+        'タイミング違い': '#e5900a',
+        '予算なし': '#7c6fe0',
+        '社内体制なし': '#378ADD',
+        '対応可能専門家未登録': '#1c9e75',
+        'その他': '#8a8a84',
+        '要件定義不足': '#d85a30',
+      };
+      deadReasonDiv.innerHTML = Object.entries(reasons)
+        .sort((a,b)=>b[1]-a[1])
+        .map(([r,c]) => {
+          const p = pct(c, reasonTotal);
+          const col = REASON_COLORS[r] || '#8a8a84';
+          return `<div class="dead-row">
+            <span class="dead-lbl" style="font-size:11px;min-width:160px">${r}</span>
+            <div class="dead-bg"><div class="dead-fill" style="width:${p}%;background:${col}"></div></div>
+            <span class="dead-pct">${c}件</span>
+          </div>`;
+        }).join('') +
+        `<div style="font-size:10px;color:var(--ink3);margin-top:6px">※「案件作成ミス」は除外して集計</div>`;
+    } else {
+      deadReasonDiv.innerHTML = '<span style="font-size:11px;color:var(--ink3)">DEAD理由列がCSVにあれば表示されます（列名:「DEAD理由」）</span>';
+    }
+  }
+  document.getElementById('dead-mbr-tbl').innerHTML=members.map(m=>{
+    const s=stats[m],dr=pct(s.dead,s.p1+s.dead);
+    return `<tr ${isMgr(m)?'style="opacity:.5"':''}><td>${m}${isMgr(m)?'<span style="font-size:9px;margin-left:4px;padding:1px 5px;border-radius:6px;background:var(--purple-l);color:var(--purple)">Mgr</span>':''}</td><td>${s.p1}</td><td>${s.dead}</td><td>${heatChip(100-dr,60,80)}</td><td>${s.dead_lost}</td></tr>`;
+  }).join('');
+}
+
+// ============================================================
+// CHANNEL
+// ============================================================
+function renderChannel() {
+  const fRows=getFilteredRows(),ch=buildChannelStats(fRows),stats=buildMemberStats(fRows);
+  const members=sortMembers(Object.keys(stats));
+  const fsCR=pct(ch.FS.p8,ch.FS.p1),isCR=pct(ch.IS.p8,ch.IS.p1);
+  $('ch-fs-p8',ch.FS.p8);$('ch-fs-cr',`CR ${fsCR}%`);
+  $('ch-is-p8',ch.IS.p8);$('ch-is-cr',`CR ${isCR}%`);
+  $('ch-diff',fsCR-isCR);
+  const allP8=members.filter(m=>!isMgr(m)).reduce((s,m)=>s+stats[m].p8,0);
+  const shinkiP8=members.filter(m=>!isMgr(m)).reduce((s,m)=>s+stats[m].shinki,0);
+  $('ch-type',pct(shinkiP8,allP8||1));
+  document.getElementById('ch-table').innerHTML=[{ch:'FS経由',...ch.FS,c:'var(--teal)'},{ch:'IS経由',...ch.IS,c:'var(--blue-m)'}].map(r=>
+    `<tr><td><span style="font-weight:600;color:${r.c}">${r.ch}</span></td><td>${r.p1}</td><td>${r.p4}</td><td style="font-weight:600">${r.p8}</td><td>${heatChip(pct(r.p4,r.p1),15,30)}</td><td>${heatChip(pct(r.p8,r.p4),30,50)}</td><td>${heatChip(pct(r.p8,r.p1),10,40)}</td></tr>`
+  ).join('');
+  const chAl=document.getElementById('ch-alert');
+  chAl.className=`alert ${isCR<5?'a-bad':'a-warn'}`;
+  chAl.innerHTML=`<div class="ai">⚠️</div><div class="ab"><strong>IS経由のCR（${isCR}%）はFS（${fsCR}%）の約${Math.round(fsCR/(isCR||1))}分の1</strong><p>IS商談の質向上またはFS転換比率の引き上げがKPIに直結します。</p></div>`;
+  document.getElementById('ch-mbr-bars').innerHTML=members.map(m=>{
+    const s=stats[m],tot=s.fs+s.is||1,fp=pct(s.fs,tot);
+    return `<div class="br" style="${isMgr(m)?'opacity:.5':''}"><span class="bn" style="font-size:11px">${m.split(' ')[0]}</span><div class="stk"><div class="seg" style="width:${fp}%;background:var(--teal-m)"></div><div class="seg" style="width:${100-fp}%;background:var(--blue-m)"></div></div><span style="font-size:10px;color:var(--ink3);min-width:54px;text-align:right">FS:${s.fs}/IS:${s.is}</span></div>`;
+  }).join('');
+  document.getElementById('type-bars').innerHTML=members.map(m=>{
+    const s=stats[m],tot=s.shinki+s.kikokyaku||1;
+    return `<div class="br" style="${isMgr(m)?'opacity:.5':''}"><span class="bn" style="font-size:11px">${m.split(' ')[0]}</span><div class="stk"><div class="seg" style="width:${pct(s.shinki,tot)}%;background:var(--blue)"></div><div class="seg" style="width:${pct(s.kikokyaku,tot)}%;background:var(--teal-m)"></div></div><span style="font-size:10px;color:var(--ink3);min-width:54px;text-align:right">${pct(s.shinki,tot)}%/${pct(s.kikokyaku,tot)}%</span></div>`;
+  }).join('');
+}
+
+// ============================================================
+// KGI
+// ============================================================
+function renderKgi() {
+  const fRows=getFilteredRows(),stats=buildMemberStats(fRows);
+  const selMbrKgi = document.getElementById('member-filter')?.value || 'all';
+  const members = selMbrKgi !== 'all'
+    ? sortMembers(Object.keys(stats))
+    : sortMembers(Object.keys(stats)).filter(m=>!isMgr(m));
+  const months=getTgtMonths();
+  const tot={p1:0,p2:0,p3:0,p4:0,p8:0};
+  members.forEach(m=>['p1','p2','p3','p4','p8'].forEach(k=>tot[k]+=stats[m][k]));
+  const tgtP8=getTgtP8(), tgtP4=getTgtP4(), tgtP1=getTgtP1();
+  $('kgi-v',tot.p8);$('kgi-t',tgtP8);$('kpi-v',tot.p4);$('kpi-t',tgtP4);
+  $('ksf1-v',tot.p3);$('ksf1-r',pct(tot.p4,tot.p3)+'%');
+  $('ksf2-v',tot.p2);$('ksf2-r',pct(tot.p2,tot.p1)+'%');
+  $('ksf3-v',tot.p1);$('ksf3-a',Math.round(tot.p1/months));
+  // CK金額集計
+  const totCK = Object.values(stats).reduce((s,m)=>s+m.ck,0);
+  const mbrCount = (typeof mbrOnly !== 'undefined' && mbrOnly) ? mbrOnly.length : 4;
+  document.getElementById('gap-anal').innerHTML=[
+    {l:'P8受注（月平均）', a:(tot.p8/months).toFixed(1), t:tgtP8, u:'件', perMbr:(tot.p8/months/mbrCount).toFixed(1), tPerMbr:(tgtP8/mbrCount).toFixed(1)},
+    {l:'P4面談（月平均）', a:(tot.p4/months).toFixed(1), t:tgtP4, u:'件', perMbr:(tot.p4/months/mbrCount).toFixed(1), tPerMbr:(tgtP4/mbrCount).toFixed(1)},
+    {l:'P1商談（月平均）', a:(tot.p1/months).toFixed(1), t:tgtP1, u:'件', perMbr:(tot.p1/months/mbrCount).toFixed(1), tPerMbr:(tgtP1/mbrCount).toFixed(1)},
+    {l:'CK金額（月平均）', a:(totCK/months/10000).toFixed(0), t:Math.round(getTgtCKM()/10000), u:'万円', perMbr:null, tPerMbr:null},
+  ].map(g=>{
+    const r=Math.round(g.a/g.t*100),c=r>=100?'var(--teal-m)':r>=85?'var(--amber-m)':'var(--red-m)';
+    const perMbrStr = g.perMbr ? `<span style="font-size:10px;color:var(--ink3);margin-left:8px">一人当たり ${g.perMbr}${g.u} / 目標${g.tPerMbr}${g.u}</span>` : '';
+    return `<div style="margin-bottom:13px"><div style="display:flex;justify-content:space-between;margin-bottom:5px;flex-wrap:wrap;gap:4px"><span style="font-size:13px;font-weight:500">${g.l}${perMbrStr}</span><span style="font-size:12px;font-family:var(--mono);color:${c}">${g.a} / ${g.t}${g.u}/月 (${r}%)</span></div><div style="height:7px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="height:100%;width:${Math.min(100,r)}%;background:${c};border-radius:3px;transition:width .6s"></div></div></div>`;
+  }).join('');
+  // sim sliders
+  const r12=pct(tot.p2,tot.p1),r24=pct(tot.p4,tot.p2),r48=pct(tot.p8,tot.p4);
+  document.getElementById('s1').value=r12;document.getElementById('s2').value=r24;document.getElementById('s3').value=r48;
+  $('sh1',`実績: ${r12}%`);$('sh2',`実績: ${r24}%`);$('sh3',`実績: ${r48}%`);
+}
+
+
+// ============================================================
+// GAUGE METER
+// ============================================================
+function renderGauge() {
+  const fRows = getFilteredRows();
+  const stats = buildMemberStats(fRows);
+  const selMbrGauge = document.getElementById('member-filter')?.value || 'all';
+  const members = selMbrGauge !== 'all'
+    ? sortMembers(Object.keys(stats))
+    : sortMembers(Object.keys(stats)).filter(m => !isMgr(m));
+  const months = getTgt('tgt-months', 6);
+  const tot = {p1:0, p4:0, p8:0, ck:0};
+  members.forEach(m => { tot.p1+=stats[m].p1; tot.p4+=stats[m].p4; tot.p8+=stats[m].p8; tot.ck+=stats[m].ck; });
+
+  const tgtP8 = getTgt('tgt-p8', 12);
+  const tgtP4 = getTgt('tgt-p4', 20);
+  const tgtP1 = Math.ceil(tgtP8 / 0.12); // P1→P8 12%想定
+  const tgtCK = 7000 * 10000; // 7000万円想定（設定から取れればよりよい）
+
+  const gauges = [
+    { label:'P8 受注数', actual: tot.p8, target: tgtP8 * months, unit:'件', color:'var(--teal-m)' },
+    { label:'P4 面談数', actual: tot.p4, target: tgtP4 * months, unit:'件', color:'var(--amber-m)' },
+    { label:'P1 商談数', actual: tot.p1, target: tgtP1 * months, unit:'件', color:'var(--blue-m)' },
+  ];
+
+  document.getElementById('gauge-grid').innerHTML = gauges.map(g => {
+    const rate = Math.min(Math.round(g.actual / (g.target || 1) * 100), 120);
+    const clamp = Math.min(rate, 100);
+    const [trackC, fillC] = rate >= 100 ? ['#d8f0e9', g.color] : rate >= 80 ? ['#fef0d4', '#e5900a'] : ['#fde8e8', '#df3b3b'];
+    // 半円ゲージ SVG（180度）
+    const r = 44, cx = 50, cy = 50;
+    const circumference = Math.PI * r; // 半周
+    const dash = (clamp / 100) * circumference;
+    const gap  = circumference - dash;
+    const rateLabel = rate >= 100 ? '達成 ✓' : rate + '%';
+    const rateColor = rate >= 100 ? 'var(--teal)' : rate >= 80 ? 'var(--amber)' : 'var(--red)';
+    return `<div class="gauge-card">
+      <div class="gauge-lbl">${g.label}</div>
+      <div class="gauge-wrap" style="width:110px;height:60px">
+        <svg viewBox="0 0 100 55" style="width:100%;height:100%;overflow:visible">
+          <!-- track -->
+          <path d="M6,50 A44,44 0 0,1 94,50" fill="none" stroke="${trackC}" stroke-width="10" stroke-linecap="round"/>
+          <!-- fill -->
+          <path d="M6,50 A44,44 0 0,1 94,50" fill="none" stroke="${fillC}" stroke-width="10"
+            stroke-linecap="round"
+            stroke-dasharray="${dash.toFixed(1)} ${gap.toFixed(1)}"
+            stroke-dashoffset="0"/>
+          <!-- center text -->
+          <text x="50" y="46" text-anchor="middle" font-size="13" font-weight="600" fill="${rateColor}" font-family="DM Mono,monospace">${rateLabel}</text>
+        </svg>
+      </div>
+      <div class="gauge-val" style="color:${rateColor};font-size:20px">${g.actual}<span style="font-size:12px;font-weight:500;color:var(--ink3);margin-left:2px">${g.unit}</span></div>
+      <div class="gauge-sub">目標 ${g.target}${g.unit}</div>
+    </div>`;
+  }).join('');
+
+  // メンバー別達成テーブル
+  const periodMonths = Math.max(1, months);
+  document.getElementById('gauge-period-hint').textContent = `目標：P8 ${tgtP8}件/月・P4 ${tgtP4}件/月`;
+  document.getElementById('gauge-mbr-tbl').innerHTML = members.map(m => {
+    const s = stats[m];
+    const r18 = pct(s.p8, s.p1);
+    const p8rate = pct(s.p8, tgtP8 * periodMonths);
+    const p4rate = pct(s.p4, tgtP4 * periodMonths);
+    const [p8bg, p8c] = p8rate >= 100 ? ['var(--green-l)','var(--green)'] : p8rate >= 70 ? ['var(--amber-l)','var(--amber)'] : ['var(--red-l)','var(--red)'];
+    const [p4bg, p4c] = p4rate >= 100 ? ['var(--green-l)','var(--green)'] : p4rate >= 70 ? ['var(--amber-l)','var(--amber)'] : ['var(--red-l)','var(--red)'];
+    return `<tr>
+      <td>${m}</td>
+      <td style="font-family:var(--mono)">${s.p1}</td>
+      <td style="font-family:var(--mono)">${s.p4}</td>
+      <td><span class="chip" style="background:${p4bg};color:${p4c}">${p4rate}%</span></td>
+      <td style="font-family:var(--mono);font-weight:600">${s.p8}</td>
+      <td><span class="chip" style="background:${p8bg};color:${p8c}">${p8rate}%</span></td>
+      <td style="font-family:var(--mono)">${r18}%</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// PERIOD COMPARE
+// ============================================================
+function getPeriodRows(mode, side) {
+  // side: 'a' = 比較元（古い方）, 'b' = 比較先（新しい方）
+  const latestYM = getTodayYM();
+  const [ly, lm] = latestYM.split('/').map(Number);
+  const prevYM = lm===1?`${ly-1}/12`:`${ly}/${String(lm-1).padStart(2,'0')}`;
+  const minus3 = (() => { let y=ly,m=lm-3; if(m<=0){y--;m+=12;} return `${y}/${String(m).padStart(2,'0')}`; })();
+  const minus6 = (() => { let y=ly,m=lm-6; if(m<=0){y--;m+=12;} return `${y}/${String(m).padStart(2,'0')}`; })();
+
+  let filterFn;
+  if (mode === 'hh') {
+    filterFn = side==='a'
+      ? ym => ym>='2025/08'&&ym<='2026/01'
+      : ym => ym>='2026/02'&&ym<='2026/07';
+  } else if (mode === 'mm') {
+    filterFn = side==='a' ? ym => ym===prevYM : ym => ym===latestYM;
+  } else { // 3m
+    filterFn = side==='a'
+      ? ym => ym>=minus6&&ym<minus3
+      : ym => ym>=minus3&&ym<=latestYM;
+  }
+  return ROWS.filter(r => {
+    const ym = getYM(r); if(!ym) return false;
+    return filterFn(ym) && !isMgr(getMember(r));
+  });
+}
+
+function getPeriodLabel2(mode, side) {
+  const latestYM = getTodayYM();
+  const [ly,lm] = latestYM.split('/').map(Number);
+  const prevYM = lm===1?`${ly-1}/12`:`${ly}/${String(lm-1).padStart(2,'0')}`;
+  const minus3 = (() => { let y=ly,m=lm-3; if(m<=0){y--;m+=12;} return `${y}/${String(m).padStart(2,'0')}`; })();
+  const minus6 = (() => { let y=ly,m=lm-6; if(m<=0){y--;m+=12;} return `${y}/${String(m).padStart(2,'0')}`; })();
+  const labels = {
+    hh: { a:'上期（8〜1月）', b:'下期（2〜7月）' },
+    mm: { a:`先月（${prevYM}）`, b:`今月（${latestYM}）` },
+    '3m': { a:`前3ヶ月（${minus6}〜${minus3}）`, b:`直近3ヶ月（${minus3}〜${latestYM}）` },
+  };
+  return labels[mode]?.[side] || '';
+}
+
+function renderCompare() {
+  const mode = CMP_MODE;
+  const rowsA = getPeriodRows(mode, 'a');
+  const rowsB = getPeriodRows(mode, 'b');
+  const statsA = buildMemberStats(rowsA);
+  const statsB = buildMemberStats(rowsB);
+  const lblA = getPeriodLabel2(mode, 'a');
+  const lblB = getPeriodLabel2(mode, 'b');
+
+  $('cmp-lbl-a', lblA); $('cmp-lbl-b', lblB);
+  $('cmp-th-a',  lblA); $('cmp-th-b',  lblB);
+  $('cmp-hint', `${lblA} と ${lblB} の比較（Mgr除く）`);
+
+  const sumStats = rows => {
+    const members = Object.keys(buildMemberStats(rows)).filter(m=>!isMgr(m));
+    const ms = buildMemberStats(rows);
+    const t = {p1:0,p2:0,p3:0,p4:0,p8:0,ck:0,dead:0,shinki:0};
+    members.forEach(m=>{ t.p1+=ms[m].p1;t.p2+=ms[m].p2;t.p3+=ms[m].p3;t.p4+=ms[m].p4;t.p8+=ms[m].p8;t.ck+=ms[m].ck;t.dead+=ms[m].dead;t.shinki+=ms[m].shinki; });
+    return t;
+  };
+  const tA = sumStats(rowsA), tB = sumStats(rowsB);
+
+  const metrics = [
+    { label:'P1 商談数',    a: tA.p1, b: tB.p1, unit:'件', higher:'good' },
+    { label:'P4 面談数',    a: tA.p4, b: tB.p4, unit:'件', higher:'good' },
+    { label:'P8 受注数',    a: tA.p8, b: tB.p8, unit:'件', higher:'good' },
+    { label:'最終CR',       a: pct(tA.p8,tA.p1), b: pct(tB.p8,tB.p1), unit:'%', higher:'good' },
+    { label:'P1→P2案件化率',a: pct(tA.p2,tA.p1), b: pct(tB.p2,tB.p1), unit:'%', higher:'good' },
+    { label:'P4→P8クロージング', a: pct(tA.p8,tA.p4), b: pct(tB.p8,tB.p4), unit:'%', higher:'good' },
+    { label:'CK合計',       a: Math.round(tA.ck/10000), b: Math.round(tB.ck/10000), unit:'万円', higher:'good' },
+    { label:'DEAD件数',     a: tA.dead, b: tB.dead, unit:'件', higher:'bad' },
+  ];
+
+  const colHtml = (t, metrics, side) => metrics.map(m => {
+    const v = side==='a' ? m.a : m.b;
+    return `<div class="cmp-row"><span class="cmp-metric">${m.label}</span><span class="cmp-val">${v.toLocaleString()}${m.unit}</span></div>`;
+  }).join('');
+
+  document.getElementById('cmp-col-a').innerHTML = colHtml(tA, metrics, 'a');
+  document.getElementById('cmp-col-b').innerHTML = colHtml(tB, metrics, 'b');
+
+  document.getElementById('cmp-tbl').innerHTML = metrics.map(m => {
+    const diff = m.b - m.a;
+    const diffPct = m.a !== 0 ? Math.round(diff/Math.abs(m.a)*100) : 0;
+    const isUp = diff > 0;
+    const isGood = (m.higher==='good' && isUp) || (m.higher==='bad' && !isUp && diff!==0);
+    const isBad  = (m.higher==='good' && !isUp && diff!==0) || (m.higher==='bad' && isUp);
+    const arrowCls = diff===0 ? 'cmp-eq' : isGood ? 'cmp-up' : 'cmp-dn';
+    const arrowTxt = diff===0 ? '－' : (isUp?'▲':'▼')+' '+Math.abs(diff).toLocaleString()+m.unit;
+    const eval_txt = diff===0?'変化なし':isGood?'改善':'悪化';
+    const evalC = diff===0?'var(--ink3)':isGood?'var(--green)':'var(--red)';
+    return `<tr>
+      <td>${m.label}</td>
+      <td style="text-align:center;font-family:var(--mono)">${m.a.toLocaleString()}${m.unit}</td>
+      <td style="text-align:center;font-family:var(--mono);font-weight:600">${m.b.toLocaleString()}${m.unit}</td>
+      <td style="text-align:center"><span class="cmp-arrow ${arrowCls}">${arrowTxt}</span></td>
+      <td style="text-align:center;font-size:11px;font-weight:600;color:${evalC}">${eval_txt}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// CK TREND
+// ============================================================
+function buildCkMonthly() {
+  // 受注日ベースのCK月別集計
+  const monthly = {};
+  ROWS.forEach(row => {
+    const m = getMember(row);
+    if (!m || isMgr(m)) return;
+    if (getPhase(row) !== 'P8') return; // 受注案件のみ
+    // 受注日優先
+    const ym = getCloseDate(row) || getYM(row);
+    if (!ym) return;
+    const ck = getCKAccurate(row);
+    const tp = getDealType(row);
+    if (!monthly[ym]) monthly[ym] = { shinki:0, kikokyaku:0, p8:0 };
+    monthly[ym].p8++;
+    if (ck > 0) {
+      if (tp.includes('既顧客')) monthly[ym].kikokyaku += ck;
+      else monthly[ym].shinki += ck;
+    }
+  });
+  return monthly;
+}
+
+function renderCkTrend() {
+  const monthly = buildCkMonthly();
+  const months  = Object.keys(monthly).sort();
+  const latestYM = getTodayYM();
+
+  // 積み上げ棒グラフ
+  const maxCK = Math.max(...months.map(ym => monthly[ym].shinki + monthly[ym].kikokyaku), 1);
+
+  document.getElementById('ck-stack-chart').innerHTML = months.map(ym => {
+    const d = monthly[ym];
+    const total = d.shinki + d.kikokyaku;
+    const hS = Math.max(total>0?2:0, Math.round(d.shinki / maxCK * 100));
+    const hK = Math.max(total>0?2:0, Math.round(d.kikokyaku / maxCK * 100));
+    const totalH = hS + hK;
+    const lbl = ym.replace('2025/','').replace('2026/','') + '月';
+    const isCur = ym === latestYM;
+    const totalLbl = total > 0 ? Math.round(total/10000)+'万' : '';
+    return `<div class="ck-col" style="position:relative">
+      <div style="position:absolute;top:${-(totalH+18)}px;width:100%;text-align:center;font-size:9px;font-weight:600;color:var(--ink2)">${totalLbl}</div>
+      <div style="width:100%;display:flex;flex-direction:column;${isCur?'outline:2px solid var(--teal-m);outline-offset:1px;border-radius:3px 3px 0 0':''}">
+        <div style="height:${hK}px;background:var(--teal-m);border-radius:${hS===0?'3px 3px':0} 0 0"></div>
+        <div style="height:${hS}px;background:var(--blue);border-radius:${hK===0?'3px 3px 0 0':0}"></div>
+      </div>
+      <div class="ck-lbl ${isCur?'cur':''}">${lbl}</div>
+    </div>`;
+  }).join('');
+
+  // 月別テーブル
+  document.getElementById('ck-monthly-tbl').innerHTML = months.map(ym => {
+    const d = monthly[ym];
+    const total = d.shinki + d.kikokyaku;
+    const avgUnit = d.p8 > 0 ? Math.round(total / d.p8 / 10000) : 0;
+    const shinkiRate = pct(d.shinki, total);
+    const isCur = ym === latestYM;
+    const lbl = ym.replace('2025/','').replace('2026/','') + '月';
+    return `<tr ${isCur?'style="background:rgba(28,158,117,.05)"':''}>
+      <td style="font-weight:${isCur?600:400}">${lbl}</td>
+      <td style="font-family:var(--mono)">${d.p8}</td>
+      <td style="font-family:var(--mono)">¥${Math.round(total/10000)}万</td>
+      <td style="font-family:var(--mono)">${avgUnit > 0 ? '¥'+avgUnit+'万' : '—'}</td>
+      <td><span class="chip" style="background:var(--blue-l);color:var(--blue)">${shinkiRate}%</span></td>
+    </tr>`;
+  }).join('');
+
+  // メンバー別CK内訳
+  const fRows = getFilteredRows();
+  const stats  = buildMemberStats(fRows);
+  const members = sortMembers(Object.keys(stats)).filter(m => !isMgr(m));
+  const maxMCK = Math.max(...members.map(m => stats[m].ck), 1);
+
+  document.getElementById('ck-mbr-breakdown').innerHTML = members.map(m => {
+    const s = stats[m];
+    const total = s.shinki + s.kikokyaku;
+    const sPct  = total > 0 ? pct(s.shinki * 10000, total) : 0; // CKはshinki/kikokyaku分離が必要
+    // CKはck合計から按分（近似値）
+    const shinkiCK = Math.round(s.ck * (s.shinki / (s.shinki + s.kikokyaku || 1)));
+    const kikoCK   = s.ck - shinkiCK;
+    const maxW = pct(s.ck, maxMCK);
+    return `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:500">${m}</span>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--ink2)">¥${fmtM(s.ck)}M</span>
+      </div>
+      <div style="height:14px;background:var(--surface2);border-radius:3px;overflow:hidden;display:flex;width:${maxW}%">
+        <div style="height:100%;flex:${s.shinki};background:var(--blue)"></div>
+        <div style="height:100%;flex:${s.kikokyaku};background:var(--teal-m)"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:3px;font-size:10px;color:var(--ink3)">
+        <span>新規 ${s.shinki}件</span><span>既顧客 ${s.kikokyaku}件</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+
+
+// ============================================================
+// EXEC REPORT（経営報告）
+// ============================================================
+function buildPeriodFunnel(rows, excludeMgr, excludeKeizoku) {
+  const stats = {};
+  rows.forEach(r => {
+    const m = getMember(r);
+    if (!m) return;
+    if (excludeMgr && isMgr(m)) return;
+    if (excludeKeizoku && getDealType(r).includes('継続')) return;
+    const phase = getPhase(r);
+    if (!PHASE_ORDER.includes(phase)) return;
+    if (!stats[m]) stats[m] = {p1:0,p2:0,p3:0,p4:0,p8:0};
+    const idx = PHASE_ORDER.indexOf(phase);
+    for (let i=0; i<=idx; i++) {
+      const k = PHASE_ORDER[i].toLowerCase();
+      if (k in stats[m]) stats[m][k]++;
+    }
+  });
+  // チーム合計
+  const tot = {p1:0,p2:0,p3:0,p4:0,p8:0};
+  Object.values(stats).forEach(s => { Object.keys(tot).forEach(k => tot[k]+=s[k]); });
+  return {stats, tot};
+}
+
+function renderExec() {
+  const todayYM = getTodayYM();
+
+  // 期間分類
+  // ★ 上期はスプレッドシート確定値（UPPER_FIXED）を使用
+  // 主担当者付け替えの影響を受けない正確な数値
+  const lowerRows = ROWS.filter(r => {
+    const ym = getYM(r);
+    return ym >= '2026/02' && ym <= todayYM;
+  });
+  const fLower = buildPeriodFunnel(lowerRows, true, true);
+
+  // 上期：UPPER_FIXEDから合計を構築
+  const ufAll = UPPER_FIXED.funnel;
+  const ufTeam = UPPER_FIXED.team;
+  const ufMgr  = ufAll['徳永 雄大'];
+
+  // 上期全員合計（Mgr含む）
+  const upperAllTot = {
+    p1: Object.values(ufAll).reduce((s,v)=>s+v.p1,0),
+    p2: Object.values(ufAll).reduce((s,v)=>s+v.p2,0),
+    p4: Object.values(ufAll).reduce((s,v)=>s+v.p4,0),
+    p8: Object.values(ufAll).reduce((s,v)=>s+v.p8,0),
+  };
+
+  const r = t => ({
+    p1:   t.p1,
+    p1p2: t.r12 ?? pct(t.p2||0, t.p1),
+    p1p4: t.r14 ?? pct(t.p4, t.p1),
+    p4p8: t.r48 ?? pct(t.p8, t.p4),
+    p1p8: t.r18 ?? pct(t.p8, t.p1),
+    p8:   t.p8,
+  });
+  const rUA = r(UPPER_FIXED.team_all);
+  const rUN = r(UPPER_FIXED.team);
+  const rL  = r(fLower.tot);
+
+  // KPIカード
+
+  const kpiData = [
+    { label:'上期P1商談数（全員・確定）', val: rUA.p1+'件', sub:'うち徳永 '+UPPER_FIXED.funnel['徳永 雄大'].p1+'件', c:'cb' },
+    { label:'下期P1商談数（Mgr除く）', val: rL.p1+'件', sub:'上期全員比 '+(rL.p1-rUA.p1)+'件', c:'ca' },
+    { label:'上期→下期 最終CR変化', val: rUA.p1p8+'% → '+rL.p1p8+'%', sub: (rL.p1p8-rUA.p1p8)+'pt', c:'cp' },
+  ];
+  document.getElementById('exec-kpi-row').innerHTML = kpiData.map(d =>
+    `<div class="kc ${d.c}"><div class="kc-lbl">${d.label}</div><div class="kc-val" style="font-size:18px">${d.val}</div><div class="kc-sub">${d.sub}</div></div>`
+  ).join('');
+
+  // ファネル比較テーブル
+  const metrics = [
+    {key:'p1',  label:'P1 商談数', unit:'件', higher:'good'},
+    {key:'p1p2',label:'P1→P2 案件化率', unit:'%', higher:'good'},
+    {key:'p1p4',label:'P1→P4 面談到達率', unit:'%', higher:'good'},
+    {key:'p4p8',label:'P4→P8 クロージング率', unit:'%', higher:'good'},
+    {key:'p1p8',label:'P1→P8 最終CR', unit:'%', higher:'good'},
+    {key:'p8',  label:'P8 受注数', unit:'件', higher:'good'},
+  ];
+  document.getElementById('exec-funnel-tbl').innerHTML = metrics.map(m => {
+    const vUA = rUA[m.key];   // 上期全員（確定値）
+    const vL  = rL[m.key];   // 下期Mgr除く
+    const diff = vL - vUA;
+    const isDown = diff < 0;
+    const diffStr = (isDown?'▼ ':diff>0?'▲ ':'')+Math.abs(diff)+m.unit;
+    const [dc]  = isDown ? ['var(--red)'] : diff>0 ? ['var(--green)'] : ['var(--ink3)'];
+    const [dbg] = isDown ? ['var(--red-l)'] : diff>0 ? ['var(--green-l)'] : ['var(--surface2)'];
+    const eval_txt = isDown ? '悪化' : diff>0 ? '改善' : '変化なし';
+    const change_pct = vUA > 0 ? Math.round(Math.abs(diff)/vUA*100) : 0;
+    return `<tr>
+      <td>${m.label}</td>
+      <td style="text-align:center;font-family:var(--mono);font-weight:600">${vUA}${m.unit}</td>
+      <td style="text-align:center;font-family:var(--mono)">${vL}${m.unit}</td>
+      <td style="text-align:center"><span style="font-weight:600;color:${dc};padding:2px 8px;border-radius:8px;background:${dbg}">${diffStr}</span></td>
+      <td style="text-align:center;font-size:11px;color:${dc};font-weight:600">${eval_txt}${change_pct>0?' ('+change_pct+'%)':''}</td>
+    </tr>`;
+  }).join('');
+
+  // 徳永さん貢献分析
+  // 上期はUPPER_FIXEDの確定値を使用
+  const mgrS = { p1: ufMgr.p1, p4: ufMgr.p4, p8: ufMgr.p8 };
+  const totUA = upperAllTot;
+  const mgrCK = UPPER_FIXED.ck['徳永 雄大'].total;
+  const totCK = Object.values(UPPER_FIXED.ck).reduce((s,v)=>s+v.total, 0);
+
+  document.getElementById('exec-mgr-contrib').innerHTML = [
+    {label:'P1商談数', val:mgrS.p1||0, total:totUA.p1, unit:'件'},
+    {label:'P8受注数', val:mgrS.p8||0, total:totUA.p8, unit:'件'},
+    {label:'CK貢献額', val:'¥'+Math.round(mgrCK/10000)+'万', total_str:'チーム¥'+Math.round(totCK/10000)+'万', pct_val:pct(mgrCK,totCK), unit:''},
+  ].map(d => {
+    const p = d.pct_val !== undefined ? d.pct_val : pct(d.val, d.total);
+    const total_lbl = d.total_str || `チーム${d.total}${d.unit}`;
+    return `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:500">${d.label}</span>
+        <span style="font-size:12px;font-family:var(--mono);font-weight:600">${typeof d.val==='number'?d.val+d.unit:d.val} <span style="font-size:10px;color:var(--ink3)">(${p}%)</span></span>
+      </div>
+      <div style="height:10px;background:var(--surface2);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${p}%;background:var(--purple-m);border-radius:3px;transition:width .5s"></div>
+      </div>
+      <div style="font-size:10px;color:var(--ink3);margin-top:3px">${total_lbl}</div>
+    </div>`;
+  }).join('');
+
+  // 月別P1商談数推移（全メンバー積み上げ）
+  const months = ['2025/08','2025/09','2025/10','2025/11','2025/12','2026/01','2026/02','2026/03'];
+  const MEMBER_COLORS = {
+    '中村 春香':'var(--blue-m)', '岡部 瑛美':'var(--teal-m)',
+    '栫 英輝':'var(--amber-m)', '福本 悠太':'var(--purple-m)',
+    '徳永 雄大':'rgba(255,255,255,0.3)',
+  };
+  const allMembers = sortMembers([...new Set(ROWS.map(r=>getMember(r)).filter(Boolean))]);
+
+  // 月別・メンバー別P1カウント
+  const monthlyP1 = {};
+  months.forEach(ym => {
+    monthlyP1[ym] = {};
+    allMembers.forEach(m => {
+      const cnt = ROWS.filter(r => getMember(r)===m && getYM(r)===ym && !getDealType(r).includes('継続')).length;
+      monthlyP1[ym][m] = cnt;
+    });
+    monthlyP1[ym]['_total'] = Object.values(monthlyP1[ym]).reduce((a,b)=>a+b,0);
+  });
+
+  const maxTotal = Math.max(...months.map(ym => monthlyP1[ym]['_total']), 1);
+  // 積み上げ棒グラフ
+  document.getElementById('exec-p1-trend').innerHTML = months.map(ym => {
+    const total = monthlyP1[ym]['_total'];
+    const totalH = Math.max(4, Math.round(total/maxTotal*100));
+    const isTransition = ym === '2026/02'; // Mgr転換後
+    const lbl = ym.replace(/20\d\d\//,'')+'月';
+
+    // セグメント（下から積み上げ）
+    let segs = '';
+    let cumH = 0;
+    allMembers.forEach(m => {
+      const cnt = monthlyP1[ym][m] || 0;
+      const h = Math.round(cnt/maxTotal*100);
+      if (h > 0) {
+        segs += `<div style="height:${h}px;background:${MEMBER_COLORS[m]||'var(--ink4)'};width:100%"></div>`;
+        cumH += h;
+      }
+    });
+
+    return `<div class="trend-col" style="position:relative">
+      ${isTransition ? '<div style="position:absolute;top:-18px;left:0;right:0;text-align:center;font-size:8px;color:var(--amber);font-weight:600">Mgr転換↓</div>' : ''}
+      <div style="width:100%;display:flex;flex-direction:column;justify-content:flex-end;height:${totalH}px;overflow:hidden;border-radius:3px 3px 0 0;${isTransition?'outline:2px solid var(--amber-m);outline-offset:1px':''}">
+        ${segs}
+      </div>
+      <div class="trend-val" style="top:-16px;color:var(--ink2)">${total}</div>
+      <div class="trend-lbl ${ym>='2026/02'?'cur':''}">${lbl}</div>
+    </div>`;
+  }).join('');
+
+  // レジェンド
+  document.getElementById('exec-p1-legend').innerHTML = allMembers.map(m =>
+    `<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${MEMBER_COLORS[m]||'var(--ink4)'};margin-right:3px"></span>${m.split(' ')[0]}${isMgr(m)?'(Mgr)':''}</span>`
+  ).join('');
+
+  // CKポートフォリオ積み上げ棒グラフ（受注日ベース）
+  const ckByMonth = {};
+  months.forEach(ym => {
+    ckByMonth[ym] = {shinki:0, kikokyaku:0, keizoku:0};
+    ROWS.filter(r => (getCloseDate(r)||getYM(r))===ym && getCurPhase(r)==='08-Closed' && !isMgr(getMember(r))).forEach(r => {
+      const tp = getDealType(r);
+      const ck = getCKAccurate(r);
+      if (tp.includes('継続')) ckByMonth[ym].keizoku += ck;
+      else if (tp.includes('既顧客')) ckByMonth[ym].kikokyaku += ck;
+      else ckByMonth[ym].shinki += ck;
+    });
+  });
+  const maxCK = Math.max(...months.map(ym => Object.values(ckByMonth[ym]).reduce((a,b)=>a+b,0)), 1);
+
+  document.getElementById('exec-ck-stack').innerHTML = months.map(ym => {
+    const d = ckByMonth[ym];
+    const total = d.shinki + d.kikokyaku + d.keizoku;
+    const hS = Math.max(total>0?2:0, Math.round(d.shinki/maxCK*100));
+    const hK = Math.max(total>0?2:0, Math.round(d.kikokyaku/maxCK*100));
+    const hC = Math.max(total>0?2:0, Math.round(d.keizoku/maxCK*100));
+    const isTransition = ym === '2026/02';
+    const lbl = ym.replace(/20\d\d\//,'')+'月';
+    const totalLbl = total > 0 ? '¥'+Math.round(total/10000)+'万' : '';
+    return `<div class="ck-col" style="position:relative">
+      <div style="position:absolute;top:${-(hS+hK+hC+18)}px;width:100%;text-align:center;font-size:9px;font-weight:600;color:var(--ink2)">${totalLbl}</div>
+      <div style="width:100%;display:flex;flex-direction:column;${isTransition?'outline:2px solid var(--amber-m);outline-offset:1px;border-radius:3px 3px 0 0':''}">
+        <div style="height:${hC}px;background:var(--purple-m)"></div>
+        <div style="height:${hK}px;background:var(--teal-m)"></div>
+        <div style="height:${hS}px;background:var(--blue);border-radius:${hK===0&&hC===0?'3px 3px 0 0':0}"></div>
+      </div>
+      <div class="ck-lbl ${ym>='2026/02'?'cur':''}">${lbl}</div>
+    </div>`;
+  }).join('');
+
+  // メンバー別月次P8テーブル（受注日ベース）
+  const mbrOnly = allMembers.filter(m=>!isMgr(m));
+  const head = document.getElementById('exec-p8-head');
+  head.innerHTML = '<th>メンバー</th>' + months.map(ym => {
+    const lbl = ym.replace(/20\d\d\//,'')+'月';
+    const isT = ym >= '2026/02';
+    return `<th style="${isT?'color:var(--amber);font-weight:700':''}${ym==='2026/02'?' border-left:2px solid var(--amber-m)':''}">${lbl}</th>`;
+  }).join('') + '<th>合計</th>';
+
+  // 売上・PK予算対比テーブル
+  const MONTHS_ALL = ['2025/08','2025/09','2025/10','2025/11','2025/12',
+                      '2026/01','2026/02','2026/03','2026/04','2026/05','2026/06','2026/07'];
+  const KIND_LABELS = { Actual:'実績', Fcst:'Fcst', Outlook:'Outlook', undefined:'実績' };
+  const budgetTbl = document.getElementById('exec-budget-tbl');
+  if (budgetTbl) {
+    budgetTbl.innerHTML = MONTHS_ALL.map(ym => {
+      const b = ELON_BUDGET[ym] || {};
+      const a = ELON_ACTUAL[ym] || {};
+      const kind = a.kind || 'Actual';
+      const isToday = ym === todayYM;
+      const salesAchv2 = b.sales && a.sales ? Math.round(a.sales/b.sales*100) : null;
+      const pkAchv2    = b.pk    && a.pk    ? Math.round(a.pk/b.pk*100)       : null;
+      const achvStyle = (v) => v === null ? '' : v >= 100 ? 'color:var(--teal-m);font-weight:600' : v >= 90 ? 'color:var(--amber);font-weight:600' : 'color:var(--red);font-weight:600';
+      const kindBadge = { Actual:'badge-actual', Fcst:'badge-fcst', Outlook:'badge-outlook' }[kind] || 'badge-actual';
+      return `<tr style="${isToday?'background:rgba(56,189,170,.06)':''}">
+        <td>${isToday?'<strong>':''}${ym}${isToday?'</strong>':''}</td>
+        <td><span class="${kindBadge}">${KIND_LABELS[kind]}</span></td>
+        <td class="nm">${b.sales ? '¥'+Math.round(b.sales/10000)+'万' : '—'}</td>
+        <td class="nm">${a.sales ? '¥'+Math.round(a.sales/10000)+'万' : '—'}</td>
+        <td class="nm" style="${achvStyle(salesAchv2)}">${salesAchv2 !== null ? salesAchv2+'%' : '—'}</td>
+        <td class="nm">${b.pk ? '¥'+Math.round(b.pk/10000)+'万' : '—'}</td>
+        <td class="nm">${a.pk ? '¥'+Math.round(a.pk/10000)+'万' : '—'}</td>
+        <td class="nm" style="${achvStyle(pkAchv2)}">${pkAchv2 !== null ? pkAchv2+'%' : '—'}</td>
+        <td class="nm">${b.pn || '—'}</td>
+        <td class="nm">${a.pn || '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // P8月別テーブル：上期はUPPER_FIXEDから受注数を按分（月平均）、下期はCSV
+  const upperMonths = ['2025/08','2025/09','2025/10','2025/11','2025/12','2026/01'];
+  const lowerMonths_p8 = months.filter(m => m >= '2026/02');
+
+  document.getElementById('exec-p8-body').innerHTML = [
+    ...mbrOnly.map(m => {
+      const upperP8Total = UPPER_FIXED.funnel[m]?.p8 || 0;
+      const upperAvg = Math.round(upperP8Total / 6 * 10) / 10;
+      const vals = months.map(ym => {
+        if (ym <= '2026/01') {
+          // 上期はUPPER_FIXEDの月平均で表示（月別内訳はSSにないため）
+          return upperP8Total > 0 ? '~' + upperAvg : 0;
+        }
+        return ROWS.filter(r=>{
+          const closeYM = getCloseDate(r)||getYM(r);
+          return getMember(r)===m && closeYM===ym && getCurPhase(r)==='08-Closed' && !getDealType(r).includes('継続');
+        }).length;
+      });
+      const total = vals.reduce((a,b)=>a+b,0);
+      return `<tr><td>${m}</td>${vals.map((v,i)=>{
+        const isT = months[i] >= '2026/02';
+        return `<td style="font-family:var(--mono);text-align:center;${isT?'border-left:'+(months[i]==='2026/02'?'2px solid var(--amber-m)':'none'):''}${v===0?';color:var(--ink4)':v>=3?';font-weight:600;color:var(--teal-m)':''}">${v||'—'}</td>`;
+      }).join('')}<td style="font-weight:600;font-family:var(--mono);text-align:center">${total}</td></tr>`;
+    }),
+    // チーム合計行
+    `<tr class="avg-row"><td>チーム計</td>${months.map((ym,i)=>{
+      const v = mbrOnly.reduce((s,m)=>s+ROWS.filter(r=>{
+        const closeYM = getCloseDate(r)||getYM(r);
+        return getMember(r)===m && closeYM===ym && getCurPhase(r)==='08-Closed' && !getDealType(r).includes('継続');
+      }).length, 0);
+      const isT = ym >= '2026/02';
+      return `<td style="font-family:var(--mono);text-align:center;font-weight:600;${isT?'color:var(--amber)':''}${ym==='2026/02'?';border-left:2px solid var(--amber-m)':''}">${v}</td>`;
+    }).join('')}<td style="font-weight:700;font-family:var(--mono);text-align:center">${mbrOnly.reduce((s,m)=>s+ROWS.filter(r=>getMember(r)===m&&getCurPhase(r)==='08-Closed'&&!getDealType(r).includes('継続')).length,0)}</td></tr>`,
+  ].join('');
+}
+
+
+function renderSettingsHighlight() {
+  // 今月の予算行をハイライト・デフォルト値を今月予算で更新
+  const todayYM = getTodayYM();
+  const b = ELON_BUDGET[todayYM];
+  if (!b) return;
+  // デフォルト値を今月予算に設定（未入力の場合のみ）
+  const salesEl = document.getElementById('tgt-sales');
+  const pkEl    = document.getElementById('tgt-pk');
+  if (salesEl && !salesEl._modified) salesEl.value = Math.round(b.sales/10000);
+  if (pkEl    && !pkEl._modified)    pkEl.value    = Math.round(b.pk/10000);
+}
+
+// ============================================================
+// SALES MANAGEMENT（売上管理）
+// ============================================================
+function renderSales() {
+  const todayYM  = getTodayYM();
+  if (!ELON_BUDGET || !ELON_ACTUAL) return;
+  const months   = Object.keys(ELON_BUDGET).sort();
+  const KINDS    = {"2025/08":"Actual","2025/09":"Actual","2025/10":"Actual","2025/11":"Actual","2025/12":"Actual","2026/01":"Actual","2026/02":"Actual","2026/03":"Fcst","2026/04":"Fcst","2026/05":"Fcst","2026/06":"Outlook","2026/07":"Outlook"};
+
+  // 今月のKPIカード
+  const ym = todayYM;
+  const salesB = ELON_BUDGET[ym] || 0;
+  const salesA = ELON_ACTUAL[ym]  || 0;
+  const pkB    = (ELON_BUDGET[ym]||{}).pk || 0;
+  const pkA    = (ELON_ACTUAL[ym]||{}).pk || 0;
+  const pnB    = (ELON_BUDGET[ym]||{}).pn || 0;
+  const pnA    = (ELON_ACTUAL[ym]||{}).pn || 0;
+  const salesRate = salesB > 0 ? Math.round(salesA/salesB*100) : 0;
+  const pkRate    = pkB    > 0 ? Math.round(pkA/pkB*100)       : 0;
+  const pnDiff    = pnA - pnB;
+
+  const kpiCards = [
+    {label:`売上達成率（${ym}）`, val:`${salesRate}%`, sub:`予算¥${Math.round(salesB/10000)}万 / 実績¥${Math.round(salesA/10000)}万`, diff: salesA-salesB, c: salesRate>=100?'ct':'ca'},
+    {label:`PK達成率（${ym}）`,   val:`${pkRate}%`,    sub:`予算¥${Math.round(pkB/10000)}万 / 実績¥${Math.round(pkA/10000)}万`,    diff: pkA-pkB,    c: pkRate>=100?'ct':'ca'},
+    {label:`PN稼働数（${ym}）`,   val:`${pnA}件`,      sub:`予算${pnB}件 / 差${pnDiff>=0?'+':''}${pnDiff}件`,                      diff: pnDiff,     c: pnDiff>=0?'ct':'ca'},
+  ];
+  document.getElementById('sales-kpi-row').innerHTML = kpiCards.map(d => {
+    const diffStr = d.diff !== undefined ? (d.diff >= 0 ? `▲ ¥${Math.round(Math.abs(d.diff)/10000)}万` : `▼ ¥${Math.round(Math.abs(d.diff)/10000)}万`) : '';
+    const diffC   = d.diff >= 0 ? 'var(--teal)' : 'var(--red)';
+    return `<div class="kc ${d.c}">
+      <div class="kc-lbl">${d.label}</div>
+      <div class="kc-val" style="font-size:22px">${d.val}</div>
+      <div class="kc-sub">${d.sub}</div>
+      ${d.diff !== undefined && !d.label.includes('PN') ? `<div style="font-size:11px;font-weight:600;color:${diffC};margin-top:4px">${diffStr}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // 売上推移グラフ（棒グラフ＋予算ライン）
+  const maxSales = Math.max(...months.map(m => Math.max((ELON_BUDGET[m]||{}).sales||0, (ELON_ACTUAL[m]||{}).sales||0)), 1);
+  document.getElementById('sales-trend-chart').innerHTML = months.map(m => {
+    const bgt = (ELON_BUDGET[m]||{}).sales || 0;
+    const act = (ELON_ACTUAL[m]||{}).sales || 0;
+    const hA  = Math.max(4, Math.round(act/maxSales*100));
+    const hB  = Math.max(1, Math.round(bgt/maxSales*100));
+    const isCur = m === todayYM;
+    const isFuture = m > todayYM;
+    const lbl = m.replace(/20\d\d\//,'')+'月';
+    const rate = bgt > 0 ? Math.round(act/bgt*100) : 0;
+    const rateC = rate >= 100 ? 'var(--teal)' : rate >= 85 ? 'var(--amber)' : 'var(--red)';
+    return `<div class="ck-col" style="position:relative">
+      <div style="position:absolute;top:-20px;width:100%;text-align:center;font-size:8px;font-weight:600;color:${rateC}">${rate}%</div>
+      <!-- 予算ライン -->
+      <div style="position:absolute;bottom:${hB}px;left:0;right:0;height:2px;background:var(--ink3);opacity:0.5"></div>
+      <!-- 実績棒 -->
+      <div style="height:${hA}px;background:${isFuture?'var(--teal-l)':isCur?'var(--teal-m)':'var(--teal)'};border-radius:3px 3px 0 0;width:100%;${isCur?'outline:2px solid var(--teal);outline-offset:1px':''}"></div>
+      <div class="ck-lbl ${isCur?'cur':''}">${lbl}</div>
+    </div>`;
+  }).join('');
+
+  // PK推移グラフ
+  const maxPK = Math.max(...months.map(m => Math.max((ELON_BUDGET[m]||{}).pk||0||0, (ELON_ACTUAL[m]||{}).pk||0||0)), 1);
+  document.getElementById('pk-trend-chart').innerHTML = months.map(m => {
+    const bgt = (ELON_BUDGET[m]||{}).pk||0 || 0;
+    const act = (ELON_ACTUAL[m]||{}).pk||0 || 0;
+    const hA  = Math.max(4, Math.round(act/maxPK*80));
+    const hB  = Math.max(1, Math.round(bgt/maxPK*80));
+    const isCur = m === todayYM;
+    const lbl = m.replace(/20\d\d\//,'')+'月';
+    const rate = bgt > 0 ? Math.round(act/bgt*100) : 0;
+    const rateC = rate >= 100 ? 'var(--teal)' : rate >= 85 ? 'var(--amber)' : 'var(--red)';
+    return `<div class="trend-col" style="position:relative">
+      <div style="position:absolute;bottom:${hB}px;left:0;right:0;height:2px;background:var(--ink3);opacity:0.5;z-index:1"></div>
+      <div class="trend-bar" style="height:${hA}px;background:${isCur?'var(--purple-m)':'var(--purple)'};opacity:${m>todayYM?0.4:1}">
+        <span class="trend-val" style="color:${rateC};font-size:8px">${rate}%</span>
+      </div>
+      <div class="trend-lbl ${isCur?'cur':''}">${lbl.replace('月','')}</div>
+    </div>`;
+  }).join('');
+
+  // PN推移グラフ
+  const maxPN = Math.max(...months.map(m => Math.max((ELON_BUDGET[m]||{}).pn||0||0, (ELON_ACTUAL[m]||{}).pn||0||0)), 1);
+  document.getElementById('pn-trend-chart').innerHTML = months.map(m => {
+    const bgt = (ELON_BUDGET[m]||{}).pn||0 || 0;
+    const act = (ELON_ACTUAL[m]||{}).pn||0 || 0;
+    const hA  = Math.max(4, Math.round(act/maxPN*80));
+    const hB  = Math.max(1, Math.round(bgt/maxPN*80));
+    const isCur = m === todayYM;
+    const diff = act - bgt;
+    const lbl = m.replace(/20\d\d\//,'')+'月';
+    return `<div class="trend-col" style="position:relative">
+      <div style="position:absolute;bottom:${hB}px;left:0;right:0;height:2px;background:var(--ink3);opacity:0.5;z-index:1"></div>
+      <div class="trend-bar" style="height:${hA}px;background:${isCur?'var(--amber-m)':'var(--amber)'};opacity:${m>todayYM?0.4:1}">
+        <span class="trend-val" style="font-size:8px;color:${diff>=0?'var(--teal)':'var(--red)'}">${diff>=0?'+':''}${diff}</span>
+      </div>
+      <div class="trend-lbl ${isCur?'cur':''}">${lbl.replace('月','')}</div>
+    </div>`;
+  }).join('');
+
+  // 詳細テーブル
+  document.getElementById('sales-detail-tbl').innerHTML = months.map(m => {
+    const salesB2 = ELON_BUDGET[m] || 0;
+    const salesA2 = ELON_ACTUAL[m] || 0;
+    const pkB2    = (ELON_BUDGET[m]||{}).pk||0    || 0;
+    const pkA2    = (ELON_ACTUAL[m]||{}).pk||0    || 0;
+    const pnB2    = (ELON_BUDGET[m]||{}).pn||0    || 0;
+    const pnA2    = (ELON_ACTUAL[m]||{}).pn||0    || 0;
+    const sR = salesB2 > 0 ? Math.round(salesA2/salesB2*100) : 0;
+    const pR = pkB2    > 0 ? Math.round(pkA2/pkB2*100)       : 0;
+    const kind = KINDS[m] || '';
+    const isCur = m === todayYM;
+    const rateStyle = (r) => `color:${r>=100?'var(--teal)':r>=85?'var(--amber)':'var(--red)'};font-weight:${r<85?700:500}`;
+    const isFuture = m > todayYM;
+    return `<tr style="${isCur?'background:rgba(56,189,170,.06)':''}${isFuture?'color:var(--ink3)':''}">
+      <td>${isCur?`<strong>${m}</strong>`:m}</td>
+      <td><span class="badge-${kind.toLowerCase()||'actual'}">${kind}</span></td>
+      <td class="nm">¥${Math.round(salesB2/10000).toLocaleString()}万</td>
+      <td class="nm" style="${isFuture?'':'font-weight:500'}">¥${Math.round(salesA2/10000).toLocaleString()}万</td>
+      <td class="nm" style="${rateStyle(sR)}">${sR}%</td>
+      <td class="nm">¥${Math.round(pkB2/10000).toLocaleString()}万</td>
+      <td class="nm">¥${Math.round(pkA2/10000).toLocaleString()}万</td>
+      <td class="nm" style="${rateStyle(pR)}">${pR}%</td>
+      <td class="nm">${pnB2}件</td>
+      <td class="nm">${pnA2}件</td>
+      <td class="nm" style="color:${pnA2-pnB2>=0?'var(--teal)':'var(--red)'};font-weight:600">${pnA2-pnB2>=0?'+':''}${pnA2-pnB2}件</td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// RISK ANALYSIS（継続リスク分析）
+// ============================================================
+function getContractEnd(r) { return (getColVal(r,'contractEnd')||'').substring(0,7); }
+function getContractStart(r) { return (getColVal(r,'contractStart')||'').substring(0,7); }
+
+function addMonths(ym, n) {
+  const [y,m] = ym.split('/').map(Number);
+  let ny = y, nm = m + n;
+  while (nm > 12) { ny++; nm -= 12; }
+  while (nm < 1)  { ny--; nm += 12; }
+  return `${ny}/${String(nm).padStart(2,'0')}`;
+}
+
+function renderRisk() {
+  const todayYM = getTodayYM();
+  const nextYM  = addMonths(todayYM, 1);
+  const next2YM = addMonths(todayYM, 2);
+  const prev1YM = addMonths(todayYM, -1);
+
+  // 稼働終了案件（P8受注 × 契約終了日あり）
+  const endRows = ROWS.filter(r =>
+    getCurPhase(r) === '08-Closed' && getContractEnd(r)
+  );
+
+  // 月別終了集計
+  const endByYM = {};
+  endRows.forEach(r => {
+    const ym = getContractEnd(r);
+    const m  = getMember(r);
+    if (!endByYM[ym]) endByYM[ym] = {count:0, ck:0, members:{}};
+    endByYM[ym].count++;
+    endByYM[ym].ck += getCKAccurate(r);
+    endByYM[ym].members[m] = (endByYM[ym].members[m]||0)+1;
+  });
+
+  // P5-7 見込案件（Mgr除く）
+  const p57Rows = ROWS.filter(r => {
+    const cur = getCurPhase(r);
+    return ['05-Negotiating $$ & Mutual Plan',
+            '06-Finalizing Closure','07-Pending'].includes(cur)
+      && !isMgr(getMember(r));
+  });
+  const p57CK = p57Rows.reduce((s,r) => s + Math.max(0, getCKAccurate(r)), 0);
+
+  // 直近2ヶ月の新規・既顧客受注CK
+  const recentNewRows = ROWS.filter(r => {
+    const ym = getCloseDate(r) || getYM(r);
+    const tp = getDealType(r);
+    return (ym === todayYM || ym === prev1YM)
+      && getCurPhase(r) === '08-Closed'
+      && !tp.includes('継続') && !isMgr(getMember(r));
+  });
+  const newCK = recentNewRows.reduce((s,r) => s + getCKAccurate(r), 0);
+
+  // KPIカード
+  const thisEnd = endByYM[todayYM] || {count:0, ck:0, members:{}};
+  const nextEnd = endByYM[nextYM]  || {count:0, ck:0, members:{}};
+  const coverRate = thisEnd.ck > 0 ? Math.round(newCK / thisEnd.ck * 100) : 100;
+
+  $('risk-this-count', thisEnd.count);
+  $('risk-this-ck',    `CK ¥${Math.round(thisEnd.ck/10000)}万`);
+  $('risk-next-count', nextEnd.count);
+  $('risk-next-ck',    `CK ¥${Math.round(nextEnd.ck/10000)}万`);
+  $('risk-cover',      coverRate);
+  $('risk-p57',        p57Rows.length);
+  $('risk-p57-ck',     `CK ¥${Math.round(p57CK/10000)}万`);
+
+  // 終了月別グラフ（今月〜6ヶ月先）
+  const months6 = Array.from({length:6}, (_,i) => addMonths(todayYM, i));
+  const maxCount = Math.max(...months6.map(ym => (endByYM[ym]||{}).count||0), 1);
+  document.getElementById('risk-end-chart').innerHTML = months6.map(ym => {
+    const d = endByYM[ym] || {count:0, ck:0};
+    const h = Math.max(d.count?6:0, Math.round(d.count/maxCount*80));
+    const isCur = ym === todayYM;
+    const lbl = ym.replace(/20\d\d\//,'') + '月';
+    return `<div class="trend-col">
+      <div class="trend-bar" style="height:${h}px;background:${isCur?'var(--amber-m)':'var(--red-m)'};opacity:${isCur?1:0.65}">
+        <span class="trend-val" style="color:var(--red-m)">${d.count||''}</span>
+      </div>
+      <div class="trend-lbl ${isCur?'cur':''}">${lbl}${d.ck>0?`<br><span style="font-size:8px;color:var(--ink3)">¥${Math.round(d.ck/10000)}万</span>`:''}</div>
+    </div>`;
+  }).join('');
+
+  // 直近終了案件テーブル（今月〜再来月）
+  const nearEndRows = ROWS.filter(r => {
+    const ym = getContractEnd(r);
+    return getCurPhase(r)==='08-Closed' && ym>=todayYM && ym<=next2YM;
+  }).sort((a,b) => getContractEnd(a).localeCompare(getContractEnd(b)));
+
+  document.getElementById('risk-end-table').innerHTML = nearEndRows.length
+    ? nearEndRows.map(r => {
+        const ym = getContractEnd(r);
+        const isCur = ym === todayYM;
+        const name = (r[1]||'').replace(/^\d{8}_/,'').substring(0,26);
+        return `<tr style="${isCur?'background:rgba(229,144,10,.06)':''}">
+          <td>${getMember(r).split(' ')[0]}</td>
+          <td style="font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r[1]||''}">${name}</td>
+          <td><span style="font-weight:600;color:${isCur?'var(--amber)':'var(--ink2)'}">${ym}</span></td>
+          <td style="font-family:var(--mono);font-size:11px">¥${Math.round(getCKAccurate(r)/10000)}万</td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--ink3);padding:16px">終了予定案件なし</td></tr>';
+
+  // P5-7テーブル
+  const PHASE_LABELS = {
+    '05-Negotiating $$ & Mutual Plan':'P5 口頭合意',
+    '06-Finalizing Closure':'P6 契約前',
+    '07-Pending':'P7 契約手続',
+  };
+  document.getElementById('risk-p57-table').innerHTML = p57Rows.length
+    ? p57Rows.map(r => {
+        const ck = Math.max(0, getCKAccurate(r));
+        const name = (r[1]||'').replace(/^\d{8}_/,'').substring(0,25);
+        return `<tr>
+          <td>${getMember(r).split(' ')[0]}</td>
+          <td style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r[1]||''}">${name}</td>
+          <td><span style="font-size:10px;padding:2px 6px;border-radius:6px;background:var(--teal-l);color:var(--teal)">${PHASE_LABELS[getCurPhase(r)]||'P5-7'}</span></td>
+          <td style="font-family:var(--mono);font-size:11px">¥${Math.round(ck/10000)}万</td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="4" style="text-align:center;color:var(--ink3);padding:16px">見込案件なし</td></tr>';
+
+  // メンバー別リスクサマリー
+  const members = sortMembers([...new Set(ROWS.map(r=>getMember(r)).filter(Boolean))]).filter(m=>!isMgr(m));
+  document.getElementById('risk-member-table').innerHTML = members.map(m => {
+    const thisM  = endByYM[todayYM]?.members?.[m] || 0;
+    const nextM  = endByYM[nextYM]?.members?.[m]  || 0;
+    const p57M   = p57Rows.filter(r=>getMember(r)===m).length;
+    const p57CKM = p57Rows.filter(r=>getMember(r)===m).reduce((s,r)=>s+Math.max(0,getCKAccurate(r)),0);
+    const newCKM = recentNewRows.filter(r=>getMember(r)===m).reduce((s,r)=>s+getCKAccurate(r),0);
+    const risk   = thisM>3?'⚠ 高':thisM>1?'△ 中':'✓ 低';
+    const riskC  = thisM>3?'var(--red)':thisM>1?'var(--amber)':'var(--teal)';
+    const [rbg]  = thisM>3?['var(--red-l)']:thisM>1?['var(--amber-l)']:['var(--green-l)'];
+    return `<tr>
+      <td>${m}</td>
+      <td style="text-align:center;font-weight:600;color:${thisM>2?'var(--amber)':'var(--ink)'}">${thisM}件</td>
+      <td style="text-align:center;color:var(--ink2)">${nextM}件</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:11px">${p57M}件 / ¥${Math.round(p57CKM/10000)}万</td>
+      <td style="text-align:center;font-family:var(--mono);font-size:11px">¥${Math.round(newCKM/10000)}万</td>
+      <td style="text-align:center"><span style="font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;background:${rbg};color:${riskC}">${risk}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ============================================================
+// SIMULATOR
+// ============================================================
+function upd() {
+  const r1=+document.getElementById('s1').value,r2=+document.getElementById('s2').value,r3=+document.getElementById('s3').value;
+  const goal=parseInt(document.getElementById('goal-in').value)||12;
+  $('sv1',r1+'%');$('sv2',r2+'%');$('sv3',r3+'%');$('sim-goal-lbl',goal+'件');$('sim-g',goal+' 件');$('sfvn-g',goal);
+  const nP4=Math.ceil(goal/(r3/100)),nP2=Math.ceil(nP4/(r2/100)),nP1=Math.ceil(nP2/(r1/100));
+  $('sn-p4',nP4+' 件');$('sn-p2',nP2+' 件');
+  const p1el=document.getElementById('sn-p1'); p1el.textContent=nP1+' 件';
+  const fRows=getFilteredRows(),stats=buildMemberStats(fRows);
+  const selMbrUpd = document.getElementById('member-filter')?.value || 'all';
+  const members = selMbrUpd !== 'all'
+    ? Object.keys(stats)
+    : Object.keys(stats).filter(m=>!isMgr(m));
+  const months=getTgtMonths();
+  const actP1=members.reduce((s,m)=>s+stats[m].p1,0);
+  const actP1m=Math.round(actP1/months);
+  const pl=document.getElementById('pace-lbl');
+  if(nP1<=actP1m){p1el.style.color='var(--teal-m)';pl.textContent='現在の商談数で達成可能 ✓';pl.style.color='var(--teal-m)';}
+  else if(nP1<=actP1m*1.3){p1el.style.color='var(--amber-m)';pl.textContent=`現比 +${Math.round((nP1/actP1m-1)*100)}% 増加が必要`;pl.style.color='var(--amber-m)';}
+  else{p1el.style.color='var(--red-m)';pl.textContent=`現比 +${Math.round((nP1/actP1m-1)*100)}% 大幅増加が必要`;pl.style.color='var(--red-m)';}
+  const maxN=nP1||1;
+  document.getElementById('sfvb1').style.height='64px';$('sfvn1',nP1);
+  document.getElementById('sfvb2').style.height=Math.max(16,Math.round(nP2/maxN*64))+'px';$('sfvn2',nP2);
+  document.getElementById('sfvb3').style.height=Math.max(16,Math.round(nP4/maxN*64))+'px';$('sfvn3',nP4);
+}
+
+// ============================================================
+// NAV
+// ============================================================
+let CMP_MODE = 'hh'; // 期間比較モード
+
+const PAGE_INFO = {
+  funnel:  ['ファネル分析',  'P1〜P8 フェーズ移行率・ボトルネック特定'],
+  trend:   ['月別推移',      '月次トレンド・メンバー別推移'],
+  member:  ['担当者別詳細',  '個人ごとのファネル・DEAD・チャネル分析'],
+  dead:    ['DEAD分析',      '失注理由・フェーズ別DEAD'],
+  channel: ['チャネル分析',  'FS vs IS 転換率比較'],
+  kgi:     ['KGI / KPI',    '目標ツリーと現状マッピング'],
+  sim:     ['目標逆算',      '必要商談数の逆算シミュレーション'],
+  gauge:   ['達成メーター',  '指標達成率をゲージで確認'],
+  compare: ['期間比較',      '上期vs下期・先月vs今月の比較分析'],
+  cktrend: ['CK推移',        '新規・既顧客別CK金額の月別推移'],
+  risk:    ['継続リスク分析', '契約終了見込み・稼働減リスクの把握'],
+  exec:    ['経営報告', '上期vs下期・徳永影響分析・CKポートフォリオ'],
+  sales:   ['売上管理', '売上・PK・PN予算対比（PNPLシートより）'],
+  settings:['目標値設定',    '目標値・集計期間の設定'],
+};
+function sw(t) {
+  const keys=Object.keys(PAGE_INFO);
+  document.querySelectorAll('.ni').forEach((el,i)=>el.classList.toggle('on',keys[i]===t));
+  document.querySelectorAll('.mob-nav-item').forEach((el,i)=>{
+    const mkeys=['funnel','trend','member','dead','sim'];
+    el.classList.toggle('on',mkeys[i]===t);
+  });
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('on'));
+  document.getElementById('panel-'+t).classList.add('on');
+  $('pg-title',PAGE_INFO[t][0]);
+  document.getElementById('pg-sub').textContent = getPeriodLabel();
+  if(t==='member') renderMemberPanel();
+  if(t==='gauge')   renderGauge();
+  if(t==='compare') renderCompare();
+  if(t==='cktrend') renderCkTrend();
+  if(t==='risk')    renderRisk();
+  if(t==='exec')    renderExec();
+  if(t==='sales')   renderSales();
+  if(t==='settings') renderSettingsHighlight();
+  closeSb();
+}
+
+// setCmpMode
+function setCmpMode(mode, el) {
+  CMP_MODE = mode;
+  document.querySelectorAll('.ptab').forEach(t => t.classList.remove('on'));
+  if (el) el.classList.add('on');
+  renderCompare();
+}
+
+// ============================================================
+// SIDEBAR (mobile)
+// ============================================================
+function toggleSb(){ document.getElementById('sidebar').classList.toggle('open'); document.getElementById('sb-overlay').classList.toggle('on'); }
+function closeSb(){ document.getElementById('sidebar').classList.remove('open'); document.getElementById('sb-overlay').classList.remove('on'); }
+
+// ============================================================
+// CSV
+// ============================================================
+// ============================================================
+// CSV COLUMN AUTO-DETECTION
+// ============================================================
+// ヘッダーから列インデックスを自動判定
+// → 列の順番が変わっても対応できる
+const COL_KEYWORDS = {
+  member:       ['主担当者','担当者','owner','オーナー'],
+  lastPhase:    ['最終到達フェーズ','最終フェーズ','last.*phase','最終到達'],
+  curPhase:     ['^フェーズ$','(?<!到達)フェーズ','(?<!最終)フェーズ','stagename','phase'],
+  date:         ['初回アポイント日','アポイント日','アポ日'],
+  closeDate:    ['受注予定日','受注日','受注.*日','close.*date','完了日'],
+  mendanDate:   ['面談日','面談実施日','interview.*date'],
+  dealType:     ['新規/継続','新規．継続','種別'],
+  channel:      ['施策区分_2','施策区分','channel'],
+  ck:           ['^ck$','粗利'],
+  dealCategory: ['案件種別'],
+  totalBill:    ['総請求額','total.*bill','総請求'],
+  totalPay:     ['総支払額','total.*pay','総支払'],
+  monthlyBill:  ['月額.*請求','月額.*顧客'],
+  lostReason:   ['失注理由','クローズ理由','lost.*reason','dead理由','dead.*理由'],
+  recycle:      ['リサイクル'],
+  contractEnd:  ['契約終了日','contract.*end','end.*date'],
+  contractStart:['契約開始日','contract.*start'],
+};
+
+function detectColumns(headerRow) {
+  const h = headerRow.map(c => c.toLowerCase().trim());
+  const find = (keywords, excludeIdx = -1) => {
+    for (const kw of keywords) {
+      try {
+        const re = new RegExp(kw, 'i');
+        const idx = h.findIndex((c, i) => i !== excludeIdx && re.test(c));
+        if (idx >= 0) return idx;
+      } catch(e) {
+        // 正規表現エラーは無視
+        const idx = h.findIndex((c, i) => i !== excludeIdx && c.includes(kw.toLowerCase()));
+        if (idx >= 0) return idx;
+      }
+    }
+    return -1;
+  };
+  const lastPhaseIdx = find(COL_KEYWORDS.lastPhase);
+  // curPhase は lastPhase と異なる列を探す
+  const curPhaseIdx  = find(COL_KEYWORDS.curPhase, lastPhaseIdx);
+  return {
+    member:       find(COL_KEYWORDS.member),
+    lastPhase:    lastPhaseIdx,
+    curPhase:     curPhaseIdx >= 0 ? curPhaseIdx : lastPhaseIdx,
+    date:         find(COL_KEYWORDS.date),
+    closeDate:    find(COL_KEYWORDS.closeDate),
+    mendanDate:   find(COL_KEYWORDS.mendanDate),
+    dealType:     find(COL_KEYWORDS.dealType),
+    channel:      find(COL_KEYWORDS.channel),
+    ck:           find(COL_KEYWORDS.ck),
+    dealCategory: find(COL_KEYWORDS.dealCategory),
+    totalBill:    find(COL_KEYWORDS.totalBill),
+    totalPay:     find(COL_KEYWORDS.totalPay),
+    monthlyBill:  find(COL_KEYWORDS.monthlyBill),
+    lostReason:   find(COL_KEYWORDS.lostReason),
+    recycle:      find(COL_KEYWORDS.recycle),
+    contractEnd:  find(COL_KEYWORDS.contractEnd),
+    contractStart:find(COL_KEYWORDS.contractStart),
+  };
+}
+
+let COL_MAP = null; // 現在のCSVの列マップ
+
+// CSVの種類を判定
+// 受注管理CSV: ヘッダーに「副担当者_所属」が含まれる
+function detectCSVType(headerCells) {
+  const h = headerCells.map(c => c.toLowerCase().trim());
+  if (h.some(c => c.includes('副担当者'))) return 'juchu'; // 受注管理CSV
+  return 'funnel'; // ファネル分析CSV（デフォルト）
+}
+
+let CSV_TYPE = 'funnel'; // 現在のCSVタイプ
+let COL_MAP_JUCHU = null; // 受注管理CSV用列マップ
+
+function parseCSVText(text) {
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headerLine = lines[0];
+  const headerCells = parseLine(headerLine);
+  
+  const csvType = detectCSVType(headerCells);
+  
+  if (csvType === 'juchu') {
+    // 受注管理CSV
+    CSV_TYPE = 'juchu';
+    // 列マップを設定（受注管理CSV固有）
+    COL_MAP_JUCHU = {
+      member:       headerCells.findIndex(h => h.trim() === '主担当者'),
+      name:         0,  // 案件名
+      phase:        1,  // フェーズ
+      dealType:     2,  // 新規／継続
+      closeDate:    3,  // 受注予定日・受注日
+      contractStart:4,  // 契約開始日
+      contractEnd:  5,  // 契約終了日
+      ck:           6,  // CK
+      channel:      7,  // 施策区分_2
+      date:         9,  // 初回アポイント日
+    };
+    const parsed = lines.slice(1).map(parseLine).filter(r => r.length >= 6);
+    const seen = new Set();
+    return parsed.filter(r => { const k=r.join('|'); if(seen.has(k))return false; seen.add(k); return true; });
+  } else {
+    // ファネル分析CSV（デフォルト）
+    CSV_TYPE = 'funnel';
+    COL_MAP = detectColumns(headerCells);
+    const parsed = lines.slice(1).map(parseLine).filter(r => r.length >= 3 && r[COL_MAP.member >= 0 ? COL_MAP.member : 0]);
+    const seen = new Set();
+    return parsed.filter(r => { const k=r.join('|'); if(seen.has(k))return false; seen.add(k); return true; });
+  }
+}
+
+function parseLine(line) {
+  const cells = []; let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') { inQ = !inQ; }
+    else if (line[i] === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+    else { cur += line[i]; }
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+
+// ヘルパー: 列マップを使って値を取得（旧コードとの互換性）
+function getColVal(row, key) {
+  if (!COL_MAP) return row[0] || '';
+  const idx = COL_MAP[key];
+  return idx >= 0 && idx < row.length ? row[idx] : '';
+}
+
+// ============================================================
+// FILE LOAD（複数ファイル対応）
+// ============================================================
+function loadFiles(files) {
+  if (!files || files.length === 0) return;
+  const fileArray = Array.from(files);
+  let loaded = 0;
+  let allRows = [];
+  let firstName = '';
+
+  fileArray.forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      let text = e.target.result;
+      const rows = parseCSVText(text);
+      allRows = allRows.concat(rows);
+      if (i === 0) firstName = file.name.substring(0, 18);
+      loaded++;
+      if (loaded === fileArray.length) {
+        // 全ファイル読み込み完了
+        ROWS = allRows;
+        IS_LIVE = true;
+        document.getElementById('data-badge').className = 'data-badge badge-live';
+        document.getElementById('data-badge').textContent = 'LIVE';
+        const label = fileArray.length > 1
+          ? `✓ ${fileArray.length}ファイル（計${allRows.length}件）`
+          : `✓ ${firstName}`;
+        document.getElementById('dz-status').textContent = label;
+        ACTIVE_MEMBER_DETAIL = null;
+        renderAll();
+      }
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+function parseRows(text) {
+  ROWS = parseCSVText(text);
+}
+
+// ============================================================
+// DEMO DATA
+// ============================================================
+function loadDemo() {
+  const DEMO=[
+    {name:'中村 春香',p1:91,p2:56,p3:26,p4:23,p8:14,ck:16403000,fsR:0.34},
+    {name:'岡部 瑛美',p1:96,p2:30,p3:19,p4:17,p8:11,ck:13992500,fsR:0.20},
+    {name:'徳永 雄大',p1:112,p2:54,p3:38,p4:21,p8:8,ck:6730000,fsR:0.42},
+    {name:'栫 英輝',  p1:133,p2:56,p3:30,p4:30,p8:19,ck:16311300,fsR:0.24},
+    {name:'福本 悠太',p1:120,p2:43,p3:29,p4:23,p8:13,ck:17622494,fsR:0.15},
+  ];
+  // 月別分布（実データに近い分布）
+  const MONTHS_DIST = ['2025/08','2025/09','2025/10','2025/11','2025/12','2026/01','2026/02','2026/03'];
+  const MONTH_W =    [0.14,     0.17,     0.21,     0.13,     0.14,     0.13,     0.06,     0.02];
+  ROWS=[];
+  DEMO.forEach(m=>{
+    const ckPerP8 = Math.round(m.ck/m.p8);
+    // P8到達
+    for(let i=0;i<m.p8;i++){
+      const ymIdx=weightedRandom(MONTH_W),ym=MONTHS_DIST[ymIdx];
+      const isFS=Math.random()<m.fsR;
+      ROWS.push([m.name,'','08-Closed','08-Closed',ym+'/15',i%3===0?'既顧客新規案件':'新規案件',isFS?'FS/新規':'IS/既存','','',String(ckPerP8)]);
+    }
+    // P4→DEAD
+    const p4Dead=m.p4-m.p8;
+    for(let i=0;i<p4Dead;i++){
+      const ym=MONTHS_DIST[weightedRandom(MONTH_W)];
+      ROWS.push([m.name,'','04-Confirming Value With Power','DEAD-Lost',ym+'/10','新規案件','FS/新規','','','0']);
+    }
+    // P3→DEAD
+    const p3Dead=m.p3-m.p4;
+    for(let i=0;i<p3Dead;i++){
+      const ym=MONTHS_DIST[weightedRandom(MONTH_W)];
+      ROWS.push([m.name,'','03-Validating Benefits & Value','DEAD-No Opportunity',ym+'/08','新規案件','IS/既存','','','0']);
+    }
+    // P2→DEAD
+    const p2Dead=m.p2-m.p3;
+    for(let i=0;i<p2Dead;i++){
+      const ym=MONTHS_DIST[weightedRandom(MONTH_W)];
+      ROWS.push([m.name,'','02-Determining Problem,Impact,Ideal','DEAD-No Opportunity',ym+'/05','新規案件','IS/既存','','','0']);
+    }
+    // P1→DEAD
+    const p1Dead=m.p1-m.p2;
+    for(let i=0;i<p1Dead;i++){
+      const ym=MONTHS_DIST[weightedRandom(MONTH_W)];
+      const deadType=i%4===0?'DEAD-Lost':'DEAD-No Opportunity';
+      ROWS.push([m.name,'','01-Identifying an Opportunity',deadType,ym+'/03','新規案件',Math.random()<m.fsR?'FS/新規':'IS/既存','','','0']);
+    }
+  });
+}
+function weightedRandom(weights) {
+  const total=weights.reduce((a,b)=>a+b,0);
+  let r=Math.random()*total;
+  for(let i=0;i<weights.length;i++){ r-=weights[i]; if(r<=0) return i; }
+  return weights.length-1;
+}
+
+// ============================================================
+// DRAG & DROP
+// ============================================================
+const dz=document.getElementById('dz');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over')});
+dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('over');loadFiles(e.dataTransfer.files)});
+
+// INIT
+renderAll();
+</script>
+</body>
+</html>
