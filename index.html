@@ -358,7 +358,7 @@ function eTeamTotal(stats){
   return t;
 }
 function ePct(a,b){return b>0?Math.round(a/b*100):0;}
-// PN stats (active projects)
+// PN stats (active projects) - monthly forecast
 function eBuildPN(){
   var rev=0,pay=0,pn=0;
   E_PN2.forEach(function(r){
@@ -370,6 +370,42 @@ function eBuildPN(){
     if(today>=sd&&today<=ed){pn++;rev+=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;pay+=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;}
   });
   return{pn:pn,rev:rev,pk:rev-pay};
+}
+// Revenue forecast per month (next 6 months)
+function eAddMonth(ym,n){var p=ym.split('/');var d=new Date(parseInt(p[0]),parseInt(p[1])-1+n,1);return d.getFullYear()+'/'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1);}
+function eBuildRevForecast(){
+  var today=new Date();var todayYM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
+  var months=[];for(var i=0;i<7;i++)months.push(eAddMonth(todayYM,i));
+  var base={};months.forEach(function(m){base[m]={rev:0,pk:0,pn:0,ending:0};});
+  E_PN2.forEach(function(r){
+    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
+    var billing=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;
+    var payment=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;
+    var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
+    if(cancel&&cancel.length>=7){var cd2=new Date(cancel.replace(/\//g,'-'));var ed3=new Date(end.replace(/\//g,'-'));if(!isNaN(cd2)&&!isNaN(ed3)&&cd2<ed3)end=cancel;}
+    if(!start||!end)return;var sYM=start.substring(0,7),eYM2=end.substring(0,7);
+    if(billing<=0&&payment<=0)return;
+    months.forEach(function(m){
+      if(sYM<=m&&eYM2>=m){base[m].rev+=billing;base[m].pk+=(billing-payment);base[m].pn++;}
+      if(eYM2===m)base[m].ending++;
+    });
+  });
+  return{months:months,base:base,todayYM:todayYM};
+}
+// Stalled deals (P2/P3 staying too long)
+function eBuildStalled(){
+  var today=new Date();var stalled=[];
+  E_ROWS.forEach(function(r){
+    var cp=ePh(eGet(r,'curPh'));
+    if(cp<2||cp>4||cp===0)return; // only P2, P3, P4
+    var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
+    var apDate=eGet(r,'apDate');if(!apDate)return;
+    var ap=new Date(apDate.replace(/\//g,'-'));if(isNaN(ap))return;
+    var days=Math.floor((today-ap)/(1000*60*60*24));
+    stalled.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck')});
+  });
+  stalled.sort(function(a,b){return b.days-a.days;});
+  return stalled;
 }
 // Render enterprise overview
 function renderEntOverview(){
@@ -411,6 +447,47 @@ function renderEntOverview(){
     h+='<div class="ent-pl"><div class="ep-ph">'+(E_PH_LABELS[p]||'P'+p)+'</div><div class="ep-n" style="color:'+(E_PH_COLORS[p]||'var(--ink)')+'">'+d.n+'</div><div class="ep-ck">CK '+eFmt(d.ck)+'</div></div>';
   });
   h+='</div></div>';
+  // Revenue forecast chart
+  var fc=eBuildRevForecast();var maxRev=1;fc.months.forEach(function(m){if(fc.base[m].rev>maxRev)maxRev=fc.base[m].rev;});
+  var todayRev=fc.base[fc.todayYM]||{rev:0,pk:0,pn:0};
+  var lastM=fc.months[fc.months.length-1];var lastRev=fc.base[lastM]||{rev:0};
+  var decayPct=todayRev.rev>0?Math.round((1-lastRev.rev/todayRev.rev)*100):0;
+  h+='<div class="ent-section"><div class="es-title">売上推移フォーキャスト（6ヶ月）<span style="font-weight:400;font-size:10px;color:var(--red);margin-left:8px">新規なしで▼'+decayPct+'%減</span></div>';
+  h+='<div class="fc-chart">';
+  fc.months.forEach(function(m,i){
+    var d=fc.base[m];var h2=Math.max(3,d.rev/maxRev*160);
+    var isCur=i===0;var ml=m.split('/')[1]+'月';
+    h+='<div class="fc-col'+(isCur?' fc-cur':'')+'">';
+    h+='<div class="fc-val">'+eFmt(d.rev)+'</div>';
+    h+='<div class="fc-stack"><div class="fc-base" style="height:'+h2+'px"></div></div>';
+    h+='<div class="fc-lbl'+(isCur?' cur':'')+'">'+ml+'</div>';
+    h+='<div style="font-size:8px;color:var(--ink3)">'+d.pn+'名</div>';
+    if(d.ending>0)h+='<div style="font-size:7px;color:var(--red)">-'+d.ending+'件終了</div>';
+    h+='</div>';
+  });
+  h+='</div>';
+  h+='<div class="fc-legend"><div class="fc-leg"><div class="dot" style="background:var(--blue)"></div>確定売上(既存契約)</div><div class="fc-leg"><div class="dot" style="background:var(--red)"></div>終了案件</div></div>';
+  h+='</div>';
+  // Stalled deal alerts
+  var stalled=eBuildStalled();
+  var stalledP2=stalled.filter(function(s){return s.ph===2;});
+  var stalledP3=stalled.filter(function(s){return s.ph===3;});
+  var stalledP4=stalled.filter(function(s){return s.ph===4;});
+  if(stalled.length>0){
+    h+='<div class="ent-section"><div class="es-title" style="color:var(--red)">⚠️ 滞留案件アラート（'+stalled.length+'件）</div>';
+    [{ph:2,label:'P2 案件化',items:stalledP2,threshold:14},{ph:3,label:'P3 提案',items:stalledP3,threshold:10},{ph:4,label:'P4 面談',items:stalledP4,threshold:7}].forEach(function(g){
+      if(!g.items.length)return;
+      var alert=g.items.filter(function(s){return s.days>=g.threshold;}).length;
+      h+='<div style="margin-top:8px"><div style="font-size:11px;font-weight:600;color:var(--ink2)">'+g.label+' ('+g.items.length+'件'+(alert?'・<span style="color:var(--red)">'+alert+'件が'+g.threshold+'日超</span>':'')+')</div>';
+      h+='<table class="ent-table"><thead><tr><th>案件名</th><th>担当者</th><th>滞留日数</th><th>CK</th><th>アポ日</th></tr></thead><tbody>';
+      g.items.forEach(function(s){
+        var dc=s.days>=g.threshold?'color:var(--red);font-weight:700':s.days>=g.threshold*0.7?'color:var(--org)':'';
+        h+='<tr><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.name+'</td><td style="font-weight:600">'+s.member+'</td><td style="font-family:var(--mono);'+dc+'">'+s.days+'日</td><td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+s.apDate+'</td></tr>';
+      });
+      h+='</tbody></table></div>';
+    });
+    h+='</div>';
+  }
   // Member comparison mini
   h+='<div class="ent-section"><div class="es-title">メンバー別 移行率</div>';
   h+='<table class="ent-table"><thead><tr><th>メンバー</th><th>P1</th><th>P1→P2</th><th>P2→P4</th><th>P4→P8</th><th>最終CR</th><th>P8</th><th>CK</th></tr></thead><tbody>';
