@@ -392,19 +392,22 @@ function eBuildRevForecast(){
   });
   return{months:months,base:base,todayYM:todayYM};
 }
-// Stalled deals (P2/P3 staying too long)
+// Stalled deals (P2-P5 current phase + P1 SF migration leaks)
 function eBuildStalled(){
   var today=new Date();var stalled=[];
   E_ROWS.forEach(function(r){
-    var cp=ePh(eGet(r,'curPh'));
-    if(cp<2||cp>4||cp===0)return; // only P2, P3, P4
+    var cp=ePh(eGet(r,'curPh'));var cpRaw=eGet(r,'curPh');
+    if(cp<1||cp>=8)return; // skip DEAD and P8
+    if(cpRaw.indexOf('DEAD')>=0)return;
     var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
     var apDate=eGet(r,'apDate');if(!apDate)return;
     var ap=new Date(apDate.replace(/\//g,'-'));if(isNaN(ap))return;
     var days=Math.floor((today-ap)/(1000*60*60*24));
-    stalled.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck')});
+    // P1: only if apDate is yesterday or later (SF migration leak)
+    if(cp===1&&days>1)return;
+    stalled.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:eGet(r,'closeDate')});
   });
-  stalled.sort(function(a,b){return b.days-a.days;});
+  stalled.sort(function(a,b){return a.ph===b.ph?b.days-a.days:a.ph-b.ph;});
   return stalled;
 }
 // Render enterprise overview
@@ -470,19 +473,26 @@ function renderEntOverview(){
   h+='</div>';
   // Stalled deal alerts
   var stalled=eBuildStalled();
-  var stalledP2=stalled.filter(function(s){return s.ph===2;});
-  var stalledP3=stalled.filter(function(s){return s.ph===3;});
-  var stalledP4=stalled.filter(function(s){return s.ph===4;});
-  if(stalled.length>0){
-    h+='<div class="ent-section"><div class="es-title" style="color:var(--red)">⚠️ 滞留案件アラート（'+stalled.length+'件）</div>';
-    [{ph:2,label:'P2 案件化',items:stalledP2,threshold:14},{ph:3,label:'P3 提案',items:stalledP3,threshold:10},{ph:4,label:'P4 面談',items:stalledP4,threshold:7}].forEach(function(g){
+  var groups=[
+    {ph:1,label:'P1 SF移行漏れ',items:stalled.filter(function(s){return s.ph===1;}),threshold:0,desc:'昨日以降アポでP1のまま'},
+    {ph:2,label:'P2 案件化（提案前）',items:stalled.filter(function(s){return s.ph===2;}),threshold:14,desc:'提案実施してP3へ'},
+    {ph:3,label:'P3 提案済（面談前）',items:stalled.filter(function(s){return s.ph===3;}),threshold:10,desc:'面談設定してP4へ'},
+    {ph:4,label:'P4 面談済（合意前）',items:stalled.filter(function(s){return s.ph===4;}),threshold:7,desc:'口頭合意を取得'},
+    {ph:5,label:'P5 合意済（契約前）',items:stalled.filter(function(s){return s.ph===5;}),threshold:7,desc:'契約手続き完了へ'}
+  ];
+  var totalStalled=stalled.length;
+  if(totalStalled>0){
+    h+='<div class="ent-section"><div class="es-title" style="color:var(--red)">⚠️ 保有パイプライン進捗管理（'+totalStalled+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">P2-P5の進捗+P1移行漏れ</span></div>';
+    groups.forEach(function(g){
       if(!g.items.length)return;
-      var alert=g.items.filter(function(s){return s.days>=g.threshold;}).length;
-      h+='<div style="margin-top:8px"><div style="font-size:11px;font-weight:600;color:var(--ink2)">'+g.label+' ('+g.items.length+'件'+(alert?'・<span style="color:var(--red)">'+alert+'件が'+g.threshold+'日超</span>':'')+')</div>';
-      h+='<table class="ent-table"><thead><tr><th>案件名</th><th>担当者</th><th>滞留日数</th><th>CK</th><th>アポ日</th></tr></thead><tbody>';
+      var alertN=g.threshold>0?g.items.filter(function(s){return s.days>=g.threshold;}).length:g.items.length;
+      h+='<div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(0,0,0,.04)"><div style="display:flex;align-items:center;gap:8px"><div style="font-size:11px;font-weight:700;color:'+(E_PH_COLORS[g.ph]||'var(--ink)')+'">'+g.label+' ('+g.items.length+'件)</div>';
+      if(alertN>0&&g.threshold>0)h+='<span style="font-size:9px;color:var(--red);font-weight:600">'+alertN+'件が'+g.threshold+'日超</span>';
+      h+='<span style="font-size:9px;color:var(--ink3)">→ '+g.desc+'</span></div>';
+      h+='<table class="ent-table"><thead><tr><th>案件名</th><th>担当者</th><th>日数</th><th>CK</th><th>受注予定</th></tr></thead><tbody>';
       g.items.forEach(function(s){
-        var dc=s.days>=g.threshold?'color:var(--red);font-weight:700':s.days>=g.threshold*0.7?'color:var(--org)':'';
-        h+='<tr><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s.name+'</td><td style="font-weight:600">'+s.member+'</td><td style="font-family:var(--mono);'+dc+'">'+s.days+'日</td><td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+s.apDate+'</td></tr>';
+        var dc=g.threshold>0?(s.days>=g.threshold?'color:var(--red);font-weight:700':s.days>=g.threshold*0.7?'color:var(--org)':''):'color:var(--blue)';
+        h+='<tr><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" title="'+s.name+'">'+s.name+'</td><td style="font-weight:600">'+s.member+'</td><td style="font-family:var(--mono);'+dc+'">'+s.days+'日</td><td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+(s.closeDate||'-')+'</td></tr>';
       });
       h+='</tbody></table></div>';
     });
@@ -508,18 +518,56 @@ function renderEntOverview(){
   h+='</tbody></table></div>';
   return h;
 }
-// Render pipeline detail
+// Render pipeline detail (Quip replacement - Excel-like)
 function renderEntPipeline(){
-  var stats=eBuildFunnel(E_ROWS,'all');var allCases=[];
-  for(var m in stats)allCases=allCases.concat(stats[m].cases);
-  allCases.sort(function(a,b){return b.ph-a.ph||b.ck-a.ck;});
-  var h='<div class="ent-section"><div class="es-title">パイプライン案件一覧（'+allCases.length+'件）</div>';
-  h+='<table class="ent-table"><thead><tr><th>Phase</th><th>案件名</th><th>担当者</th><th>CK</th><th>アポ日</th></tr></thead><tbody>';
-  allCases.forEach(function(c){
-    var pc=c.ph>=4?'color:var(--org)':c.ph>=2?'color:#6366f1':'color:var(--blue)';
-    h+='<tr><td><span class="pill" style="font-size:9px;'+pc+';font-weight:600">P'+c.ph+'</span></td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+c.name+'</td><td style="font-weight:600">'+c.member+'</td><td style="font-family:var(--mono)">'+(c.ck?eFmt(c.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+c.apDate+'</td></tr>';
+  // Build full pipeline with all fields
+  var allCases=[];
+  E_ROWS.forEach(function(r){
+    var cp=ePh(eGet(r,'curPh'));var cpRaw=eGet(r,'curPh');
+    if(cpRaw.indexOf('DEAD')>=0||cp>=8||cp<=0)return;
+    var dt=eGet(r,'dealType');
+    allCases.push({name:eGet(r,'name'),ph:cp,phRaw:cpRaw,ck:eGetN(r,'ck'),member:eGet(r,'member'),apDate:eGet(r,'apDate'),closeDate:eGet(r,'closeDate'),dealType:dt,channel:eGet(r,'channel'),startDate:eGet(r,'startDate')});
   });
-  h+='</tbody></table></div>';
+  allCases.sort(function(a,b){return b.ph-a.ph||b.ck-a.ck;});
+  // Summary by phase
+  var phSum={};allCases.forEach(function(c){if(!phSum[c.ph])phSum[c.ph]={n:0,ck:0};phSum[c.ph].n++;phSum[c.ph].ck+=c.ck;});
+  var totalCK=allCases.reduce(function(s,c){return s+c.ck;},0);
+  var h='';
+  // Pipeline bar chart (like SF dashboard)
+  h+='<div class="ent-section"><div class="es-title">パイプライン総量 '+allCases.length+'件 / CK合計 '+eFmt(totalCK)+'</div>';
+  h+='<div class="ent-pl-grid">';
+  [1,2,3,4,5,7].forEach(function(p){
+    var d=phSum[p]||{n:0,ck:0};
+    h+='<div class="ent-pl" style="cursor:pointer" onclick="document.getElementById(\'pl_ph'+p+'\').scrollIntoView({behavior:\'smooth\'})"><div class="ep-ph">'+(E_PH_LABELS[p]||'P'+p)+'</div><div class="ep-n" style="color:'+(E_PH_COLORS[p]||'var(--ink)')+'">'+d.n+'</div><div class="ep-ck">CK '+eFmt(d.ck)+'</div></div>';
+  });
+  h+='</div></div>';
+  // CK Forecast by probability
+  var ckP57=(phSum[5]?phSum[5].ck:0)+(phSum[7]?phSum[7].ck:0);
+  var ckP4=phSum[4]?phSum[4].ck:0;
+  h+='<div class="ent-section"><div class="es-title">CKフォーキャスト</div><div class="ent-forecast">';
+  h+='<div class="ent-fc" style="border-left:3px solid var(--grn)"><div class="efc-label">MIN (P5-7 確度80%)</div><div class="efc-val" style="color:var(--grn)">'+eFmt(ckP57*0.8)+'</div></div>';
+  h+='<div class="ent-fc" style="border-left:3px solid var(--org)"><div class="efc-label">MID (+P4 確度50%)</div><div class="efc-val" style="color:var(--org)">'+eFmt(ckP57*0.8+ckP4*0.5)+'</div></div>';
+  h+='<div class="ent-fc" style="border-left:3px solid var(--blue)"><div class="efc-label">MAX (+P2-3 確度15%)</div><div class="efc-val" style="color:var(--blue)">'+eFmt(ckP57*0.8+ckP4*0.5+((phSum[2]?phSum[2].ck:0)+(phSum[3]?phSum[3].ck:0))*0.15)+'</div></div>';
+  h+='<div class="ent-fc" style="border:2px solid var(--ink)"><div class="efc-label">目標CK</div><div class="efc-val">'+eFmt(E_TARGETS.ck)+'</div></div>';
+  h+='</div></div>';
+  // Full case list by phase (Quip-like Excel table)
+  [7,5,4,3,2,1].forEach(function(p){
+    var cases=allCases.filter(function(c){return c.ph===p;});
+    if(!cases.length)return;
+    var phCK=cases.reduce(function(s,c){return s+c.ck;},0);
+    h+='<div class="ent-section" id="pl_ph'+p+'"><div class="es-title" style="color:'+(E_PH_COLORS[p]||'var(--ink)')+'">'+(E_PH_LABELS[p]||'P'+p)+' — '+cases.length+'件 / CK '+eFmt(phCK)+'</div>';
+    h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当者</th><th>案件名</th><th>CK</th><th>新規/継続</th><th>受注予定</th><th>契約開始</th><th>施策</th></tr></thead><tbody>';
+    cases.forEach(function(c){
+      h+='<tr><td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
+      h+='<td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+c.name+'</td>';
+      h+='<td style="font-family:var(--mono);font-weight:600;'+(c.ck>0?'color:var(--blue)':'color:var(--ink3)')+'">'+(c.ck?eFmt(c.ck):'¥0')+'</td>';
+      h+='<td style="font-size:9px">'+(c.dealType||'-')+'</td>';
+      h+='<td style="font-size:9px;color:var(--ink3)">'+(c.closeDate||'-')+'</td>';
+      h+='<td style="font-size:9px;color:var(--ink3)">'+(c.startDate||'-')+'</td>';
+      h+='<td style="font-size:9px;color:var(--ink3)">'+(c.channel||'-')+'</td></tr>';
+    });
+    h+='</tbody></table></div></div>';
+  });
   return h;
 }
 // Render forecast
