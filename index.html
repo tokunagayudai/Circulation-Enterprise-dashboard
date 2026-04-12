@@ -250,9 +250,11 @@
 <body>
 <div class="sidebar">
 <div class="logo-s">C</div>
+<div style="font-size:6px;color:rgba(255,255,255,.3);text-align:center;letter-spacing:.5px;margin:0 0 4px">案件管理</div>
 <div class="ni act" id="ne" onclick="E_TAB='overview';E_MODE='biz';showEnt()" title="商況"><span>📈</span><span class="nl">商況</span></div>
 <div class="ni" id="na" onclick="E_TAB='funnel';E_MODE='analysis';showEnt()" title="分析"><span>🔍</span><span class="nl">分析</span></div>
-<div style="width:36px;border-bottom:1px solid rgba(255,255,255,.1);margin:2px 0"></div>
+<div style="width:36px;border-bottom:1px solid rgba(255,255,255,.1);margin:4px 0"></div>
+<div style="font-size:6px;color:rgba(255,255,255,.3);text-align:center;letter-spacing:.5px;margin:0 0 4px">アカプラ</div>
 <div class="ni" id="nd" onclick="showD()" title="Dashboard"><span>📊</span><span class="nl">総合</span></div>
 <div class="ni" id="no" onclick="showO()" title="Account Plan"><span>🏢</span><span class="nl">企業別</span></div>
 </div>
@@ -1338,16 +1340,16 @@ function fetchFromGAS(){
   console.log('>>> fetchFromGAS called');
   if(LOADING)return;LOADING=true;
   SYNC_STATUS='syncing';
-  showD();updateSyncBadge();
+  updateSyncBadge();
   Promise.all([
     fetch(GAS_URL+'?sheet=acplan_cases').then(function(r){return r.text();}),
     fetch(GAS_URL+'?sheet=acplan_contacts').then(function(r){return r.text();}),
     fetch(GAS_URL+'?sheet=acplan_pn').then(function(r){return r.text();})
   ]).then(function(res){
-    if(res[0].length<50){LOADING=false;SYNC_STATUS='offline';showD();updateSyncBadge();return;}
+    if(res[0].length<50){LOADING=false;SYNC_STATUS='offline';updateSyncBadge();return;}
     var nd=processGAS(res[0],res[1],res[2]);
     if(nd){R=nd;D=R.data;MT=R.meta;N=Object.keys(D);}
-    LOADING=false;SYNC_STATUS='live';showD();updateSyncBadge();
+    LOADING=false;SYNC_STATUS='live';updateSyncBadge();if(document.getElementById('nd').classList.contains('act'))showD();
   }).catch(function(err){console.warn('>>> GAS fetch failed (expected on file://), using embedded data');LOADING=false;SYNC_STATUS='offline';updateSyncBadge();});
 }
 function pCSV(t){var ls=t.split(/\r?\n/).filter(function(l){return l.trim();}),h=pLine(ls[0]),rs=[];for(var i=1;i<ls.length;i++){var c=pLine(ls[i]);if(c.length>=3)rs.push(c);}return{h:h,r:rs};}
@@ -1512,5 +1514,7 @@ function processGAS(casesT,contactsT,pnT){
 console.log('>>> Init, protocol:', location.protocol);
 // Always try GAS first. If CORS blocks (file://), fall back to embedded.
 fetchFromGAS();
+// Show enterprise overview as default
+E_TAB='overview';E_MODE='biz';showEnt();
 
 </script></body></html>
