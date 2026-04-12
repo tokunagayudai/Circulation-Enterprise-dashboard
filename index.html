@@ -250,9 +250,10 @@
 <body>
 <div class="sidebar">
 <div class="logo-s">C</div>
-<div class="ni" id="ne" onclick="showEnt()" title="商況ダッシュボード"><span>📈</span><span class="nl">商況</span></div>
+<div class="ni act" id="ne" onclick="showEnt()" title="商況"><span>📈</span><span class="nl">商況</span></div>
+<div class="ni" id="na" onclick="E_TAB='analysis';showEnt()" title="分析"><span>🔍</span><span class="nl">分析</span></div>
 <div style="width:36px;border-bottom:1px solid rgba(255,255,255,.1);margin:2px 0"></div>
-<div class="ni act" id="nd" onclick="showD()" title="Dashboard"><span>📊</span><span class="nl">総合</span></div>
+<div class="ni" id="nd" onclick="showD()" title="Dashboard"><span>📊</span><span class="nl">総合</span></div>
 <div class="ni" id="no" onclick="showO()" title="Account Plan"><span>🏢</span><span class="nl">企業別</span></div>
 </div>
 <div id="M"></div>
@@ -616,8 +617,11 @@ function eUpdateSim(){
   if(el)el.innerHTML='<div style="font-weight:700;color:var(--blue);margin-bottom:6px">月間 P8 '+E_TARGETS.p8+'件 を達成するには:</div><div style="display:flex;gap:16px;flex-wrap:wrap"><div><span style="font-size:20px;font-weight:700">'+needP1+'</span><span style="font-size:10px;color:var(--ink3)"> P1商談/月</span></div><div><span style="font-size:20px;font-weight:700">'+needP2+'</span><span style="font-size:10px;color:var(--ink3)"> P2案件化</span></div><div><span style="font-size:20px;font-weight:700">'+needP4+'</span><span style="font-size:10px;color:var(--ink3)"> P4面談</span></div></div><div style="margin-top:6px;font-size:11px;color:var(--ink2)">→ 一人あたり月 <strong>'+perMember+'件</strong> の新規商談が必要</div>';
 }
 // Main show function
+var E_MODE='biz'; // 'biz' or 'analysis'
 function showEnt(){
-  document.querySelectorAll('.ni').forEach(function(e){e.classList.remove('act');});document.getElementById('ne').classList.add('act');
+  document.querySelectorAll('.ni').forEach(function(e){e.classList.remove('act');});
+  if(E_TAB==='analysis'||E_TAB==='funnel'||E_TAB==='dead'||E_TAB==='breakdown'){E_MODE='analysis';document.getElementById('na').classList.add('act');}
+  else{E_MODE='biz';document.getElementById('ne').classList.add('act');}
   var M=document.getElementById('M');
   if(!E_LOADED){
     M.innerHTML='<div style="padding:40px;text-align:center;color:var(--ink3)"><div class="spinner" style="margin:0 auto 12px"></div>商況データを取得中...</div>';
@@ -626,20 +630,148 @@ function showEnt(){
   }
   renderEnt();
 }
+// Analysis: Funnel transition rates
+function renderEntFunnel(){
+  var stats=eBuildFunnel(E_ROWS,'all');var team=eTeamTotal(stats);
+  var allS={p1:0,p2:0,p3:0,p4:0,p8:0,ck:0};for(var m in stats){var s=stats[m];allS.p1+=s.p1;allS.p2+=s.p2;allS.p3+=s.p3;allS.p4+=s.p4;allS.p8+=s.p8;allS.ck+=s.ck;}
+  var h='<div class="ent-section"><div class="es-title">ファネル移行率（今期累計・継続除く）</div><div class="ent-funnel">';
+  var maxP=Math.max(allS.p1,1);
+  [{l:'P1',v:allS.p1,c:'var(--blue)'},{l:'P2',v:allS.p2,c:'#6366f1'},{l:'P3',v:allS.p3,c:'var(--org)'},{l:'P4',v:allS.p4,c:'#ea580c'},{l:'P8',v:allS.p8,c:'var(--grn)'}].forEach(function(p,i,arr){
+    var w=Math.max(3,p.v/maxP*100);var rate=i>0?ePct(p.v,arr[i-1].v)+'%':'';
+    h+='<div class="ent-fb"><div class="ef-label">'+p.l+'</div><div class="ef-bar" style="width:'+w+'%;background:'+p.c+'">'+p.v+'</div><div class="ef-rate">'+(rate?'← '+rate:'')+'</div></div>';
+  });
+  h+='</div></div>';
+  // Member heatmap
+  h+='<div class="ent-section"><div class="es-title">メンバー別 移行率ヒートマップ</div>';
+  h+='<table class="ent-table"><thead><tr><th>メンバー</th><th>P1</th><th>P1→P2</th><th>P2→P3</th><th>P3→P4</th><th>P1→P4</th><th>P4→P8</th><th>P1→P8</th><th>P8</th><th>CK</th></tr></thead><tbody>';
+  var members=Object.keys(stats).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
+  members.forEach(function(m){
+    var s=stats[m];var mg=m===E_MGR;
+    h+='<tr class="'+(mg?'ent-mgr':'')+'"><td style="font-weight:600">'+m+(mg?' <span style="font-size:8px;background:var(--purple);color:#fff;padding:1px 4px;border-radius:3px">Mgr</span>':'')+'</td>';
+    h+='<td>'+s.p1+'</td><td>'+eHeat(ePct(s.p2,s.p1),35,50)+'</td><td>'+eHeat(ePct(s.p3,s.p2),50,65)+'</td><td>'+eHeat(ePct(s.p4,s.p3),60,80)+'</td>';
+    h+='<td>'+eHeat(ePct(s.p4,s.p1),15,25)+'</td><td>'+eHeat(ePct(s.p8,s.p4),40,55)+'</td><td>'+eHeat(ePct(s.p8,s.p1),8,15)+'</td>';
+    h+='<td style="font-weight:600;color:var(--grn)">'+s.p8+'</td><td style="font-family:var(--mono)">'+eFmt(s.ck)+'</td></tr>';
+  });
+  h+='<tr style="font-weight:700;border-top:2px solid var(--bd)"><td>チーム(Mgr除)</td><td>'+team.p1+'</td><td>'+eHeat(ePct(team.p2,team.p1),35,50)+'</td><td>'+eHeat(ePct(team.p3,team.p2),50,65)+'</td><td>'+eHeat(ePct(team.p4,team.p3),60,80)+'</td><td>'+eHeat(ePct(team.p4,team.p1),15,25)+'</td><td>'+eHeat(ePct(team.p8,team.p4),40,55)+'</td><td>'+eHeat(ePct(team.p8,team.p1),8,15)+'</td><td style="color:var(--grn)">'+team.p8+'</td><td style="font-family:var(--mono)">'+eFmt(team.ck)+'</td></tr>';
+  h+='</tbody></table></div>';
+  return h;
+}
+// Analysis: DEAD cases
+function renderEntDead(){
+  var deadCases=[];
+  E_ROWS.forEach(function(r){
+    var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')<0)return;
+    var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
+    deadCases.push({name:eGet(r,'name'),member:eGet(r,'member'),reason:cpRaw,deadDetail:eGet(r,'deadReason'),ck:eGetN(r,'ck'),apDate:eGet(r,'apDate'),lastPh:eGet(r,'lastPh')});
+  });
+  // Group by reason
+  var byReason={};deadCases.forEach(function(d){var k=d.reason;if(!byReason[k])byReason[k]=[];byReason[k].push(d);});
+  var h='<div class="ent-section"><div class="es-title">DEAD案件分析（'+deadCases.length+'件・継続除く）</div>';
+  // Reason breakdown
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
+  var reasons=Object.keys(byReason).sort(function(a,b){return byReason[b].length-byReason[a].length;});
+  reasons.forEach(function(k){
+    var n=byReason[k].length;var pct=ePct(n,deadCases.length);
+    h+='<div style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;text-align:center;min-width:100px"><div style="font-size:18px;font-weight:700;font-family:var(--mono)">'+n+'</div><div style="font-size:8px;color:var(--ink3)">'+k.replace('DEAD-','')+'</div><div style="font-size:9px;color:var(--ink3)">'+pct+'%</div></div>';
+  });
+  h+='</div>';
+  // By member
+  var byMember={};deadCases.forEach(function(d){if(!byMember[d.member])byMember[d.member]=0;byMember[d.member]++;});
+  h+='<div style="margin-bottom:12px;font-size:11px"><strong>メンバー別DEAD:</strong> ';
+  Object.keys(byMember).sort(function(a,b){return byMember[b]-byMember[a];}).forEach(function(m,i){
+    h+=(i?'、':'')+m+' '+byMember[m]+'件';
+  });
+  h+='</div>';
+  // Detail table
+  h+='<table class="ent-table"><thead><tr><th>案件名</th><th>担当者</th><th>DEAD理由</th><th>最終到達</th><th>CK</th><th>アポ日</th></tr></thead><tbody>';
+  deadCases.slice(0,50).forEach(function(d){
+    var lp=ePh(d.lastPh);var lpC=lp>=4?'color:var(--org)':lp>=2?'color:#6366f1':'color:var(--ink3)';
+    h+='<tr><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+d.name+'</td><td style="font-weight:600">'+d.member+'</td><td style="font-size:9px;color:var(--red)">'+d.reason.replace('DEAD-','')+'</td><td style="'+lpC+';font-weight:600">P'+lp+'</td><td style="font-family:var(--mono)">'+(d.ck?eFmt(d.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+d.apDate+'</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+// Analysis: Breakdown (unit price, duration, themes, companies)
+function renderEntBreakdown(){
+  // Collect P8 cases for analysis
+  var wonCases=[];
+  E_ROWS.forEach(function(r){
+    var lp=ePh(eGet(r,'lastPh'));if(lp!==8)return;
+    var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
+    wonCases.push({name:eGet(r,'name'),member:eGet(r,'member'),ck:eGetN(r,'ck'),dealType:dt,channel:eGet(r,'channel'),startDate:eGet(r,'startDate'),endDate:eGet(r,'endDate')});
+  });
+  var totalCK=wonCases.reduce(function(s,c){return s+c.ck;},0);
+  var avgCK=wonCases.length?Math.round(totalCK/wonCases.length):0;
+  // Duration analysis
+  var durations=[];
+  wonCases.forEach(function(c){
+    if(c.startDate&&c.endDate){
+      var s=new Date(c.startDate.replace(/\//g,'-')),e=new Date(c.endDate.replace(/\//g,'-'));
+      if(!isNaN(s)&&!isNaN(e)){var m=Math.round((e-s)/(1000*60*60*24*30));if(m>0)durations.push(m);}
+    }
+  });
+  var avgDuration=durations.length?Math.round(durations.reduce(function(s,d){return s+d;},0)/durations.length):0;
+  // By deal type
+  var byType={};wonCases.forEach(function(c){var k=c.dealType||'不明';if(!byType[k])byType[k]={n:0,ck:0};byType[k].n++;byType[k].ck+=c.ck;});
+  // By channel
+  var byCh={};wonCases.forEach(function(c){var k=c.channel?(c.channel.indexOf('FS')>=0?'FS経由':'IS経由'):'不明';if(!byCh[k])byCh[k]={n:0,ck:0};byCh[k].n++;byCh[k].ck+=c.ck;});
+  // By company (extract from case name)
+  var byCo={};wonCases.forEach(function(c){var nm=c.name||'';var co=nm.split('様_')[0].split('_');var coN=co.length>1?co[1]||co[0]:co[0];coN=coN.replace(/^\d+/,'').slice(0,20);if(!byCo[coN])byCo[coN]={n:0,ck:0};byCo[coN].n++;byCo[coN].ck+=c.ck;});
+  var h='';
+  // KPI summary
+  h+='<div class="ent-kpi-row">';
+  h+='<div class="ent-kpi"><div class="ek-label">受注件数</div><div class="ek-val" style="color:var(--grn)">'+wonCases.length+'</div></div>';
+  h+='<div class="ent-kpi"><div class="ek-label">受注CK合計</div><div class="ek-val">'+eFmt(totalCK)+'</div></div>';
+  h+='<div class="ent-kpi"><div class="ek-label">平均CK単価</div><div class="ek-val">'+eFmt(avgCK)+'</div></div>';
+  h+='<div class="ent-kpi"><div class="ek-label">平均契約期間</div><div class="ek-val">'+avgDuration+'<span style="font-size:14px">ヶ月</span></div></div>';
+  h+='</div>';
+  // Deal type breakdown
+  h+='<div class="ent-section"><div class="es-title">新規/既顧客 構成</div><table class="ent-table"><thead><tr><th>種別</th><th>件数</th><th>CK合計</th><th>構成比</th></tr></thead><tbody>';
+  Object.keys(byType).sort(function(a,b){return byType[b].ck-byType[a].ck;}).forEach(function(k){
+    var d=byType[k];h+='<tr><td style="font-weight:600">'+k+'</td><td>'+d.n+'件</td><td style="font-family:var(--mono)">'+eFmt(d.ck)+'</td><td>'+ePct(d.ck,totalCK)+'%</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  // Channel breakdown
+  h+='<div class="ent-section"><div class="es-title">FS/IS チャネル構成</div><table class="ent-table"><thead><tr><th>チャネル</th><th>件数</th><th>CK合計</th><th>構成比</th></tr></thead><tbody>';
+  Object.keys(byCh).sort(function(a,b){return byCh[b].ck-byCh[a].ck;}).forEach(function(k){
+    var d=byCh[k];h+='<tr><td style="font-weight:600">'+k+'</td><td>'+d.n+'件</td><td style="font-family:var(--mono)">'+eFmt(d.ck)+'</td><td>'+ePct(d.ck,totalCK)+'%</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  // Top companies
+  var coList=Object.keys(byCo).sort(function(a,b){return byCo[b].ck-byCo[a].ck;}).slice(0,15);
+  h+='<div class="ent-section"><div class="es-title">受注企業別 CK（上位15社）</div><table class="ent-table"><thead><tr><th>企業</th><th>件数</th><th>CK合計</th><th>構成比</th></tr></thead><tbody>';
+  coList.forEach(function(k){
+    var d=byCo[k];h+='<tr><td style="font-weight:600">'+k+'</td><td>'+d.n+'件</td><td style="font-family:var(--mono)">'+eFmt(d.ck)+'</td><td>'+ePct(d.ck,totalCK)+'%</td></tr>';
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
 function renderEnt(){
   var M=document.getElementById('M');
-  var h='<div class="ent-hdr"><div><h2>商況ダッシュボード</h2><div class="sub">Enterprise Analytics — '+TODAY+'</div></div>';
+  var isAnalysis=E_MODE==='analysis';
+  var title=isAnalysis?'分析ダッシュボード':'商況ダッシュボード';
+  var h='<div class="ent-hdr"><div><h2>'+title+'</h2><div class="sub">Enterprise '+(isAnalysis?'Analysis':'Pipeline')+' — '+TODAY+'</div></div>';
   h+='<span id="sync-badge"></span></div>';
   // Sub-tabs
   h+='<div class="ent-tabs">';
-  [{id:'overview',l:'📊 概要'},{id:'pipeline',l:'📋 パイプライン'},{id:'forecast',l:'🎯 フォーキャスト'}].forEach(function(t){
-    h+='<div class="ent-tab'+(E_TAB===t.id?' act':'')+'" onclick="E_TAB=\''+t.id+'\';renderEnt()">'+t.l+'</div>';
-  });
+  if(!isAnalysis){
+    [{id:'overview',l:'📊 概要'},{id:'pipeline',l:'📋 パイプライン'},{id:'forecast',l:'🎯 フォーキャスト'}].forEach(function(t){
+      h+='<div class="ent-tab'+(E_TAB===t.id?' act':'')+'" onclick="E_TAB=\''+t.id+'\';E_MODE=\'biz\';renderEnt()">'+t.l+'</div>';
+    });
+  }else{
+    [{id:'funnel',l:'📊 ファネル移行率'},{id:'dead',l:'💀 DEAD分析'},{id:'breakdown',l:'📈 受注分析'}].forEach(function(t){
+      h+='<div class="ent-tab'+(E_TAB===t.id?' act':'')+'" onclick="E_TAB=\''+t.id+'\';E_MODE=\'analysis\';renderEnt()">'+t.l+'</div>';
+    });
+    if(E_TAB==='analysis')E_TAB='funnel'; // default
+  }
   h+='</div>';
   // Tab content
   if(E_TAB==='overview')h+=renderEntOverview();
   else if(E_TAB==='pipeline')h+=renderEntPipeline();
   else if(E_TAB==='forecast')h+=renderEntForecast();
+  else if(E_TAB==='funnel')h+=renderEntFunnel();
+  else if(E_TAB==='dead')h+=renderEntDead();
+  else if(E_TAB==='breakdown')h+=renderEntBreakdown();
   M.innerHTML=h;updateSyncBadge();
   if(E_TAB==='forecast')eUpdateSim();
 }
