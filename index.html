@@ -192,6 +192,18 @@
 .ent-fc .efc-val{font-size:20px;font-weight:700;font-family:var(--mono)}
 .ent-fc .efc-sub{font-size:9px;color:var(--ink3);margin-top:2px}
 .ent-mgr{opacity:.5;background:rgba(0,0,0,.02)}
+/* Forecast chart */
+.fc-chart{display:flex;align-items:flex-end;gap:4px;height:180px;padding:20px 4px 0;position:relative}
+.fc-col{flex:1;display:flex;flex-direction:column;align-items:center;min-width:0}.fc-stack{width:100%;display:flex;flex-direction:column-reverse}
+.fc-base{background:var(--blue);border-radius:2px 2px 0 0;min-height:1px;transition:.4s}.fc-pipe{min-height:0;transition:.3s}
+.fc-pipe-h{background:rgba(26,127,55,.35)}.fc-pipe-m{background:rgba(234,88,12,.28)}.fc-pipe-l{background:rgba(99,102,241,.22)}
+.fc-val{font-size:7px;font-weight:600;color:var(--ink2);text-align:center;margin-bottom:2px;font-family:var(--mono)}
+.fc-lbl{font-size:9px;color:var(--ink3);text-align:center;margin-top:4px}.fc-lbl.cur{color:var(--blue);font-weight:700}
+.fc-cur{outline:2px solid var(--blue);outline-offset:1px;border-radius:3px}
+.fc-legend{display:flex;gap:12px;margin-top:8px;font-size:9px;flex-wrap:wrap}
+.fc-leg{display:flex;align-items:center;gap:4px}.fc-leg .dot{width:10px;height:10px;border-radius:2px}
+/* Drill overlay */
+.ent-drill{max-height:0;overflow:hidden;transition:.2s;margin:0 24px}.ent-drill.show{max-height:500px;overflow-y:auto}
 /* Tree org chart */
 .tree-wrap{padding:16px 24px;overflow:auto;max-height:70vh}
 .tree-node{display:flex;flex-direction:column;align-items:center;position:relative}
