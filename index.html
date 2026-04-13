@@ -326,7 +326,7 @@ function fetchEntData(){
   return Promise.all([
     fetch(GAS_URL+'?sheet=funnel').then(function(r){return r.text();}),
     fetch(GAS_URL+'?sheet=juchu').then(function(r){return r.text();}),
-    fetch(GAS_URL+'?sheet=pn').then(function(r){return r.text();})
+    fetch(GAS_URL+'?sheet=acplan_pn').then(function(r){return r.text();})
   ]).then(function(res){
     if(res[0].length<50)return;
     var f=pCSV(res[0]);E_COL=eDetect(f.h);E_ROWS=f.r;
