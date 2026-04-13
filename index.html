@@ -10,16 +10,22 @@
 .ni .nl{font-size:7px;letter-spacing:.3px}
 .ni:hover,.ni.act{background:var(--blue);color:#fff}
 .logo-s{width:36px;height:36px;border-radius:8px;background:var(--blue);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:14px;margin-bottom:12px}
-#M{margin-left:0;min-height:100vh;padding-top:44px}
-/* Top navigation bar */
-.topnav{position:fixed;top:0;left:0;right:0;height:44px;background:#1a1f2e;display:flex;align-items:center;z-index:200;padding:0 16px;gap:0}
-.topnav .tn-logo{color:#fff;font-weight:900;font-size:14px;background:var(--blue);width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;margin-right:16px}
-.topnav .tn-group{display:flex;align-items:center;gap:2px;padding:0 8px;position:relative}
-.topnav .tn-group::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:1px;background:rgba(255,255,255,.1)}
-.topnav .tn-label{font-size:9px;color:rgba(255,255,255,.3);padding:0 8px;letter-spacing:.5px;font-weight:600}
-.topnav .tn-btn{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;color:rgba(255,255,255,.5);transition:.15s;border:none;background:none;white-space:nowrap}
-.topnav .tn-btn:hover{color:rgba(255,255,255,.85);background:rgba(255,255,255,.06)}
-.topnav .tn-btn.act{color:#fff;background:var(--blue)}
+#M{margin-left:0;min-height:100vh;padding-top:52px}
+/* Top navigation bar with 2 major categories */
+.topnav{position:fixed;top:0;left:0;right:0;height:52px;background:#1a1f2e;display:flex;align-items:stretch;z-index:200;padding:0;gap:0}
+.topnav .tn-logo{color:#fff;font-weight:900;font-size:14px;background:var(--blue);width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;margin:8px 12px;flex-shrink:0}
+.tn-section{display:flex;flex-direction:column;padding:4px 16px;position:relative;min-width:0}
+.tn-section.biz{background:rgba(239,68,68,.08);border-right:1px solid rgba(255,255,255,.05)}
+.tn-section.ap{background:rgba(14,165,233,.06)}
+.tn-section.biz::before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:#ef4444}
+.tn-section.ap::before{content:'';position:absolute;left:0;right:0;top:0;height:3px;background:#0ea5e9}
+.tn-section .tn-label{font-size:9px;color:rgba(255,255,255,.45);letter-spacing:.8px;font-weight:700;margin-top:4px;margin-bottom:2px;text-transform:uppercase}
+.tn-section.biz .tn-label{color:#ef4444}.tn-section.ap .tn-label{color:#0ea5e9}
+.tn-section .tn-btns{display:flex;gap:4px}
+.topnav .tn-btn{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;color:rgba(255,255,255,.55);transition:.15s;border:none;background:none;white-space:nowrap}
+.topnav .tn-btn:hover{color:#fff;background:rgba(255,255,255,.08)}
+.tn-section.biz .tn-btn.act{color:#fff;background:#ef4444}
+.tn-section.ap .tn-btn.act{color:#fff;background:#0ea5e9}
 .hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 24px 8px;flex-wrap:wrap;gap:8px}
 .title{font-size:18px;font-weight:700}.sub{font-size:11px;color:var(--ink3);margin-top:2px}
 .filters{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -259,15 +265,19 @@
 <body>
 <nav class="topnav">
 <div class="tn-logo">C</div>
+<div class="tn-section biz">
 <span class="tn-label">案件管理</span>
-<div class="tn-group">
+<div class="tn-btns">
 <button class="tn-btn act" id="ne" onclick="E_TAB='overview';E_MODE='biz';showEnt()">📈 商況</button>
 <button class="tn-btn" id="na" onclick="E_TAB='funnel';E_MODE='analysis';showEnt()">🔍 分析</button>
 </div>
-<span class="tn-label">アカウントプラン</span>
-<div class="tn-group">
+</div>
+<div class="tn-section ap">
+<span class="tn-label">アカウントプランニング</span>
+<div class="tn-btns">
 <button class="tn-btn" id="nd" onclick="showD()">📊 総合</button>
 <button class="tn-btn" id="no" onclick="showO()">🏢 企業別</button>
+</div>
 </div>
 </nav>
 <div id="M"></div>
@@ -326,7 +336,7 @@ var E_MGR='徳永 雄大';
 // Phase parser
 function ePh(s){if(!s)return 0;for(var i=8;i>=1;i--)if(s.indexOf('0'+i)>=0)return i;if(s.indexOf('DEAD')>=0)return -1;return 0;}
 // Column finder for enterprise CSV
-function eDetect(h){var m={};var kw={member:['主担当者'],name:['案件名'],lastPh:['最終到達'],curPh:['フェーズ'],apDate:['初回アポ','アポイント日'],mendanDate:['面談日'],closeDate:['受注予定日','受注日'],dealType:['新規/継続','新規／継続'],channel:['施策区分'],ck:['CK'],deadReason:['DEAD理由'],startDate:['契約開始'],endDate:['契約終了'],billM:['月額.*顧客請求','月額.*請求'],payM:['月額.*専門家','月額.*支払'],cancel:['解約日']};for(var k in kw){m[k]=-1;for(var w=0;w<kw[k].length;w++){for(var i=0;i<h.length;i++){if(h[i].match(new RegExp(kw[k][w]))){m[k]=i;break;}}if(m[k]>=0)break;}}return m;}
+function eDetect(h){var m={};var kw={member:['主担当者'],name:['案件名'],lastPh:['最終到達'],curPh:['フェーズ'],apDate:['初回アポ','アポイント日'],mendanDate:['面談日'],closeDate:['受注予定日','受注日'],dealType:['新規/継続','新規／継続'],channel:['施策区分'],ck:['CK'],deadReason:['DEAD理由'],startDate:['契約開始'],endDate:['契約終了'],billM:['月額.*顧客請求','月額.*請求'],payM:['月額.*専門家','月額.*支払'],cancel:['解約日'],oppId:['案件 ID','案件ID','Opportunity ID']};for(var k in kw){m[k]=-1;for(var w=0;w<kw[k].length;w++){for(var i=0;i<h.length;i++){if(h[i].match(new RegExp(kw[k][w]))){m[k]=i;break;}}if(m[k]>=0)break;}}return m;}
 function eGet(r,k){var i=E_COL[k];return i>=0&&i<r.length?r[i].trim():'';}
 function eGetN(r,k){var v=parseFloat(eGet(r,k).replace(/[,¥\s]/g,''));return isNaN(v)?0:v;}
 function eYM(d){return d?d.substring(0,7):'';}
@@ -421,7 +431,7 @@ function eBuildStalled(){
     var days=Math.floor((today-ap)/(1000*60*60*24));
     // P1: only if apDate is yesterday or later (SF migration leak)
     if(cp===1&&days>1)return;
-    stalled.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:eGet(r,'closeDate')});
+    stalled.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:eGet(r,'closeDate'),oppId:eGet(r,'oppId')});
   });
   stalled.sort(function(a,b){return a.ph===b.ph?b.days-a.days:a.ph-b.ph;});
   return stalled;
@@ -508,7 +518,8 @@ function renderEntOverview(){
       h+='<table class="ent-table"><thead><tr><th>案件名</th><th>担当</th><th>日数</th><th>CK</th><th>受注予定</th></tr></thead><tbody>';
       g.items.forEach(function(s){
         var dc=g.threshold>0?(s.days>=g.threshold?'color:var(--red);font-weight:700':s.days>=g.threshold*0.7?'color:var(--org)':''):'color:var(--blue)';
-        h+='<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\'https://circulation.lightning.force.com/lightning/o/Opportunity/home?search='+encodeURIComponent(s.name.slice(0,30))+'\',\'_blank\')">'+s.name+'</td><td style="font-weight:600;white-space:nowrap">'+s.member+'</td><td style="font-family:var(--mono);'+dc+'">'+s.days+'日</td><td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+(s.closeDate||'-')+'</td></tr>';
+        var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
+        h+='<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td><td style="font-weight:600;white-space:nowrap">'+s.member+'</td><td style="font-family:var(--mono);'+dc+'">'+s.days+'日</td><td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+(s.closeDate||'-')+'</td></tr>';
       });
       h+='</tbody></table></div>';
     });
@@ -524,7 +535,7 @@ function renderEntPipeline(){
     var cp=ePh(eGet(r,'curPh'));var cpRaw=eGet(r,'curPh');
     if(cpRaw.indexOf('DEAD')>=0||cp>=8||cp<=0)return;
     var dt=eGet(r,'dealType');
-    allCases.push({name:eGet(r,'name'),ph:cp,phRaw:cpRaw,ck:eGetN(r,'ck'),member:eGet(r,'member'),apDate:eGet(r,'apDate'),closeDate:eGet(r,'closeDate'),dealType:dt,channel:eGet(r,'channel'),startDate:eGet(r,'startDate')});
+    allCases.push({name:eGet(r,'name'),ph:cp,phRaw:cpRaw,ck:eGetN(r,'ck'),member:eGet(r,'member'),apDate:eGet(r,'apDate'),closeDate:eGet(r,'closeDate'),dealType:dt,channel:eGet(r,'channel'),startDate:eGet(r,'startDate'),oppId:eGet(r,'oppId')});
   });
   allCases.sort(function(a,b){return b.ph-a.ph||b.ck-a.ck;});
   // Summary by phase
@@ -556,8 +567,9 @@ function renderEntPipeline(){
     h+='<div class="ent-section" id="pl_ph'+p+'"><div class="es-title" style="color:'+(E_PH_COLORS[p]||'var(--ink)')+'">'+(E_PH_LABELS[p]||'P'+p)+' — '+cases.length+'件 / CK '+eFmt(phCK)+'</div>';
     h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当者</th><th>案件名</th><th>CK</th><th>新規/継続</th><th>受注予定</th><th>契約開始</th><th>施策</th></tr></thead><tbody>';
     cases.forEach(function(c){
+      var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
       h+='<tr><td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
-      h+='<td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+c.name+'</td>';
+      h+='<td style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
       h+='<td style="font-family:var(--mono);font-weight:600;'+(c.ck>0?'color:var(--blue)':'color:var(--ink3)')+'">'+(c.ck?eFmt(c.ck):'¥0')+'</td>';
       h+='<td style="font-size:9px">'+(c.dealType||'-')+'</td>';
       h+='<td style="font-size:9px;color:var(--ink3)">'+(c.closeDate||'-')+'</td>';
@@ -659,7 +671,7 @@ function renderEntDead(){
   E_ROWS.forEach(function(r){
     var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')<0)return;
     var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
-    deadCases.push({name:eGet(r,'name'),member:eGet(r,'member'),reason:cpRaw,deadDetail:eGet(r,'deadReason'),ck:eGetN(r,'ck'),apDate:eGet(r,'apDate'),lastPh:eGet(r,'lastPh')});
+    deadCases.push({name:eGet(r,'name'),member:eGet(r,'member'),reason:cpRaw,deadDetail:eGet(r,'deadReason'),ck:eGetN(r,'ck'),apDate:eGet(r,'apDate'),lastPh:eGet(r,'lastPh'),oppId:eGet(r,'oppId')});
   });
   // Group by reason
   var byReason={};deadCases.forEach(function(d){var k=d.reason;if(!byReason[k])byReason[k]=[];byReason[k].push(d);});
@@ -683,7 +695,8 @@ function renderEntDead(){
   h+='<table class="ent-table"><thead><tr><th>案件名</th><th>担当者</th><th>DEAD理由</th><th>最終到達</th><th>CK</th><th>アポ日</th></tr></thead><tbody>';
   deadCases.slice(0,50).forEach(function(d){
     var lp=ePh(d.lastPh);var lpC=lp>=4?'color:var(--org)':lp>=2?'color:#6366f1':'color:var(--ink3)';
-    h+='<tr><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+d.name+'</td><td style="font-weight:600">'+d.member+'</td><td style="font-size:9px;color:var(--red)">'+d.reason.replace('DEAD-','')+'</td><td style="'+lpC+';font-weight:600">P'+lp+'</td><td style="font-family:var(--mono)">'+(d.ck?eFmt(d.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+d.apDate+'</td></tr>';
+    var url=d.oppId&&d.oppId.length>=15?SFO+d.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
+    h+='<tr><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+d.name+'</td><td style="font-weight:600">'+d.member+'</td><td style="font-size:9px;color:var(--red)">'+d.reason.replace('DEAD-','')+'</td><td style="'+lpC+';font-weight:600">P'+lp+'</td><td style="font-family:var(--mono)">'+(d.ck?eFmt(d.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+d.apDate+'</td></tr>';
   });
   h+='</tbody></table></div>';
   return h;
