@@ -421,18 +421,19 @@ function eBuildRevForecast(){
   });
   return{months:months,base:base,todayYM:todayYM};
 }
-// Stalled deals (P2-P5 current phase + P1 SF migration leaks)
+// Stalled deals (P1-P7 current phase, DEAD/P8 excluded)
 function eBuildStalled(){
   var today=new Date();var stalled=[];
   E_ROWS.forEach(function(r){
-    var cp=ePh(eGet(r,'curPh'));var cpRaw=eGet(r,'curPh');
-    if(cp<1||cp>=8)return; // skip DEAD and P8
-    if(cpRaw.indexOf('DEAD')>=0)return;
+    var cpRaw=eGet(r,'curPh');
+    if(cpRaw.indexOf('DEAD')>=0)return; // exclude DEAD
+    var cp=ePh(cpRaw);
+    if(cp<1||cp>=8)return; // only P1-P7 (exclude P8 and invalid)
     var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
     var apDate=eGet(r,'apDate');if(!apDate)return;
     var ap=new Date(apDate.replace(/\//g,'-'));if(isNaN(ap))return;
     var days=Math.floor((today-ap)/(1000*60*60*24));
-    // P1: only if apDate is yesterday or later (SF migration leak)
+    // P1: only if apDate is today or tomorrow (SF migration leak)
     if(cp===1&&days>1)return;
     stalled.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:eGet(r,'closeDate'),oppId:eGet(r,'oppId')});
   });
