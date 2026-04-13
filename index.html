@@ -336,7 +336,10 @@ var E_MGR='徳永 雄大';
 // Phase parser
 function ePh(s){if(!s)return 0;for(var i=8;i>=1;i--)if(s.indexOf('0'+i)>=0)return i;if(s.indexOf('DEAD')>=0)return -1;return 0;}
 // Column finder for enterprise CSV
-function eDetect(h){var m={};var kw={member:['主担当者'],name:['案件名'],lastPh:['最終到達'],curPh:['フェーズ'],apDate:['初回アポ','アポイント日'],mendanDate:['面談日'],closeDate:['受注予定日','受注日'],dealType:['新規/継続','新規／継続'],channel:['施策区分'],ck:['CK'],deadReason:['DEAD理由'],startDate:['契約開始'],endDate:['契約終了'],billM:['月額.*顧客請求','月額.*請求'],payM:['月額.*専門家','月額.*支払'],cancel:['解約日'],oppId:['案件 ID','案件ID','Opportunity ID']};for(var k in kw){m[k]=-1;for(var w=0;w<kw[k].length;w++){for(var i=0;i<h.length;i++){if(h[i].match(new RegExp(kw[k][w]))){m[k]=i;break;}}if(m[k]>=0)break;}}return m;}
+function eDetect(h){var m={};var kw={member:['主担当者'],name:['案件名'],lastPh:['最終到達'],apDate:['初回アポ','アポイント日'],mendanDate:['面談日'],closeDate:['受注予定日','受注日'],dealType:['新規/継続','新規／継続'],channel:['施策区分'],ck:['CK'],deadReason:['DEAD理由'],startDate:['契約開始'],endDate:['契約終了'],billM:['月額.*顧客請求','月額.*請求'],payM:['月額.*専門家','月額.*支払'],cancel:['解約日'],oppId:['案件 ID','案件ID','Opportunity ID'],mfj:['Manager Forecast','解約リスク'],nextAct:['ネクストアクション$'],nextDate:['ネクストアクション実施日'],mutual:['Mutual Close']};for(var k in kw){m[k]=-1;for(var w=0;w<kw[k].length;w++){for(var i=0;i<h.length;i++){if(h[i].match(new RegExp(kw[k][w]))){m[k]=i;break;}}if(m[k]>=0)break;}}
+  // curPh: 「フェーズ」単体（「最終到達フェーズ」は除外）
+  m.curPh=-1;for(var i=0;i<h.length;i++){var hv=h[i].trim();if(hv==='フェーズ'||(hv.indexOf('フェーズ')>=0&&hv.indexOf('最終')<0&&hv.indexOf('到達')<0)){m.curPh=i;break;}}
+  return m;}
 function eGet(r,k){var i=E_COL[k];return i>=0&&i<r.length?r[i].trim():'';}
 function eGetN(r,k){var v=parseFloat(eGet(r,k).replace(/[,¥\s]/g,''));return isNaN(v)?0:v;}
 function eYM(d){return d?d.substring(0,7):'';}
@@ -436,7 +439,7 @@ function eBuildStalled(){
     var days=Math.floor((today-ap)/(1000*60*60*24));
     if(cp===1&&days>1)return;
     var closeDate=eGet(r,'closeDate');var closeYM=eYM(closeDate);
-    var item={name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:closeDate,closeYM:closeYM,oppId:eGet(r,'oppId')};
+    var item={name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:closeDate,closeYM:closeYM,oppId:eGet(r,'oppId'),dealType:eGet(r,'dealType'),mfj:eGet(r,'mfj'),nextAct:eGet(r,'nextAct'),nextDate:eGet(r,'nextDate'),mutual:eGet(r,'mutual')};
     // Zombie: closeDate in the past (before this month) - likely forgotten/should be DEAD
     if(closeYM&&closeYM<todayYM){zombie.push(item);return;}
     stalled.push(item);
@@ -510,13 +513,22 @@ function renderEntOverview(){
   if(E_MF!=='all'){stalled=stalled.filter(function(s){return s.member===E_MF;});zombie=zombie.filter(function(s){return s.member===E_MF;});}
   // Zombie alerts first (most urgent - past due)
   if(zombie.length>0){
-    h+='<div class="ent-section" style="border:2px solid var(--red);background:rgba(207,34,46,.03)"><div class="es-title" style="color:var(--red)">🚨 受注予定日超過案件（'+zombie.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">受注予定日が過去→DEAD or 予定日更新が必要</span></div>';
-    h+='<table class="ent-table"><thead><tr><th>案件名</th><th>担当</th><th>現P</th><th>滞留日数</th><th>CK</th><th>受注予定(超過)</th></tr></thead><tbody>';
+    h+='<div class="ent-section" style="border:2px solid var(--red);background:rgba(207,34,46,.03)"><div class="es-title" style="color:var(--red)">🚨 受注予定日超過案件（'+zombie.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">DEAD化 or 受注予定日更新が必要</span></div>';
+    h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>案件名</th><th>担当</th><th>現P</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
     zombie.forEach(function(s){
       var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
-      h+='<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td><td style="font-weight:600;white-space:nowrap">'+s.member+'</td><td><span class="pill" style="background:rgba(0,0,0,.05);color:var(--ink2);font-size:9px">P'+s.ph+'</span></td><td style="font-family:var(--mono);color:var(--red);font-weight:700">'+s.days+'日</td><td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td><td style="font-size:9px;color:var(--red);font-weight:600">'+(s.closeDate||'-')+'</td></tr>';
+      var mfjC=s.mfj==='MAX'?'background:var(--grn-bg);color:var(--grn)':s.mfj==='MID'?'background:#fff8c5;color:var(--org)':s.mfj==='MIN'?'background:#ffebe9;color:var(--red)':'';
+      h+='<tr><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td>';
+      h+='<td style="font-weight:600;white-space:nowrap">'+s.member+'</td>';
+      h+='<td><span class="pill" style="background:rgba(0,0,0,.05);color:var(--ink2);font-size:9px">P'+s.ph+'</span></td>';
+      h+='<td>'+(s.mfj?'<span class="pill" style="font-size:9px;'+mfjC+'">'+s.mfj+'</span>':'-')+'</td>';
+      h+='<td style="font-size:9px">'+(s.dealType||'-')+'</td>';
+      h+='<td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td>';
+      h+='<td style="font-size:9px;color:var(--red);font-weight:600">'+(s.closeDate||'-')+'</td>';
+      h+='<td style="font-family:var(--mono);color:var(--red);font-weight:700">'+s.days+'日</td>';
+      h+='<td style="font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.nextDate?'<span style="color:var(--ink3)">'+s.nextDate+'</span> ':'')+(s.nextAct||'-')+'</td></tr>';
     });
-    h+='</tbody></table></div>';
+    h+='</tbody></table></div></div>';
   }
   // Pipeline progress (current deals with future close date)
   var groups=[
@@ -536,13 +548,21 @@ function renderEntOverview(){
       h+='<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(0,0,0,.04)"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:11px;font-weight:700;color:'+(E_PH_COLORS[g.ph]||'var(--ink)')+'">'+g.label+' ('+g.items.length+')</span>';
       if(alertN>0&&g.threshold>0)h+='<span style="font-size:9px;color:var(--red);font-weight:600">'+alertN+'件が'+g.threshold+'日超</span>';
       h+='<span style="font-size:9px;color:var(--ink3)">→ '+g.desc+'</span></div>';
-      h+='<table class="ent-table"><thead><tr><th>案件名</th><th>担当</th><th>日数</th><th>CK</th><th>受注予定</th></tr></thead><tbody>';
+      h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>案件名</th><th>担当</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
       g.items.forEach(function(s){
         var dc=g.threshold>0?(s.days>=g.threshold?'color:var(--red);font-weight:700':s.days>=g.threshold*0.7?'color:var(--org)':''):'color:var(--blue)';
         var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
-        h+='<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td><td style="font-weight:600;white-space:nowrap">'+s.member+'</td><td style="font-family:var(--mono);'+dc+'">'+s.days+'日</td><td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+(s.closeDate||'-')+'</td></tr>';
+        var mfjC=s.mfj==='MAX'?'background:var(--grn-bg);color:var(--grn)':s.mfj==='MID'?'background:#fff8c5;color:var(--org)':s.mfj==='MIN'?'background:#ffebe9;color:var(--red)':'';
+        h+='<tr><td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td>';
+        h+='<td style="font-weight:600;white-space:nowrap">'+s.member+'</td>';
+        h+='<td>'+(s.mfj?'<span class="pill" style="font-size:9px;'+mfjC+'">'+s.mfj+'</span>':'-')+'</td>';
+        h+='<td style="font-size:9px">'+(s.dealType||'-')+'</td>';
+        h+='<td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td>';
+        h+='<td style="font-size:9px;color:var(--ink3)">'+(s.closeDate||'-')+'</td>';
+        h+='<td style="font-family:var(--mono);'+dc+'">'+s.days+'日</td>';
+        h+='<td style="font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.nextDate?'<span style="color:var(--ink3)">'+s.nextDate+'</span> ':'')+(s.nextAct||'-')+'</td></tr>';
       });
-      h+='</tbody></table></div>';
+      h+='</tbody></table></div></div>';
     });
     h+='</div>';
   }
