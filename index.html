@@ -421,24 +421,29 @@ function eBuildRevForecast(){
   });
   return{months:months,base:base,todayYM:todayYM};
 }
-// Stalled deals (P1-P7 current phase, DEAD/P8 excluded)
+// Stalled deals (P1-P7 current phase, DEAD/P8 excluded, closeDate this month or future)
 function eBuildStalled(){
-  var today=new Date();var stalled=[];
+  var today=new Date();var todayYM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
+  var stalled=[],zombie=[];
   E_ROWS.forEach(function(r){
     var cpRaw=eGet(r,'curPh');
-    if(cpRaw.indexOf('DEAD')>=0)return; // exclude DEAD
+    if(cpRaw.indexOf('DEAD')>=0)return;
     var cp=ePh(cpRaw);
-    if(cp<1||cp>=8)return; // only P1-P7 (exclude P8 and invalid)
+    if(cp<1||cp>=8)return;
     var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
     var apDate=eGet(r,'apDate');if(!apDate)return;
     var ap=new Date(apDate.replace(/\//g,'-'));if(isNaN(ap))return;
     var days=Math.floor((today-ap)/(1000*60*60*24));
-    // P1: only if apDate is today or tomorrow (SF migration leak)
     if(cp===1&&days>1)return;
-    stalled.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:eGet(r,'closeDate'),oppId:eGet(r,'oppId')});
+    var closeDate=eGet(r,'closeDate');var closeYM=eYM(closeDate);
+    var item={name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:closeDate,closeYM:closeYM,oppId:eGet(r,'oppId')};
+    // Zombie: closeDate in the past (before this month) - likely forgotten/should be DEAD
+    if(closeYM&&closeYM<todayYM){zombie.push(item);return;}
+    stalled.push(item);
   });
   stalled.sort(function(a,b){return a.ph===b.ph?b.days-a.days:a.ph-b.ph;});
-  return stalled;
+  zombie.sort(function(a,b){return b.days-a.days;});
+  return{stalled:stalled,zombie:zombie};
 }
 // Render enterprise overview
 function renderEntOverview(){
@@ -501,18 +506,30 @@ function renderEntOverview(){
   h+='<div style="display:flex;gap:12px;margin-top:6px;font-size:9px;color:var(--ink2)"><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:var(--blue);border-radius:2px"></span>売上</span><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:var(--grn);border-radius:2px"></span>粗利(PK)</span><span style="color:var(--org)">%=粗利率</span></div>';
   h+='</div>';
   // Stalled deal alerts (P2-P5 + P1 migration leak)
-  var stalled=eBuildStalled();
-  if(E_MF!=='all')stalled=stalled.filter(function(s){return s.member===E_MF;});
+  var stalledData=eBuildStalled();var stalled=stalledData.stalled;var zombie=stalledData.zombie;
+  if(E_MF!=='all'){stalled=stalled.filter(function(s){return s.member===E_MF;});zombie=zombie.filter(function(s){return s.member===E_MF;});}
+  // Zombie alerts first (most urgent - past due)
+  if(zombie.length>0){
+    h+='<div class="ent-section" style="border:2px solid var(--red);background:rgba(207,34,46,.03)"><div class="es-title" style="color:var(--red)">🚨 受注予定日超過案件（'+zombie.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">受注予定日が過去→DEAD or 予定日更新が必要</span></div>';
+    h+='<table class="ent-table"><thead><tr><th>案件名</th><th>担当</th><th>現P</th><th>滞留日数</th><th>CK</th><th>受注予定(超過)</th></tr></thead><tbody>';
+    zombie.forEach(function(s){
+      var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
+      h+='<tr><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td><td style="font-weight:600;white-space:nowrap">'+s.member+'</td><td><span class="pill" style="background:rgba(0,0,0,.05);color:var(--ink2);font-size:9px">P'+s.ph+'</span></td><td style="font-family:var(--mono);color:var(--red);font-weight:700">'+s.days+'日</td><td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td><td style="font-size:9px;color:var(--red);font-weight:600">'+(s.closeDate||'-')+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  // Pipeline progress (current deals with future close date)
   var groups=[
     {ph:1,label:'P1 SF移行漏れ',items:stalled.filter(function(s){return s.ph===1;}),threshold:0,desc:'SF登録確認'},
     {ph:2,label:'P2 案件化（→提案へ）',items:stalled.filter(function(s){return s.ph===2;}),threshold:14,desc:'提案実施してP3へ'},
     {ph:3,label:'P3 提案済（→面談へ）',items:stalled.filter(function(s){return s.ph===3;}),threshold:10,desc:'面談設定してP4へ'},
     {ph:4,label:'P4 面談済（→合意へ）',items:stalled.filter(function(s){return s.ph===4;}),threshold:7,desc:'口頭合意を取得'},
-    {ph:5,label:'P5 合意済（→契約へ）',items:stalled.filter(function(s){return s.ph===5;}),threshold:7,desc:'契約手続き完了'}
+    {ph:5,label:'P5 合意済（→契約へ）',items:stalled.filter(function(s){return s.ph===5;}),threshold:7,desc:'契約手続き完了'},
+    {ph:7,label:'P7 契約手続き中',items:stalled.filter(function(s){return s.ph===7;}),threshold:7,desc:'契約締結→受注'}
   ];
   var totalStalled=stalled.length;
   if(totalStalled>0){
-    h+='<div class="ent-section"><div class="es-title" style="color:var(--red)">⚠️ 進捗管理（'+totalStalled+'件）</div>';
+    h+='<div class="ent-section"><div class="es-title" style="color:var(--blue)">📋 進行中パイプライン（'+totalStalled+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">受注予定日が今月以降</span></div>';
     groups.forEach(function(g){
       if(!g.items.length)return;
       var alertN=g.threshold>0?g.items.filter(function(s){return s.days>=g.threshold;}).length:g.items.length;
