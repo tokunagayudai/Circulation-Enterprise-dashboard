@@ -386,9 +386,10 @@ function eTeamTotal(stats){
 function ePct(a,b){return b>0?Math.round(a/b*100):0;}
 // PN stats (active projects) - monthly forecast
 function eBuildPN(){
-  var rev=0,pay=0,pn=0;
+  var rev=0,pay=0,pn=0,seen={};
   E_PN2.forEach(function(r){
     var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
+    var aid=gv(r,9).trim();if(!aid||seen[aid])return;seen[aid]=true; // dedupe by case ID
     var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
     if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed2=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed2)&&cd<ed2)end=cancel;}
     if(!start||!end)return;
@@ -403,8 +404,10 @@ function eBuildRevForecast(){
   var today=new Date();var todayYM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
   var months=[];for(var i=0;i<7;i++)months.push(eAddMonth(todayYM,i));
   var base={};months.forEach(function(m){base[m]={rev:0,pk:0,pn:0,ending:0};});
+  var seen={};
   E_PN2.forEach(function(r){
     var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
+    var aid=gv(r,9).trim();if(!aid||seen[aid])return;seen[aid]=true; // dedupe by case ID
     var billing=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;
     var payment=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;
     var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
