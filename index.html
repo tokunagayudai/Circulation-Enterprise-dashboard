@@ -336,9 +336,10 @@ var E_MGR='徳永 雄大';
 // Phase parser
 function ePh(s){if(!s)return 0;for(var i=8;i>=1;i--)if(s.indexOf('0'+i)>=0)return i;if(s.indexOf('DEAD')>=0)return -1;return 0;}
 // Column finder for enterprise CSV
-function eDetect(h){var m={};var kw={member:['主担当者'],name:['案件名'],lastPh:['最終到達'],apDate:['初回アポ','アポイント日'],mendanDate:['面談日'],closeDate:['受注予定日','受注日'],dealType:['新規/継続','新規／継続'],channel:['施策区分'],ck:['CK'],deadReason:['DEAD理由'],startDate:['契約開始'],endDate:['契約終了'],billM:['月額.*顧客請求','月額.*請求'],payM:['月額.*専門家','月額.*支払'],cancel:['解約日'],oppId:['案件 ID','案件ID','Opportunity ID'],mfj:['Manager Forecast','解約リスク'],nextAct:['ネクストアクション$'],nextDate:['ネクストアクション実施日'],mutual:['Mutual Close']};for(var k in kw){m[k]=-1;for(var w=0;w<kw[k].length;w++){for(var i=0;i<h.length;i++){if(h[i].match(new RegExp(kw[k][w]))){m[k]=i;break;}}if(m[k]>=0)break;}}
+function eDetect(h){var m={};var kw={member:['主担当者'],name:['案件名'],lastPh:['最終到達'],apDate:['初回アポ','アポイント日'],mendanDate:['面談日'],closeDate:['受注予定日','受注日'],dealType:['新規/継続','新規／継続'],channel:['施策区分'],ck:['CK'],deadReason:['DEAD理由'],startDate:['契約開始'],endDate:['契約終了'],billM:['月額.*顧客請求','月額.*請求'],payM:['月額.*専門家','月額.*支払'],cancel:['解約日'],oppId:['案件 ID','案件ID','Opportunity ID'],mfj:['Manager Forecast Judge','Manager Forecast','解約リスク'],recycle:['リサイクル選択','リサイクルステータス'],proposalDate:['人選結果メール初回送付日','人選結果メール','提案実施日','提案日'],nextAct:['ネクストアクション$','ネクストアクション(?!実施)'],nextDate:['ネクストアクション実施日'],mutual:['Mutual Close']};for(var k in kw){m[k]=-1;for(var w=0;w<kw[k].length;w++){for(var i=0;i<h.length;i++){if(h[i].match(new RegExp(kw[k][w]))){m[k]=i;break;}}if(m[k]>=0)break;}}
   // curPh: 「フェーズ」単体（「最終到達フェーズ」は除外）
   m.curPh=-1;for(var i=0;i<h.length;i++){var hv=h[i].trim();if(hv==='フェーズ'||(hv.indexOf('フェーズ')>=0&&hv.indexOf('最終')<0&&hv.indexOf('到達')<0)){m.curPh=i;break;}}
+  console.log('COL_MAP detected:',m);console.log('Headers:',h);
   return m;}
 function eGet(r,k){var i=E_COL[k];return i>=0&&i<r.length?r[i].trim():'';}
 function eGetN(r,k){var v=parseFloat(eGet(r,k).replace(/[,¥\s]/g,''));return isNaN(v)?0:v;}
@@ -451,11 +452,15 @@ function eBuildStalled(){
 // Render enterprise overview
 function renderEntOverview(){
   var h='';
-  // Period tabs: this month / next month
+  // Period tabs: this month / next month / all from 2025/08
   var E_MONTH=window.E_MONTH||'this';
   h+='<div style="display:flex;gap:6px;padding:0 24px 8px;align-items:center;flex-wrap:wrap">';
   h+='<div class="ent-tab'+(E_MONTH==='this'?' act':'')+'" onclick="window.E_MONTH=\'this\';renderEnt()">今月</div>';
   h+='<div class="ent-tab'+(E_MONTH==='next'?' act':'')+'" onclick="window.E_MONTH=\'next\';renderEnt()">来月</div>';
+  h+='<div class="ent-tab'+(E_MONTH==='last'?' act':'')+'" onclick="window.E_MONTH=\'last\';renderEnt()">先月</div>';
+  h+='<div class="ent-tab'+(E_MONTH==='h1'?' act':'')+'" onclick="window.E_MONTH=\'h1\';renderEnt()">上期</div>';
+  h+='<div class="ent-tab'+(E_MONTH==='h2'?' act':'')+'" onclick="window.E_MONTH=\'h2\';renderEnt()">下期</div>';
+  h+='<div class="ent-tab'+(E_MONTH==='all'?' act':'')+'" onclick="window.E_MONTH=\'all\';renderEnt()">今期全体</div>';
   // Member filter
   var allMembers={};E_ROWS.forEach(function(r){var m=eGet(r,'member');if(m)allMembers[m]=true;});
   var mList=Object.keys(allMembers).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
@@ -464,87 +469,143 @@ function renderEntOverview(){
   h+='<option value="all"'+(E_MF==='all'?' selected':'')+'>全担当者</option>';
   mList.forEach(function(m){h+='<option value="'+m+'"'+(m===E_MF?' selected':'')+'>'+m+'</option>';});
   h+='</select></div>';
-  // Determine target month YM
-  var today=new Date();var targetYM;
-  if(E_MONTH==='next'){var nm=new Date(today.getFullYear(),today.getMonth()+1,1);targetYM=nm.getFullYear()+'/'+(nm.getMonth()+1<10?'0':'')+(nm.getMonth()+1);}
-  else{targetYM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);}
-  var monthLabel=targetYM.split('/')[1]+'月';
-  // KPI: count cases by date for target month (precise definitions)
-  // P1商談数: アポ日が対象月（IS/FS別）
-  // KSF提案実施数: 最終到達フェーズ>=P3 かつ アポ日が対象月（提案までいった案件）
-  // KPI面談実施数: 面談日が対象月
-  // KGI新規受注数: 現フェーズ=08-Closed かつ 受注予定日が対象月
-  // 受注CK: 上記受注の合計CK
+  // Determine date range based on E_MONTH
+  var today=new Date();var targetYM,targetStart,targetEnd,monthLabel;
+  function ymStr(d){return d.getFullYear()+'/'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1);}
+  if(E_MONTH==='this'){targetStart=new Date(today.getFullYear(),today.getMonth(),1);targetEnd=new Date(today.getFullYear(),today.getMonth()+1,0);targetYM=ymStr(today);monthLabel=targetYM.split('/')[1]+'月';}
+  else if(E_MONTH==='next'){var nm=new Date(today.getFullYear(),today.getMonth()+1,1);targetStart=nm;targetEnd=new Date(today.getFullYear(),today.getMonth()+2,0);targetYM=ymStr(nm);monthLabel=targetYM.split('/')[1]+'月';}
+  else if(E_MONTH==='last'){var lm=new Date(today.getFullYear(),today.getMonth()-1,1);targetStart=lm;targetEnd=new Date(today.getFullYear(),today.getMonth(),0);targetYM=ymStr(lm);monthLabel=targetYM.split('/')[1]+'月';}
+  else if(E_MONTH==='h1'){targetStart=new Date(2025,7,1);targetEnd=new Date(2026,0,31);monthLabel='上期(8-1月)';targetYM='';}
+  else if(E_MONTH==='h2'){targetStart=new Date(2026,1,1);targetEnd=new Date(2026,6,31);monthLabel='下期(2-7月)';targetYM='';}
+  else{targetStart=new Date(2025,7,1);targetEnd=today;monthLabel='今期全体';targetYM='';}
+  function inRange(dStr){if(!dStr)return false;var d=new Date(dStr.replace(/\//g,'-'));return !isNaN(d)&&d>=targetStart&&d<=targetEnd;}
+  // Calculate KPIs with per-member breakdown
+  var byMember={};mList.forEach(function(m){byMember[m]={is:0,fs:0,p1:0,p3:0,p4:0,p8:0,ck:0,deadM:0};});
   var kpi={p1:0,p4:0,p8:0,ck:0,is:0,fs:0,p3:0,p2:0,deadM:0};
   E_ROWS.forEach(function(r){
-    var m=eGet(r,'member');if(E_MF!=='all'&&m!==E_MF)return;
+    var m=eGet(r,'member');if(!m||!byMember[m])return;
+    if(E_MF!=='all'&&m!==E_MF)return;
     var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
-    var apYM=eYM(eGet(r,'apDate')),mdYM=eYM(eGet(r,'mendanDate')),clYM=eYM(eGet(r,'closeDate'));
+    var apStr=eGet(r,'apDate'),mdStr=eGet(r,'mendanDate'),clStr=eGet(r,'closeDate');
     var lp=ePh(eGet(r,'lastPh'));var cpRaw=eGet(r,'curPh');var cp=ePh(cpRaw);
     var ch=eGet(r,'channel');
-    // P1: アポ日が対象月
-    if(apYM===targetYM){kpi.p1++;if(ch.indexOf('FS')>=0)kpi.fs++;else kpi.is++;}
-    // P2案件化: アポ日対象月かつ最終到達P2以上
-    if(apYM===targetYM&&lp>=2)kpi.p2++;
-    // KSF提案実施: アポ日対象月かつ最終到達P3以上
-    if(apYM===targetYM&&lp>=3)kpi.p3++;
-    // KPI面談実施: 面談日が対象月
-    if(mdYM===targetYM)kpi.p4++;
-    // KGI新規受注: 受注予定日が対象月かつ現フェーズ=P8
-    if(clYM===targetYM&&cp===8){kpi.p8++;kpi.ck+=eGetN(r,'ck');}
-    // 対象月にDEAD化: アポ日対象月でDEAD
-    if(apYM===targetYM&&cpRaw.indexOf('DEAD')>=0)kpi.deadM++;
+    if(inRange(apStr)){
+      kpi.p1++;byMember[m].p1++;
+      if(ch.indexOf('FS')>=0){kpi.fs++;byMember[m].fs++;}else{kpi.is++;byMember[m].is++;}
+      if(lp>=3){kpi.p3++;byMember[m].p3++;}
+      if(lp>=2)kpi.p2++;
+      if(cpRaw.indexOf('DEAD')>=0){kpi.deadM++;byMember[m].deadM++;}
+    }
+    if(inRange(mdStr)){kpi.p4++;byMember[m].p4++;}
+    if(inRange(clStr)&&cp===8){kpi.p8++;kpi.ck+=eGetN(r,'ck');byMember[m].p8++;byMember[m].ck+=eGetN(r,'ck');}
   });
-  // Helper to render KPI card with achievement
-  function kpiCard(label,val,target,color,sub){
-    var pct=target>0?Math.round(val/target*100):0;
-    var pctC=pct>=100?'var(--grn)':pct>=70?'var(--org)':'var(--red)';
-    return '<div class="ent-kpi"><div class="ek-label">'+label+'</div><div class="ek-val" style="color:'+color+'">'+val+'</div><div class="ek-sub">'+sub+(target>0?' / 目標'+target:'')+'</div>'+(target>0?'<div class="ek-rate" style="color:'+pctC+'">達成率 '+pct+'%</div>':'')+'</div>';
+  // Team breakdown HTML for KPI cards
+  function memBrkdwn(key){
+    var parts=[];mList.forEach(function(m){var v=byMember[m][key];if(v>0)parts.push('<span style="font-size:9px;color:var(--ink3)">'+m.split(' ')[0]+':<strong style="color:var(--ink2)">'+v+'</strong></span>');});
+    return parts.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+parts.join('')+'</div>':'';
   }
-  // KPI cards row 1: 量(商談・提案・面談)
+  function kpiCard(label,val,target,color,sub,brkdwnKey){
+    var pct=target>0?Math.round(val/target*100):0;
+    var diff=target-val;
+    var pctC=pct>=100?'var(--grn)':pct>=70?'var(--org)':'var(--red)';
+    var diffTxt=target>0?(diff>0?'<span style="color:var(--red)">残り'+diff+'</span>':'<span style="color:var(--grn)">達成+'+Math.abs(diff)+'</span>'):'';
+    return '<div class="ent-kpi"><div class="ek-label">'+label+'</div><div class="ek-val" style="color:'+color+'">'+val+'</div><div class="ek-sub">'+sub+(target>0?' / 目標'+target:'')+'</div>'+(target>0?'<div class="ek-rate" style="color:'+pctC+'">達成率 '+pct+'% '+diffTxt+'</div>':'')+(brkdwnKey?memBrkdwn(brkdwnKey):'')+'</div>';
+  }
+  // Row 1: KGI/KPI/KSF(上段)
   h+='<div class="ent-kpi-row">';
-  h+=kpiCard('IS経由 商談',kpi.is,0,'var(--blue)','アポ取得月='+monthLabel);
-  h+=kpiCard('FS経由 商談',kpi.fs,0,'#6366f1','アポ取得月='+monthLabel);
-  h+=kpiCard('P1 商談合計',kpi.p1,E_TARGETS.p1,'var(--ink)',monthLabel);
-  h+=kpiCard('KSF 提案実施',kpi.p3,0,'var(--org)','最終到達≥P3 / アポ月');
-  h+=kpiCard('KPI 面談実施',kpi.p4,E_TARGETS.p4,'var(--org)','面談日='+monthLabel);
+  h+=kpiCard('KGI 新規受注',kpi.p8,E_TARGETS.p8,'var(--grn)','受注予定日='+monthLabel,'p8');
+  h+=kpiCard('受注CK',Math.round(kpi.ck/10000)+'万',Math.round(E_TARGETS.ck/10000),'var(--grn)','単位:万円','ck');
+  h+=kpiCard('KPI 面談実施',kpi.p4,E_TARGETS.p4,'var(--org)','面談日='+monthLabel,'p4');
+  h+=kpiCard('KSF 提案実施',kpi.p3,0,'var(--org)','最終到達≥P3','p3');
   h+='</div>';
-  // KPI cards row 2: 受注(KGI)
+  // Row 2: P1商談系(下段 先行指標)
   h+='<div class="ent-kpi-row">';
-  h+=kpiCard('KGI 新規受注',kpi.p8,E_TARGETS.p8,'var(--grn)','受注日='+monthLabel);
-  h+=kpiCard('受注CK',Math.round(kpi.ck/10000)+'万',Math.round(E_TARGETS.ck/10000),'var(--grn)','単位:万円');
-  h+=kpiCard('対象月DEAD',kpi.deadM,0,'var(--red)','失注件数');
-  // 移行率(対象月アポ案件のファネル)
-  var crP1P3=ePct(kpi.p3,kpi.p1),crP1P4Real=ePct(kpi.p4,kpi.p1);
-  h+='<div class="ent-kpi"><div class="ek-label">P1→P3 提案率</div><div class="ek-val">'+crP1P3+'%</div><div class="ek-sub">アポ→提案到達</div></div>';
+  h+=kpiCard('P1商談 合計',kpi.p1,E_TARGETS.p1,'var(--ink)','アポ日='+monthLabel,'p1');
+  h+=kpiCard('IS経由 商談',kpi.is,0,'var(--blue)','アポ取得月','is');
+  h+=kpiCard('FS経由 商談',kpi.fs,0,'#6366f1','アポ取得月','fs');
+  h+=kpiCard('対象月DEAD',kpi.deadM,0,'var(--red)','失注件数','deadM');
   h+='</div>';
-  // Revenue chart from PN data (like acplan)
-  var fc=eBuildRevForecast();var maxRev=1;fc.months.forEach(function(m){if(fc.base[m].rev>maxRev)maxRev=fc.base[m].rev;});
-  h+='<div class="ent-section"><div class="es-title">月別売上推移（稼働案件ベース）</div>';
-  h+='<div style="display:flex;align-items:flex-end;gap:3px;height:140px;padding:0 4px">';
-  fc.months.forEach(function(m,i){
-    var d=fc.base[m];var rh=Math.max(3,d.rev/maxRev*120);var ph=d.pk>0?Math.max(2,d.pk/maxRev*120):0;
+  // Revenue chart (2025/08 onwards) with MFJ overlay (select MIN/MID/MAX)
+  var E_REV_MFJ=window.E_REV_MFJ||'none';
+  h+='<div class="ent-section"><div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">';
+  h+='<div class="es-title" style="margin:0">月別売上推移（2025/08〜）</div>';
+  h+='<select class="fl" onchange="window.E_REV_MFJ=this.value;renderEnt()" style="margin-left:auto">';
+  h+='<option value="none"'+(E_REV_MFJ==='none'?' selected':'')+'>確定売上のみ</option>';
+  h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN案件(MFJ=MIN)</option>';
+  h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MID案件(MFJ=MID)</option>';
+  h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+MAX案件(MFJ=MAX)</option>';
+  h+='<option value="ALL"'+(E_REV_MFJ==='ALL'?' selected':'')+'>+全MFJ付き案件</option>';
+  h+='</select></div>';
+  // Build monthly revenue from acplan_pn dedup, from 2025/08 to 6 months future
+  var months=[];var startM=new Date(2025,7,1);var endM=new Date(today.getFullYear(),today.getMonth()+6,1);
+  for(var dm=new Date(startM);dm<=endM;dm.setMonth(dm.getMonth()+1))months.push(ymStr(dm));
+  var revData={};months.forEach(function(m){revData[m]={rev:0,pk:0,pn:0,ending:0,mfjAdd:0,mfjCount:0};});
+  var seen={};
+  E_PN2.forEach(function(r){
+    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
+    var aid=gv(r,9).trim();if(!aid||seen[aid])return;seen[aid]=true;
+    var billing=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;
+    var payment=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;
+    var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
+    if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed2=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed2)&&cd<ed2)end=cancel;}
+    if(!start||!end)return;var sYM=start.substring(0,7),eYM2=end.substring(0,7);
+    if(billing<=0&&payment<=0)return;
+    months.forEach(function(m){if(sYM<=m&&eYM2>=m){revData[m].rev+=billing;revData[m].pk+=(billing-payment);revData[m].pn++;}if(eYM2===m)revData[m].ending++;});
+  });
+  // MFJ overlay: add cases from funnel with MFJ matching filter, use contract start date & CK estimate
+  if(E_REV_MFJ!=='none'){
+    E_ROWS.forEach(function(r){
+      var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
+      var cp=ePh(cpRaw);if(cp<1||cp>=8)return;
+      var mfj=eGet(r,'mfj');if(!mfj)return;
+      if(E_REV_MFJ!=='ALL'&&mfj!==E_REV_MFJ)return;
+      var ck=eGetN(r,'ck');if(ck<=0)return;
+      // Assume start at closeDate or next month, duration 6 months, convert CK to monthly revenue via avg margin ~40%
+      var clStr=eGet(r,'closeDate');var sDt=clStr?new Date(clStr.replace(/\//g,'-')):new Date(today.getFullYear(),today.getMonth()+1,1);
+      if(isNaN(sDt))sDt=new Date(today.getFullYear(),today.getMonth()+1,1);
+      var monthlyPK=ck/6;var monthlyRev=monthlyPK/0.4;
+      for(var i=0;i<6;i++){
+        var dm2=new Date(sDt.getFullYear(),sDt.getMonth()+i,1);
+        var mk=ymStr(dm2);
+        if(revData[mk]){revData[mk].mfjAdd+=monthlyRev;revData[mk].mfjCount++;}
+      }
+    });
+  }
+  var maxRev=1;months.forEach(function(m){var tot=revData[m].rev+revData[m].mfjAdd;if(tot>maxRev)maxRev=tot;});
+  h+='<div style="display:flex;align-items:flex-end;gap:3px;height:160px;padding:0 4px;overflow-x:auto">';
+  months.forEach(function(m){
+    var d=revData[m];var rh=Math.max(2,d.rev/maxRev*130);var mh=d.mfjAdd>0?Math.max(2,d.mfjAdd/maxRev*130):0;
     var mgn=d.rev>0?Math.round(d.pk/d.rev*100):0;var ml=m.replace('20','').replace('/','-');
-    var isCur=m===fc.todayYM;
-    h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0;cursor:pointer">';
-    h+='<div style="font-size:7px;font-family:var(--mono);color:var(--ink2)">'+eFmt(d.rev)+'</div>';
+    var isCur=m===ymStr(today);
+    h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:55px">';
+    h+='<div style="font-size:7px;font-family:var(--mono);color:var(--ink2)">'+eFmt(d.rev+d.mfjAdd)+'</div>';
     h+='<div style="font-size:7px;color:var(--org);font-weight:600">'+mgn+'%</div>';
-    h+='<div style="display:flex;gap:1px;align-items:flex-end;width:100%"><div style="flex:1;height:'+rh+'px;background:var(--blue);border-radius:2px 2px 0 0;min-height:2px"></div><div style="flex:1;height:'+ph+'px;background:var(--grn);border-radius:2px 2px 0 0;min-height:2px"></div></div>';
-    h+='<div style="font-size:8px;color:'+(isCur?'var(--blue);font-weight:700':'var(--ink3)')+'">'+ml+'</div>';
+    h+='<div style="display:flex;flex-direction:column-reverse;width:100%;align-items:stretch">';
+    h+='<div style="height:'+rh+'px;background:var(--blue);border-radius:2px 2px 0 0;min-height:2px"></div>';
+    if(mh>0)h+='<div style="height:'+mh+'px;background:rgba(234,88,12,.28);border-top:1px dashed var(--org)"></div>';
+    h+='</div>';
+    h+='<div style="font-size:7px;color:'+(isCur?'var(--blue);font-weight:700':'var(--ink3)')+'">'+ml+'</div>';
     h+='<div style="font-size:7px;color:var(--ink3)">'+d.pn+'名</div>';
-    if(d.ending>0)h+='<div style="font-size:6px;color:var(--red)">-'+d.ending+'</div>';
+    if(d.mfjCount>0)h+='<div style="font-size:6px;color:var(--org)">+'+d.mfjCount+'</div>';
     h+='</div>';
   });
   h+='</div>';
-  h+='<div style="display:flex;gap:12px;margin-top:6px;font-size:9px;color:var(--ink2)"><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:var(--blue);border-radius:2px"></span>売上</span><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:var(--grn);border-radius:2px"></span>粗利(PK)</span><span style="color:var(--org)">%=粗利率</span></div>';
+  h+='<div style="display:flex;gap:12px;margin-top:6px;font-size:9px;color:var(--ink2)"><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:var(--blue);border-radius:2px"></span>確定売上(既存契約)</span>';
+  if(E_REV_MFJ!=='none')h+='<span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:rgba(234,88,12,.28);border:1px dashed var(--org)"></span>'+E_REV_MFJ+'パイプライン見込</span>';
+  h+='<span style="color:var(--org)">%=粗利率</span></div></div>';
+  // PN status section with breakdown
+  var pnStats=eBuildPN();
+  h+='<div class="ent-kpi-row">';
+  h+=kpiCard('現在稼働PN数',pnStats.pn,0,'var(--blue)','件');
+  h+=kpiCard('月次売上',Math.round(pnStats.rev/10000)+'万',0,'var(--blue)','今月の請求額');
+  h+=kpiCard('月次PK(粗利)',Math.round(pnStats.pk/10000)+'万',0,'var(--grn)','今月の粗利益');
   h+='</div>';
-  // Stalled deal alerts (P2-P5 + P1 migration leak)
+  // Stalled/zombie sections
   var stalledData=eBuildStalled();var stalled=stalledData.stalled;var zombie=stalledData.zombie;
   if(E_MF!=='all'){stalled=stalled.filter(function(s){return s.member===E_MF;});zombie=zombie.filter(function(s){return s.member===E_MF;});}
-  // Zombie alerts first (most urgent - past due)
   if(zombie.length>0){
     h+='<div class="ent-section" style="border:2px solid var(--red);background:rgba(207,34,46,.03)"><div class="es-title" style="color:var(--red)">🚨 受注予定日超過案件（'+zombie.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">DEAD化 or 受注予定日更新が必要</span></div>';
-    h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>現P</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
+    h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
     zombie.forEach(function(s){
       var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
       var mfjC=s.mfj==='MAX'?'background:var(--grn-bg);color:var(--grn)':s.mfj==='MID'?'background:#fff8c5;color:var(--org)':s.mfj==='MIN'?'background:#ffebe9;color:var(--red)':'';
@@ -560,57 +621,33 @@ function renderEntOverview(){
     });
     h+='</tbody></table></div></div>';
   }
-  // Pipeline progress (current deals with future close date)
-  var groups=[
-    {ph:1,label:'P1 SF移行漏れ',items:stalled.filter(function(s){return s.ph===1;}),threshold:0,desc:'SF登録確認'},
-    {ph:2,label:'P2 案件化（→提案へ）',items:stalled.filter(function(s){return s.ph===2;}),threshold:14,desc:'提案実施してP3へ'},
-    {ph:3,label:'P3 提案済（→面談へ）',items:stalled.filter(function(s){return s.ph===3;}),threshold:10,desc:'面談設定してP4へ'},
-    {ph:4,label:'P4 面談済（→合意へ）',items:stalled.filter(function(s){return s.ph===4;}),threshold:7,desc:'口頭合意を取得'},
-    {ph:5,label:'P5 合意済（→契約へ）',items:stalled.filter(function(s){return s.ph===5;}),threshold:7,desc:'契約手続き完了'},
-    {ph:7,label:'P7 契約手続き中',items:stalled.filter(function(s){return s.ph===7;}),threshold:7,desc:'契約締結→受注'}
-  ];
-  var totalStalled=stalled.length;
-  if(totalStalled>0){
-    h+='<div class="ent-section"><div class="es-title" style="color:var(--blue)">📋 進行中パイプライン（'+totalStalled+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">受注予定日が今月以降</span></div>';
-    groups.forEach(function(g){
-      if(!g.items.length)return;
-      var alertN=g.threshold>0?g.items.filter(function(s){return s.days>=g.threshold;}).length:g.items.length;
-      h+='<div style="margin-top:8px;padding-top:6px;border-top:1px solid rgba(0,0,0,.04)"><div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:11px;font-weight:700;color:'+(E_PH_COLORS[g.ph]||'var(--ink)')+'">'+g.label+' ('+g.items.length+')</span>';
-      if(alertN>0&&g.threshold>0)h+='<span style="font-size:9px;color:var(--red);font-weight:600">'+alertN+'件が'+g.threshold+'日超</span>';
-      h+='<span style="font-size:9px;color:var(--ink3)">→ '+g.desc+'</span></div>';
-      h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
-      g.items.forEach(function(s){
-        var dc=g.threshold>0?(s.days>=g.threshold?'color:var(--red);font-weight:700':s.days>=g.threshold*0.7?'color:var(--org)':''):'color:var(--blue)';
-        var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
-        var mfjC=s.mfj==='MAX'?'background:var(--grn-bg);color:var(--grn)':s.mfj==='MID'?'background:#fff8c5;color:var(--org)':s.mfj==='MIN'?'background:#ffebe9;color:var(--red)':'';
-        h+='<tr><td style="font-weight:600;white-space:nowrap">'+s.member+'</td>';
-        h+='<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td>';
-        h+='<td>'+(s.mfj?'<span class="pill" style="font-size:9px;'+mfjC+'">'+s.mfj+'</span>':'-')+'</td>';
-        h+='<td style="font-size:9px">'+(s.dealType||'-')+'</td>';
-        h+='<td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td>';
-        h+='<td style="font-size:9px;color:var(--ink3)">'+(s.closeDate||'-')+'</td>';
-        h+='<td style="font-family:var(--mono);'+dc+'">'+s.days+'日</td>';
-        h+='<td style="font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.nextDate?'<span style="color:var(--ink3)">'+s.nextDate+'</span> ':'')+(s.nextAct||'-')+'</td></tr>';
-      });
-      h+='</tbody></table></div></div>';
-    });
-    h+='</div>';
-  }
   return h;
 }
 // Render pipeline detail (Quip replacement - Excel-like with filters & sorting)
+
+// Render pipeline detail (Quip replacement - Excel-like with filters & sorting, includes P8 this month)
 var E_PL_FILTERS={ph:'all',member:'all',dealType:'all',mfj:'all',sortBy:'ph',sortDir:'desc'};
 function renderEntPipeline(){
-  // Build full pipeline (P1-P7, exclude DEAD/P8)
+  var today=new Date();var thisYM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
+  var nextM=new Date(today.getFullYear(),today.getMonth()+1,1);var nextYM=nextM.getFullYear()+'/'+(nextM.getMonth()+1<10?'0':'')+(nextM.getMonth()+1);
+  // Build full pipeline (P1-P7 + P8 if closeDate this month)
   var allCases=[];
   E_ROWS.forEach(function(r){
     var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
-    var cp=ePh(cpRaw);if(cp<=0||cp>=8)return;
+    var cp=ePh(cpRaw);if(cp<=0)return;
     var dt=eGet(r,'dealType');
-    var today=new Date();var apDate=eGet(r,'apDate');
-    var ap=apDate?new Date(apDate.replace(/\//g,'-')):null;
+    var apStr=eGet(r,'apDate');
+    var clStr=eGet(r,'closeDate');var clYM=eYM(clStr);
+    // P8: only include if closeDate is this or next month
+    if(cp===8&&clYM!==thisYM&&clYM!==nextYM)return;
+    var ap=apStr?new Date(apStr.replace(/\//g,'-')):null;
     var days=ap&&!isNaN(ap)?Math.floor((today-ap)/(1000*60*60*24)):0;
-    allCases.push({name:eGet(r,'name'),ph:cp,ck:eGetN(r,'ck'),member:eGet(r,'member'),apDate:apDate,closeDate:eGet(r,'closeDate'),dealType:dt,channel:eGet(r,'channel'),startDate:eGet(r,'startDate'),oppId:eGet(r,'oppId'),mfj:eGet(r,'mfj'),nextAct:eGet(r,'nextAct'),nextDate:eGet(r,'nextDate'),days:days});
+    // Lead times
+    var proposalStr=eGet(r,'proposalDate')||'';// may not exist
+    var mdStr=eGet(r,'mendanDate');
+    // Use apDate -> mendanDate as P1->P4 time
+    var ap2md=0;if(apStr&&mdStr){var apD=new Date(apStr.replace(/\//g,'-'));var mdD=new Date(mdStr.replace(/\//g,'-'));if(!isNaN(apD)&&!isNaN(mdD))ap2md=Math.floor((mdD-apD)/(1000*60*60*24));}
+    allCases.push({name:eGet(r,'name'),ph:cp,ck:eGetN(r,'ck'),member:eGet(r,'member'),apDate:apStr,mendanDate:mdStr,closeDate:clStr,dealType:dt,channel:eGet(r,'channel'),startDate:eGet(r,'startDate'),oppId:eGet(r,'oppId'),mfj:eGet(r,'mfj'),nextAct:eGet(r,'nextAct'),nextDate:eGet(r,'nextDate'),days:days,ap2md:ap2md});
   });
   // Apply filters
   var f=E_PL_FILTERS;
@@ -621,26 +658,31 @@ function renderEntPipeline(){
     if(f.mfj!=='all'&&c.mfj!==f.mfj)return false;
     return true;
   });
-  // Sort
-  filtered.sort(function(a,b){
-    var av=a[f.sortBy],bv=b[f.sortBy];
-    if(typeof av==='string'){var r=av.localeCompare(bv,'ja');return f.sortDir==='asc'?r:-r;}
-    return f.sortDir==='asc'?(av-bv):(bv-av);
-  });
-  // Members list for filter
+  filtered.sort(function(a,b){var av=a[f.sortBy],bv=b[f.sortBy];if(typeof av==='string'){var r=av.localeCompare(bv,'ja');return f.sortDir==='asc'?r:-r;}return f.sortDir==='asc'?(av-bv):(bv-av);});
+  // Members list
   var members={};allCases.forEach(function(c){if(c.member)members[c.member]=true;});
   var mList=Object.keys(members).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
-  // Phase summary
+  // Phase summary - include P8
   var phSum={};allCases.forEach(function(c){if(!phSum[c.ph])phSum[c.ph]={n:0,ck:0};phSum[c.ph].n++;phSum[c.ph].ck+=c.ck;});
   var totalCK=filtered.reduce(function(s,c){return s+c.ck;},0);
+  // 新規/継続 ratio for pie
+  var dealTypes={};allCases.forEach(function(c){var k=c.dealType||'不明';if(!dealTypes[k])dealTypes[k]=0;dealTypes[k]++;});
   var h='';
-  // Phase summary cards (clickable filter)
-  h+='<div class="ent-section"><div class="es-title">パイプライン全体 '+allCases.length+'件 / CK合計 '+eFmt(allCases.reduce(function(s,c){return s+c.ck;},0))+'</div>';
+  // Phase pipeline stacked (P1→P8)
+  h+='<div class="ent-section"><div class="es-title">パイプライン総量 '+allCases.length+'件 / CK合計 '+eFmt(allCases.reduce(function(s,c){return s+c.ck;},0))+'<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">※P8は今月/来月受注予定のみ</span></div>';
   h+='<div class="ent-pl-grid">';
   h+='<div class="ent-pl" style="cursor:pointer;'+(f.ph==='all'?'border:2px solid var(--blue)':'')+'" onclick="E_PL_FILTERS.ph=\'all\';renderEnt()"><div class="ep-ph">全部</div><div class="ep-n" style="color:var(--ink)">'+allCases.length+'</div><div class="ep-ck">'+eFmt(allCases.reduce(function(s,c){return s+c.ck;},0))+'</div></div>';
-  [1,2,3,4,5,7].forEach(function(p){
+  [1,2,3,4,5,7,8].forEach(function(p){
     var d=phSum[p]||{n:0,ck:0};var sel=f.ph===String(p);
     h+='<div class="ent-pl" style="cursor:pointer;'+(sel?'border:2px solid '+(E_PH_COLORS[p]||'var(--blue)'):'')+'" onclick="E_PL_FILTERS.ph=\''+p+'\';renderEnt()"><div class="ep-ph">'+(E_PH_LABELS[p]||'P'+p)+'</div><div class="ep-n" style="color:'+(E_PH_COLORS[p]||'var(--ink)')+'">'+d.n+'</div><div class="ep-ck">'+eFmt(d.ck)+'</div></div>';
+  });
+  h+='</div>';
+  // 新規/継続 ratio (pie-like bars)
+  var totalDT=Object.keys(dealTypes).reduce(function(s,k){return s+dealTypes[k];},0);
+  h+='<div style="margin-top:12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap"><span style="font-size:10px;font-weight:600">新規/継続構成:</span>';
+  Object.keys(dealTypes).forEach(function(k){
+    var pct=Math.round(dealTypes[k]/totalDT*100);
+    h+='<span style="font-size:10px"><strong>'+k+'</strong> '+dealTypes[k]+'件('+pct+'%)</span>';
   });
   h+='</div></div>';
   // Filter bar
@@ -656,32 +698,38 @@ function renderEntPipeline(){
   h+='<select class="fl" onchange="E_PL_FILTERS.sortDir=this.value;renderEnt()"><option value="desc"'+(f.sortDir==='desc'?' selected':'')+'>降順</option><option value="asc"'+(f.sortDir==='asc'?' selected':'')+'>昇順</option></select>';
   h+='<button onclick="E_PL_FILTERS={ph:\'all\',member:\'all\',dealType:\'all\',mfj:\'all\',sortBy:\'ph\',sortDir:\'desc\'};renderEnt()" style="font-size:10px;padding:4px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--bg2);cursor:pointer">リセット</button>';
   h+='</div></div>';
-  // Result count
   h+='<div style="margin:0 24px 8px;font-size:11px;color:var(--ink2)"><strong>'+filtered.length+'件</strong> / CK合計 '+eFmt(totalCK)+'</div>';
-  // Excel-like table
+  // Excel-like table with lead times
   h+='<div class="ent-section" style="padding:0;overflow:hidden">';
-  h+='<div style="overflow-x:auto;max-height:70vh;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg);z-index:1"><tr><th>担当</th><th>案件名</th><th>現P</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>契約開始</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
+  h+='<div style="overflow-x:auto;max-height:70vh;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg);z-index:1"><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>初回アポ日</th><th>面談日</th><th>ア→面(日数)</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
   filtered.forEach(function(c){
     var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
     var mfjC=c.mfj==='MAX'?'background:var(--grn-bg);color:var(--grn)':c.mfj==='MID'?'background:#fff8c5;color:var(--org)':c.mfj==='MIN'?'background:#ffebe9;color:var(--red)':'';
     var phC=E_PH_COLORS[c.ph]||'var(--ink)';
+    // Lead time alert
+    var leadC='';
+    if(c.ph===3&&c.ap2md>=14)leadC='color:var(--red);font-weight:700';
+    else if(c.ph===3&&c.ap2md>=7)leadC='color:var(--org)';
     h+='<tr>';
     h+='<td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
-    h+='<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
+    h+='<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
     h+='<td><span class="pill" style="font-size:9px;background:rgba(0,0,0,.04);color:'+phC+';font-weight:700">P'+c.ph+'</span></td>';
     h+='<td>'+(c.mfj?'<span class="pill" style="font-size:9px;'+mfjC+'">'+c.mfj+'</span>':'-')+'</td>';
     h+='<td style="font-size:9px">'+(c.dealType||'-')+'</td>';
     h+='<td style="font-family:var(--mono);font-weight:600;'+(c.ck>0?'color:var(--blue)':'color:var(--ink3)')+'">'+(c.ck?eFmt(c.ck):'¥0')+'</td>';
     h+='<td style="font-size:9px;color:var(--ink3)">'+(c.closeDate||'-')+'</td>';
-    h+='<td style="font-size:9px;color:var(--ink3)">'+(c.startDate||'-')+'</td>';
+    h+='<td style="font-size:9px;color:var(--ink3)">'+(c.apDate||'-')+'</td>';
+    h+='<td style="font-size:9px;color:var(--ink3)">'+(c.mendanDate||'-')+'</td>';
+    h+='<td style="font-family:var(--mono);font-size:10px;'+leadC+'">'+(c.ap2md>0?c.ap2md+'日':'-')+'</td>';
     h+='<td style="font-family:var(--mono);font-size:10px;'+(c.days>=30?'color:var(--red);font-weight:700':c.days>=14?'color:var(--org)':'')+'">'+c.days+'日</td>';
-    h+='<td style="font-size:9px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.nextDate?'<span style="color:var(--ink3)">'+c.nextDate+'</span> ':'')+(c.nextAct||'-')+'</td>';
+    h+='<td style="font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.nextDate?'<span style="color:var(--ink3)">'+c.nextDate+'</span> ':'')+(c.nextAct||'-')+'</td>';
     h+='</tr>';
   });
-  if(!filtered.length)h+='<tr><td colspan="10" style="text-align:center;padding:20px;color:var(--ink3)">該当案件なし</td></tr>';
+  if(!filtered.length)h+='<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--ink3)">該当案件なし</td></tr>';
   h+='</tbody></table></div></div>';
   return h;
 }
+
 // Render forecast
 function renderEntForecast(){
   var stats=eBuildFunnel(E_ROWS,'all');var team=eTeamTotal(stats);
@@ -907,6 +955,7 @@ function renderEntFunnel(){
 // Analysis: DEAD cases
 function renderEntDead(){
   var period=window.E_AN_PERIOD||'all';var pr=eGetPeriodRange(period);
+  var deadMember=window.E_DEAD_MEM||'all';
   var deadCases=[];
   E_ROWS.forEach(function(r){
     var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')<0)return;
@@ -914,18 +963,32 @@ function renderEntDead(){
     var apStr=eGet(r,'apDate');if(!apStr)return;
     var apD=new Date(apStr.replace(/\//g,'-'));if(isNaN(apD))return;
     if(period&&period!=='all'){if(apD<pr.start||apD>pr.end)return;}
-    deadCases.push({name:eGet(r,'name'),member:eGet(r,'member'),reason:cpRaw,deadDetail:eGet(r,'deadReason'),ck:eGetN(r,'ck'),apDate:eGet(r,'apDate'),lastPh:eGet(r,'lastPh'),oppId:eGet(r,'oppId')});
+    var mem=eGet(r,'member');
+    if(deadMember!=='all'&&mem!==deadMember)return;
+    deadCases.push({name:eGet(r,'name'),member:mem,reason:cpRaw,deadDetail:eGet(r,'deadReason'),ck:eGetN(r,'ck'),apDate:apStr,lastPh:eGet(r,'lastPh'),oppId:eGet(r,'oppId'),recycle:eGet(r,'recycle')});
   });
-  // Period filter bar
+  // Members for filter
+  var allMems={};E_ROWS.forEach(function(r){var m=eGet(r,'member');if(m)allMems[m]=true;});
+  var mList=Object.keys(allMems).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
+  // Filter bar (period + member)
   var hHdr='<div style="display:flex;gap:6px;padding:0 24px 8px;align-items:center;flex-wrap:wrap"><span style="font-size:11px;font-weight:600;color:var(--ink2)">期間:</span>';
   [{id:'this',l:'今月'},{id:'last',l:'先月'},{id:'3m',l:'直近3ヶ月'},{id:'h1',l:'上期'},{id:'h2',l:'下期'},{id:'all',l:'今期全体'}].forEach(function(p){
     hHdr+='<div class="ent-tab'+(period===p.id?' act':'')+'" onclick="window.E_AN_PERIOD=\''+p.id+'\';renderEnt()">'+p.l+'</div>';
   });
-  hHdr+='</div>';
-  // Group by reason
+  hHdr+='<select class="fl" style="margin-left:16px" onchange="window.E_DEAD_MEM=this.value;renderEnt()"><option value="all"'+(deadMember==='all'?' selected':'')+'>全担当</option>';
+  mList.forEach(function(m){hHdr+='<option value="'+m+'"'+(m===deadMember?' selected':'')+'>'+m+'</option>';});
+  hHdr+='</select></div>';
+  // Group by DEAD reason (from curPh: DEAD-Lost, DEAD-No Opportunity, etc.)
   var byReason={};deadCases.forEach(function(d){var k=d.reason;if(!byReason[k])byReason[k]=[];byReason[k].push(d);});
+  // Group by 最終到達フェーズ (where they died)
+  var byLastPh={};deadCases.forEach(function(d){var lp=ePh(d.lastPh);if(!byLastPh[lp])byLastPh[lp]={n:0};byLastPh[lp].n++;});
+  // Group by recycle status
+  var byRecycle={};deadCases.forEach(function(d){var k=d.recycle||'未設定';if(!byRecycle[k])byRecycle[k]=0;byRecycle[k]++;});
+  // Member breakdown
+  var byMember={};deadCases.forEach(function(d){if(!byMember[d.member])byMember[d.member]=0;byMember[d.member]++;});
   var h=hHdr+'<div class="ent-section"><div class="es-title">DEAD案件分析（'+deadCases.length+'件・継続除く）</div>';
-  // Reason breakdown
+  // DEAD理由内訳
+  h+='<div style="margin-bottom:8px;font-size:11px;font-weight:600">DEAD理由別:</div>';
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
   var reasons=Object.keys(byReason).sort(function(a,b){return byReason[b].length-byReason[a].length;});
   reasons.forEach(function(k){
@@ -933,21 +996,44 @@ function renderEntDead(){
     h+='<div style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;text-align:center;min-width:100px"><div style="font-size:18px;font-weight:700;font-family:var(--mono)">'+n+'</div><div style="font-size:8px;color:var(--ink3)">'+k.replace('DEAD-','')+'</div><div style="font-size:9px;color:var(--ink3)">'+pct+'%</div></div>';
   });
   h+='</div>';
-  // By member
-  var byMember={};deadCases.forEach(function(d){if(!byMember[d.member])byMember[d.member]=0;byMember[d.member]++;});
-  h+='<div style="margin-bottom:12px;font-size:11px"><strong>メンバー別DEAD:</strong> ';
-  Object.keys(byMember).sort(function(a,b){return byMember[b]-byMember[a];}).forEach(function(m,i){
-    h+=(i?'、':'')+m+' '+byMember[m]+'件';
+  // 最終到達フェーズ別内訳
+  h+='<div style="margin:12px 0 8px;font-size:11px;font-weight:600">最終到達フェーズ別（どこで死んだか）:</div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
+  [1,2,3,4,5,7].forEach(function(p){
+    var d=byLastPh[p]||{n:0};var pct=ePct(d.n,deadCases.length);
+    h+='<div style="background:var(--bg);border:1px solid var(--bd);border-left:3px solid '+(E_PH_COLORS[p]||'var(--ink3)')+';border-radius:8px;padding:8px 12px;text-align:center;min-width:80px"><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:'+(E_PH_COLORS[p]||'var(--ink)')+'">'+d.n+'</div><div style="font-size:8px;color:var(--ink3)">'+(E_PH_LABELS[p]||'P'+p)+'</div><div style="font-size:9px;color:var(--ink3)">'+pct+'%</div></div>';
   });
   h+='</div>';
-  // Detail table
-  h+='<table class="ent-table"><thead><tr><th>案件名</th><th>担当者</th><th>DEAD理由</th><th>最終到達</th><th>CK</th><th>アポ日</th></tr></thead><tbody>';
-  deadCases.slice(0,50).forEach(function(d){
+  // リサイクル内訳
+  h+='<div style="margin:12px 0 8px;font-size:11px;font-weight:600">リサイクル設定状況:</div>';
+  h+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">';
+  Object.keys(byRecycle).sort(function(a,b){return byRecycle[b]-byRecycle[a];}).forEach(function(k){
+    var n=byRecycle[k];var pct=ePct(n,deadCases.length);
+    var col=k==='未設定'?'var(--red)':'var(--grn)';
+    h+='<div style="background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:8px 12px;text-align:center;min-width:100px"><div style="font-size:18px;font-weight:700;font-family:var(--mono);color:'+col+'">'+n+'</div><div style="font-size:8px;color:var(--ink3)">'+k+'</div><div style="font-size:9px;color:var(--ink3)">'+pct+'%</div></div>';
+  });
+  h+='</div>';
+  // メンバー別
+  if(deadMember==='all'){
+    h+='<div style="margin-bottom:12px;font-size:11px"><strong>メンバー別DEAD:</strong> ';
+    Object.keys(byMember).sort(function(a,b){return byMember[b]-byMember[a];}).forEach(function(m,i){h+=(i?'、':'')+m+' '+byMember[m]+'件';});
+    h+='</div>';
+  }
+  // Detail table - 担当者を一番右、CKは削除
+  h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>案件名</th><th>DEAD理由</th><th>最終到達</th><th>リサイクル</th><th>アポ日</th><th>担当者</th></tr></thead><tbody>';
+  deadCases.slice(0,100).forEach(function(d){
     var lp=ePh(d.lastPh);var lpC=lp>=4?'color:var(--org)':lp>=2?'color:#6366f1':'color:var(--ink3)';
     var url=d.oppId&&d.oppId.length>=15?SFO+d.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
-    h+='<tr><td style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+d.name+'</td><td style="font-weight:600">'+d.member+'</td><td style="font-size:9px;color:var(--red)">'+d.reason.replace('DEAD-','')+'</td><td style="'+lpC+';font-weight:600">P'+lp+'</td><td style="font-family:var(--mono)">'+(d.ck?eFmt(d.ck):'-')+'</td><td style="font-size:9px;color:var(--ink3)">'+d.apDate+'</td></tr>';
+    var rcCol=d.recycle?'color:var(--grn)':'color:var(--red)';
+    h+='<tr><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+d.name+'</td>';
+    h+='<td style="font-size:9px;color:var(--red)">'+d.reason.replace('DEAD-','')+'</td>';
+    h+='<td style="'+lpC+';font-weight:600">P'+lp+'</td>';
+    h+='<td style="font-size:9px;'+rcCol+'">'+(d.recycle||'未設定')+'</td>';
+    h+='<td style="font-size:9px;color:var(--ink3)">'+d.apDate+'</td>';
+    h+='<td style="font-weight:600;white-space:nowrap">'+d.member+'</td></tr>';
   });
-  h+='</tbody></table></div>';
+  if(!deadCases.length)h+='<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--ink3)">該当DEAD案件なし</td></tr>';
+  h+='</tbody></table></div></div>';
   return h;
 }
 // Analysis: Breakdown (unit price, duration, themes, companies)
