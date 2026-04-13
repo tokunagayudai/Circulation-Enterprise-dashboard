@@ -334,6 +334,7 @@ function fetchEntData(){
     var p=pCSV(res[2]);E_PN2=p.r;
     E_LOADED=true;
     console.log('Enterprise data loaded: funnel='+E_ROWS.length+' juchu='+E_JUCHU.length+' pn='+E_PN2.length);
+    if(E_PN2.length>0){console.log('PN first row sample:',E_PN2[0].slice(0,15));console.log('PN header:',p.h.slice(0,15));}
   }).catch(function(err){console.warn('Enterprise fetch error:',err);});
 }
 // Build funnel stats
