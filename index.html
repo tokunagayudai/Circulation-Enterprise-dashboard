@@ -656,7 +656,9 @@ function renderEntOverview(){
   h+='</div>';
   h+='<div style="display:flex;gap:12px;margin-top:6px;font-size:9px;color:var(--ink2)"><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:var(--blue);border-radius:2px"></span>確定売上(既存契約)</span>';
   if(E_REV_MFJ!=='none')h+='<span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:rgba(234,88,12,.28);border:1px dashed var(--org)"></span>'+E_REV_MFJ+'パイプライン見込</span>';
-  h+='<span style="color:var(--org)">%=粗利率</span></div></div>';
+  h+='<span style="color:var(--org)">%=粗利率</span></div>';
+  h+='<div id="rev-drill-box" style="margin:0"></div>';
+  h+='</div>';
   // === Quip風 商況サマリーテーブル（予算/パイプライン/実績/ヨミ） ===
   var qBudget=E_TARGETS.ck;
   // Build per-member pipeline/実績/ヨミ
@@ -692,11 +694,10 @@ function renderEntOverview(){
   h+='<tr style="background:#2a3040;color:#ccc"><th></th><th></th><th style="color:#ccc">値</th><th style="color:#ccc">率</th><th style="color:#ccc">CK実績</th><th style="color:#ccc">率</th><th style="color:#ccc">値</th><th style="color:#ccc">率</th><th style="color:#ccc">値</th><th style="color:#ccc">率</th><th style="color:#ccc">値</th><th style="color:#ccc">率</th></tr></thead><tbody>';
   // Total row
   function qRow(label,d,isMgr){
-    var bg=d.budget>0?d.budget:1;
-    var plR=Math.round(d.pipeline/bg*100);var p8R=Math.round(d.p8ck/bg*100);
-    var minR=Math.round(d.min/bg*100);var midR=Math.round(d.mid/bg*100);var maxR=Math.round(d.max/bg*100);
+    var bg=d.budget>0?d.budget:0;
+    function pctStr(v){if(bg<=0)return '-';var p=Math.round(v/bg*100);return '<span style="color:'+(p>=100?'var(--grn)':p>=50?'var(--org)':'var(--red)')+'">'+p+'%</span>';}
     var s=isMgr?' class="ent-mgr"':'';
-    return '<tr'+s+'><td style="font-weight:700">'+label+'</td><td style="font-family:var(--mono)">'+eFmt(d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(d.pipeline)+'</td><td>'+plR+'%</td><td style="font-family:var(--mono);color:var(--grn);font-weight:600">'+eFmt(d.p8ck)+'</td><td style="color:'+(p8R>=100?'var(--grn)':'var(--red)')+'">'+p8R+'%</td><td style="font-family:var(--mono)">'+eFmt(d.min)+'</td><td style="color:'+(minR>=100?'var(--grn)':'var(--ink3)')+'">'+minR+'%</td><td style="font-family:var(--mono)">'+eFmt(d.mid)+'</td><td style="color:'+(midR>=100?'var(--grn)':'var(--ink3)')+'">'+midR+'%</td><td style="font-family:var(--mono)">'+eFmt(d.max)+'</td><td style="color:'+(maxR>=100?'var(--grn)':'var(--ink3)')+'">'+maxR+'%</td></tr>';
+    return '<tr'+s+'><td style="font-weight:700">'+label+'</td><td style="font-family:var(--mono)">'+eFmt(bg)+'</td><td style="font-family:var(--mono)">'+eFmt(d.pipeline)+'</td><td>'+pctStr(d.pipeline)+'</td><td style="font-family:var(--mono);color:var(--grn);font-weight:600">'+eFmt(d.p8ck)+'</td><td>'+pctStr(d.p8ck)+'</td><td style="font-family:var(--mono)">'+eFmt(d.min)+'</td><td>'+pctStr(d.min)+'</td><td style="font-family:var(--mono)">'+eFmt(d.mid)+'</td><td>'+pctStr(d.mid)+'</td><td style="font-family:var(--mono)">'+eFmt(d.max)+'</td><td>'+pctStr(d.max)+'</td></tr>';
   }
   h+=qRow('合計',qTotal,false);
   Object.keys(qMembers).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');}).forEach(function(m){
@@ -1219,7 +1220,7 @@ function renderEntBreakdown(){
 }
 // Drill-down for revenue chart bar click (show PN cases for that month)
 function showRevDrill(ym){
-  var box=document.getElementById('ent-drill-box');if(!box)return;
+  var box=document.getElementById('rev-drill-box');if(!box)return;
   var list=[];var seen={};
   E_PN2.forEach(function(r){
     var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
@@ -1237,17 +1238,21 @@ function showRevDrill(ym){
   });
   var totalBill=list.reduce(function(s,c){return s+c.bill;},0);
   var totalPK=list.reduce(function(s,c){return s+c.pk;},0);
-  var h='<div class="ent-section" style="margin-top:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-size:12px;font-weight:700">'+ym+' 稼働案件 ('+list.length+'件) / 売上 '+eFmt(totalBill)+' / PK '+eFmt(totalPK)+'</div><button onclick="document.getElementById(\'ent-drill-box\').innerHTML=\'\'" style="font-size:10px;padding:4px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--bg2);cursor:pointer">閉じる ✕</button></div>';
-  h+='<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg);z-index:1"><tr><th>担当</th><th>案件名</th><th>契約期間</th><th>月額請求</th><th>月額PK</th><th>継続意向</th></tr></thead><tbody>';
+  var h='<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-size:12px;font-weight:700">'+ym+' 稼働案件 ('+list.length+'件) / 売上 '+eFmt(totalBill)+' / PK '+eFmt(totalPK)+'</div><button onclick="document.getElementById(\'rev-drill-box\').innerHTML=\'\'" style="font-size:10px;padding:4px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--bg2);cursor:pointer">閉じる ✕</button></div>';
+  h+='<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg);z-index:1"><tr><th>担当</th><th>案件名</th><th>契約開始</th><th>契約終了</th><th>月額請求</th><th>月額支払</th><th>月額PK</th><th>粗利率</th><th>継続意向</th></tr></thead><tbody>';
   list.sort(function(a,b){return b.bill-a.bill;});
   list.forEach(function(c){
     var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'#';
     var kzC=c.keizoku==='継続'?'color:var(--grn)':c.keizoku==='満了'?'color:var(--red)':c.keizoku==='確認中'?'color:var(--org)':'';
+    var mgn=c.bill>0?Math.round(c.pk/c.bill*100):0;
     h+='<tr><td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
-    h+='<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
-    h+='<td style="font-size:9px;color:var(--ink3)">'+c.start+' 〜 '+c.end+'</td>';
+    h+='<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
+    h+='<td style="font-size:9px;color:var(--ink3)">'+c.start+'</td>';
+    h+='<td style="font-size:9px;color:var(--ink3)">'+c.end+'</td>';
     h+='<td style="font-family:var(--mono)">'+eFmt(c.bill)+'</td>';
+    h+='<td style="font-family:var(--mono);color:var(--ink2)">'+eFmt(c.pay)+'</td>';
     h+='<td style="font-family:var(--mono);color:var(--grn)">'+eFmt(c.pk)+'</td>';
+    h+='<td style="font-family:var(--mono);color:var(--org)">'+mgn+'%</td>';
     h+='<td style="font-size:9px;'+kzC+'">'+(c.keizoku||'-')+'</td></tr>';
   });
   h+='</tbody></table></div></div>';
