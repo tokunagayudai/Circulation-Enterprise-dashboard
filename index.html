@@ -504,27 +504,70 @@ function renderEntOverview(){
     var parts=[];mList.forEach(function(m){var v=byMember[m][key];if(v>0)parts.push('<span style="font-size:9px;color:var(--ink3)">'+m.split(' ')[0]+':<strong style="color:var(--ink2)">'+v+'</strong></span>');});
     return parts.length?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px">'+parts.join('')+'</div>':'';
   }
-  function kpiCard(label,val,target,color,sub,brkdwnKey){
+  function kpiCard(label,val,target,color,sub,brkdwnKey,drillKey){
     var pct=target>0?Math.round(val/target*100):0;
     var diff=target-val;
     var pctC=pct>=100?'var(--grn)':pct>=70?'var(--org)':'var(--red)';
     var diffTxt=target>0?(diff>0?'<span style="color:var(--red)">残り'+diff+'</span>':'<span style="color:var(--grn)">達成+'+Math.abs(diff)+'</span>'):'';
-    return '<div class="ent-kpi"><div class="ek-label">'+label+'</div><div class="ek-val" style="color:'+color+'">'+val+'</div><div class="ek-sub">'+sub+(target>0?' / 目標'+target:'')+'</div>'+(target>0?'<div class="ek-rate" style="color:'+pctC+'">達成率 '+pct+'% '+diffTxt+'</div>':'')+(brkdwnKey?memBrkdwn(brkdwnKey):'')+'</div>';
+    var click=drillKey?' style="cursor:pointer" onclick="showEntDrill(\''+drillKey+'\')"':'';
+    return '<div class="ent-kpi"'+click+'><div class="ek-label">'+label+(drillKey?' <span style="font-size:9px;color:var(--ink3)">▼</span>':'')+'</div><div class="ek-val" style="color:'+color+'">'+val+'</div><div class="ek-sub">'+sub+(target>0?' / 目標'+target:'')+'</div>'+(target>0?'<div class="ek-rate" style="color:'+pctC+'">達成率 '+pct+'% '+diffTxt+'</div>':'')+(brkdwnKey?memBrkdwn(brkdwnKey):'')+'</div>';
   }
-  // Row 1: KGI/KPI/KSF(上段)
+  // Row 1: 先行指標 P1商談(IS/FS) → KSF P3提案 → KPI P4面談 → KGI P8受注
   h+='<div class="ent-kpi-row">';
-  h+=kpiCard('KGI 新規受注',kpi.p8,E_TARGETS.p8,'var(--grn)','受注予定日='+monthLabel,'p8');
-  h+=kpiCard('受注CK',Math.round(kpi.ck/10000)+'万',Math.round(E_TARGETS.ck/10000),'var(--grn)','単位:万円','ck');
-  h+=kpiCard('KPI 面談実施',kpi.p4,E_TARGETS.p4,'var(--org)','面談日='+monthLabel,'p4');
-  h+=kpiCard('KSF 提案実施',kpi.p3,0,'var(--org)','最終到達≥P3','p3');
+  h+=kpiCard('先行指標: P1商談合計',kpi.p1,E_TARGETS.p1,'var(--ink)','アポ日='+monthLabel,'p1','p1');
+  h+=kpiCard('└ IS経由 商談',kpi.is,0,'var(--blue)','アポ取得月','is','is');
+  h+=kpiCard('└ FS経由 商談',kpi.fs,0,'#6366f1','アポ取得月','fs','fs');
+  h+=kpiCard('KSF 提案実施 (P3)',kpi.p3,0,'var(--org)','最終到達≥P3','p3','p3');
+  h+=kpiCard('KPI 面談実施 (P4)',kpi.p4,E_TARGETS.p4,'var(--org)','面談日='+monthLabel,'p4','p4');
+  h+=kpiCard('KGI 新規受注 (P8)',kpi.p8,E_TARGETS.p8,'var(--grn)','受注予定日='+monthLabel,'p8','p8');
   h+='</div>';
-  // Row 2: P1商談系(下段 先行指標)
+  // Row 2: 実績系 月次売上/月次粗利/受注CK/稼働PN/満了予定/DEAD（クリックでドリルダウン）
+  var pnNow=eBuildPN();
+  // 今月満了予定PN
+  var endingThisMonth=0;var endingList=[];
+  var todayY=today.getFullYear(),todayMo=today.getMonth();
+  var endYMTarget=todayY+'/'+(todayMo+1<10?'0':'')+(todayMo+1);
+  var seenPN={};
+  E_PN2.forEach(function(r){
+    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
+    var aid=gv(r,9).trim();if(!aid||seenPN[aid])return;seenPN[aid]=true;
+    var end=gv(r,13).trim(),cancel=gv(r,22).trim();
+    var endUse=end;
+    if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)endUse=cancel;}
+    if(endUse&&endUse.substring(0,7)===endYMTarget){
+      var mem=gv(r,0);if(E_MF!=='all'&&mem!==E_MF)return;
+      endingThisMonth++;endingList.push({name:gv(r,2),member:mem,endDate:endUse,oppId:aid});
+    }
+  });
+  // Save for drill-down
+  window._entDrillData={
+    p1:[],is:[],fs:[],p3:[],p4:[],p8:[],ending:endingList,deadM:[]
+  };
+  E_ROWS.forEach(function(r){
+    var m=eGet(r,'member');if(E_MF!=='all'&&m!==E_MF)return;
+    var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
+    var apStr=eGet(r,'apDate'),mdStr=eGet(r,'mendanDate'),clStr=eGet(r,'closeDate');
+    var lp=ePh(eGet(r,'lastPh'));var cpRaw=eGet(r,'curPh');var cp=ePh(cpRaw);
+    var ch=eGet(r,'channel');var ck=eGetN(r,'ck');var oppId=eGet(r,'oppId');var name=eGet(r,'name');
+    var info={name:name,member:m,oppId:oppId,ck:ck,apDate:apStr,mendanDate:mdStr,closeDate:clStr,phase:cpRaw,lastPh:eGet(r,'lastPh')};
+    if(inRange(apStr)){
+      window._entDrillData.p1.push(info);
+      if(ch.indexOf('FS')>=0)window._entDrillData.fs.push(info);else window._entDrillData.is.push(info);
+      if(lp>=3)window._entDrillData.p3.push(info);
+      if(cpRaw.indexOf('DEAD')>=0)window._entDrillData.deadM.push(info);
+    }
+    if(inRange(mdStr))window._entDrillData.p4.push(info);
+    if(inRange(clStr)&&cp===8)window._entDrillData.p8.push(info);
+  });
   h+='<div class="ent-kpi-row">';
-  h+=kpiCard('P1商談 合計',kpi.p1,E_TARGETS.p1,'var(--ink)','アポ日='+monthLabel,'p1');
-  h+=kpiCard('IS経由 商談',kpi.is,0,'var(--blue)','アポ取得月','is');
-  h+=kpiCard('FS経由 商談',kpi.fs,0,'#6366f1','アポ取得月','fs');
-  h+=kpiCard('対象月DEAD',kpi.deadM,0,'var(--red)','失注件数','deadM');
+  h+=kpiCard('月次売上',Math.round(pnNow.rev/10000)+'万',0,'var(--blue)','稼働中PN請求額','','pn');
+  h+=kpiCard('月次粗利(PK)',Math.round(pnNow.pk/10000)+'万',0,'var(--grn)','稼働中PN粗利','','pn');
+  h+=kpiCard('受注CK',Math.round(kpi.ck/10000)+'万',Math.round(E_TARGETS.ck/10000),'var(--grn)','単位:万円','ck','p8');
+  h+=kpiCard('稼働中案件数 (PN)',pnNow.pn,0,'var(--blue)','現在稼働中','','pn');
+  h+=kpiCard('今月満了予定',endingThisMonth,0,'var(--red)',monthLabel+'終了','','ending');
+  h+=kpiCard('今月DEAD',kpi.deadM,0,'var(--red)','失注件数','deadM','deadM');
   h+='</div>';
+  h+='<div id="ent-drill-box" style="margin:0 24px"></div>';
   // Revenue chart (2025/08 onwards) with MFJ overlay (select MIN/MID/MAX)
   var E_REV_MFJ=window.E_REV_MFJ||'none';
   h+='<div class="ent-section"><div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">';
@@ -593,13 +636,6 @@ function renderEntOverview(){
   h+='<div style="display:flex;gap:12px;margin-top:6px;font-size:9px;color:var(--ink2)"><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:var(--blue);border-radius:2px"></span>確定売上(既存契約)</span>';
   if(E_REV_MFJ!=='none')h+='<span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:rgba(234,88,12,.28);border:1px dashed var(--org)"></span>'+E_REV_MFJ+'パイプライン見込</span>';
   h+='<span style="color:var(--org)">%=粗利率</span></div></div>';
-  // PN status section with breakdown
-  var pnStats=eBuildPN();
-  h+='<div class="ent-kpi-row">';
-  h+=kpiCard('現在稼働PN数',pnStats.pn,0,'var(--blue)','件');
-  h+=kpiCard('月次売上',Math.round(pnStats.rev/10000)+'万',0,'var(--blue)','今月の請求額');
-  h+=kpiCard('月次PK(粗利)',Math.round(pnStats.pk/10000)+'万',0,'var(--grn)','今月の粗利益');
-  h+='</div>';
   // Stalled/zombie sections
   var stalledData=eBuildStalled();var stalled=stalledData.stalled;var zombie=stalledData.zombie;
   if(E_MF!=='all'){stalled=stalled.filter(function(s){return s.member===E_MF;});zombie=zombie.filter(function(s){return s.member===E_MF;});}
@@ -1113,6 +1149,63 @@ function renderEntBreakdown(){
   });
   h+='</tbody></table></div>';
   return h;
+}
+// Drill-down for KPI cards on overview
+function showEntDrill(key){
+  var box=document.getElementById('ent-drill-box');if(!box)return;
+  var d=window._entDrillData;if(!d)return;
+  var labels={p1:'P1商談(アポ取得月)',is:'IS経由商談',fs:'FS経由商談',p3:'KSF提案実施(最終到達P3+)',p4:'KPI面談実施(面談日)',p8:'KGI新規受注(受注予定日)',pn:'稼働中案件一覧',ending:'今月満了予定案件',deadM:'今月DEAD案件',ck:'今月受注CK'};
+  var list=d[key]||[];
+  // Special: PN list from E_PN2 dedup
+  if(key==='pn'){
+    list=[];var seen={};var today=new Date();
+    E_PN2.forEach(function(r){
+      var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
+      var aid=gv(r,9).trim();if(!aid||seen[aid])return;seen[aid]=true;
+      var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
+      if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=cancel;}
+      if(!start||!end)return;
+      var sd=new Date(start.replace(/\//g,'-')),ed=new Date(end.replace(/\//g,'-'));
+      if(isNaN(sd)||isNaN(ed))return;
+      if(today>=sd&&today<=ed){
+        var m=gv(r,0);if(window.E_MF&&window.E_MF!=='all'&&m!==window.E_MF)return;
+        var bill=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;
+        var pay=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;
+        list.push({name:gv(r,2),member:m,oppId:aid,startDate:start,endDate:end,bill:bill,pay:pay,pk:bill-pay});
+      }
+    });
+  }
+  var h='<div class="ent-section" style="margin-top:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-size:12px;font-weight:700">'+labels[key]+' ('+list.length+'件)</div><button onclick="document.getElementById(\'ent-drill-box\').innerHTML=\'\'" style="font-size:10px;padding:4px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--bg2);cursor:pointer">閉じる ✕</button></div>';
+  if(!list.length){h+='<div style="color:var(--ink3);font-size:11px;padding:10px">該当案件なし</div></div>';box.innerHTML=h;return;}
+  h+='<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg);z-index:1"><tr>';
+  if(key==='pn'){h+='<th>担当</th><th>案件名</th><th>契約期間</th><th>月額請求</th><th>月額PK</th></tr></thead><tbody>';}
+  else if(key==='ending'){h+='<th>担当</th><th>案件名</th><th>終了日</th></tr></thead><tbody>';}
+  else{h+='<th>担当</th><th>案件名</th><th>フェーズ</th><th>CK</th><th>アポ日</th><th>面談日</th><th>受注予定日</th></tr></thead><tbody>';}
+  list.forEach(function(c){
+    var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
+    if(key==='pn'){
+      h+='<tr><td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
+      h+='<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
+      h+='<td style="font-size:9px;color:var(--ink3)">'+c.startDate+' 〜 '+c.endDate+'</td>';
+      h+='<td style="font-family:var(--mono)">'+eFmt(c.bill)+'</td>';
+      h+='<td style="font-family:var(--mono);color:var(--grn)">'+eFmt(c.pk)+'</td></tr>';
+    }else if(key==='ending'){
+      h+='<tr><td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
+      h+='<td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
+      h+='<td style="font-size:9px;color:var(--red);font-weight:600">'+c.endDate+'</td></tr>';
+    }else{
+      var ph=ePh(c.phase);var phC=c.phase&&c.phase.indexOf('DEAD')>=0?'color:var(--red)':E_PH_COLORS[ph]||'var(--ink)';
+      h+='<tr><td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
+      h+='<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
+      h+='<td><span style="font-size:9px;color:'+phC+';font-weight:700">'+(c.phase||'-').replace(/^0\d-/,'').slice(0,18)+'</span></td>';
+      h+='<td style="font-family:var(--mono)">'+(c.ck?eFmt(c.ck):'-')+'</td>';
+      h+='<td style="font-size:9px;color:var(--ink3)">'+(c.apDate||'-')+'</td>';
+      h+='<td style="font-size:9px;color:var(--ink3)">'+(c.mendanDate||'-')+'</td>';
+      h+='<td style="font-size:9px;color:var(--ink3)">'+(c.closeDate||'-')+'</td></tr>';
+    }
+  });
+  h+='</tbody></table></div></div>';
+  box.innerHTML=h;box.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 function renderEnt(){
   var M=document.getElementById('M');
