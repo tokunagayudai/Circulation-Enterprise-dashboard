@@ -391,15 +391,21 @@ function ePct(a,b){return b>0?Math.round(a/b*100):0;}
 // PN stats (active projects) - monthly forecast
 function eBuildPN(){
   var rev=0,pay=0,pn=0,seen={};
+  var d1=0,d2=0,d3=0,d4=0;
   E_PN2.forEach(function(r){
-    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
+    d1++;
+    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0){return;}
+    d2++;
     var aid=gv(r,9).trim();if(!aid||seen[aid])return;seen[aid]=true; // dedupe by case ID
+    d3++;
     var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
     if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed2=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed2)&&cd<ed2)end=cancel;}
     if(!start||!end)return;
+    d4++;
     var sd=new Date(start.replace(/\//g,'-')),ed=new Date(end.replace(/\//g,'-')),today=new Date();
     if(today>=sd&&today<=ed){pn++;rev+=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;pay+=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;}
   });
+  console.log('eBuildPN debug: total='+d1+' phase08='+d2+' afterDedupe='+d3+' withDates='+d4+' activeToday='+pn);
   return{pn:pn,rev:rev,pk:rev-pay};
 }
 // Revenue forecast per month (next 6 months)
@@ -1197,7 +1203,7 @@ function showEntDrill(key){
       var ph=ePh(c.phase);var phC=c.phase&&c.phase.indexOf('DEAD')>=0?'color:var(--red)':E_PH_COLORS[ph]||'var(--ink)';
       h+='<tr><td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
       h+='<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
-      h+='<td><span style="font-size:9px;color:'+phC+';font-weight:700">'+(c.phase||'-').replace(/^0\d-/,'').slice(0,18)+'</span></td>';
+      h+='<td><span style="font-size:9px;color:'+phC+';font-weight:700">'+(c.phase||'-')+'</span></td>';
       h+='<td style="font-family:var(--mono)">'+(c.ck?eFmt(c.ck):'-')+'</td>';
       h+='<td style="font-size:9px;color:var(--ink3)">'+(c.apDate||'-')+'</td>';
       h+='<td style="font-size:9px;color:var(--ink3)">'+(c.mendanDate||'-')+'</td>';
