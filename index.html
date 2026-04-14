@@ -506,7 +506,7 @@ function renderEntOverview(){
       if(lp>=2)kpi.p2++;
       if(cpRaw.indexOf('DEAD')>=0){kpi.deadM++;byMember[m].deadM++;}
     }
-    if(inRange(mdStr)){kpi.p4++;byMember[m].p4++;}
+    if(inRange(mdStr)&&lp>=4){kpi.p4++;byMember[m].p4++;}
     if(inRange(clStr)&&cp===8){kpi.p8++;kpi.ck+=eGetN(r,'ck');byMember[m].p8++;byMember[m].ck+=eGetN(r,'ck');}
   });
   // Team breakdown HTML for KPI cards
@@ -567,7 +567,7 @@ function renderEntOverview(){
       if(lp>=3)window._entDrillData.p3.push(info);
       if(cpRaw.indexOf('DEAD')>=0)window._entDrillData.deadM.push(info);
     }
-    if(inRange(mdStr))window._entDrillData.p4.push(info);
+    if(inRange(mdStr)&&lp>=4)window._entDrillData.p4.push(info);
     if(inRange(clStr)&&cp===8)window._entDrillData.p8.push(info);
   });
   h+='<div class="ent-kpi-row">';
