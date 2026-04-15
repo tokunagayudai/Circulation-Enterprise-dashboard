@@ -203,6 +203,28 @@
 .ent-sim-row .es-v{min-width:50px;font-size:12px;font-weight:600;font-family:var(--mono);text-align:right}
 .ent-forecast{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}
 .ent-fc{background:var(--bg);border-radius:8px;padding:12px;border:1px solid var(--bd)}
+/* Morning briefing popup */
+.mbr-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center;animation:fadeIn .2s}
+.mbr-modal{background:#fff;border-radius:16px;width:90%;max-width:780px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.mbr-hdr{background:linear-gradient(135deg,#1a1f2e,#2a3548);color:#fff;padding:20px 24px;border-radius:16px 16px 0 0;position:sticky;top:0;z-index:1}
+.mbr-hdr h2{font-size:16px;margin-bottom:4px}.mbr-hdr p{font-size:11px;opacity:.65}
+.mbr-close{position:absolute;top:16px;right:20px;background:rgba(255,255,255,.15);border:none;color:#fff;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px}
+.mbr-close:hover{background:rgba(255,255,255,.25)}
+.mbr-body{padding:16px 20px}
+.mbr-sect{margin-bottom:16px}
+.mbr-sect-hdr{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;margin-bottom:8px;font-size:12px;font-weight:700}
+.mbr-sect-hdr.alert{background:#ffebe9;color:var(--red)}.mbr-sect-hdr.new{background:#dafbe1;color:var(--grn)}.mbr-sect-hdr.zombie{background:#fff8c5;color:var(--org)}
+.mbr-row{display:flex;align-items:center;gap:8px;padding:6px 12px;border-bottom:1px solid rgba(0,0,0,.04);font-size:11px;cursor:pointer;transition:.1s}
+.mbr-row:hover{background:rgba(0,121,192,.04)}
+.mbr-row .mr-member{min-width:60px;font-weight:600;color:var(--ink2);font-size:10px}
+.mbr-row .mr-name{flex:1;color:var(--blue);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mbr-row .mr-ph{font-size:9px;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,.05);color:var(--ink2)}
+.mbr-row .mr-days{font-family:var(--mono);font-size:10px;min-width:40px;text-align:right}
+.mbr-row .mr-ck{font-family:var(--mono);font-size:10px;min-width:60px;text-align:right;color:var(--ink2)}
+.mbr-stat{display:flex;gap:12px;padding:8px 12px;flex-wrap:wrap}
+.mbr-stat-item{background:var(--bg);border-radius:8px;padding:10px 14px;flex:1;min-width:100px;text-align:center}
+.mbr-stat-item .ms-val{font-size:22px;font-weight:700;font-family:var(--mono)}.mbr-stat-item .ms-label{font-size:9px;color:var(--ink3);margin-top:2px}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .ent-fc .efc-label{font-size:10px;font-weight:600;color:var(--ink2);margin-bottom:4px}
 .ent-fc .efc-val{font-size:20px;font-weight:700;font-family:var(--mono)}
 .ent-fc .efc-sub{font-size:9px;color:var(--ink3);margin-top:2px}
@@ -264,7 +286,7 @@
 </style>
 <body>
 <nav class="topnav">
-<div class="tn-logo">C</div>
+<div class="tn-logo" style="cursor:pointer" onclick="_mbrShown=false;triggerMorningBriefing()" title="朝会ブリーフィングを表示">C</div>
 <div class="tn-section biz">
 <span class="tn-label">案件管理</span>
 <div class="tn-btns">
@@ -458,6 +480,104 @@ function eBuildStalled(){
   stalled.sort(function(a,b){return a.ph===b.ph?b.days-a.days:a.ph-b.ph;});
   zombie.sort(function(a,b){return b.days-a.days;});
   return{stalled:stalled,zombie:zombie};
+}
+// === Morning Briefing Popup (shown on first load) ===
+function showMorningBriefing(){
+  if(!E_ROWS||E_ROWS.length===0)return;
+  var today=new Date();var todayStr=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1)+'/'+(today.getDate()<10?'0':'')+today.getDate();
+  // 1. Stalled deals (P2-P5, threshold exceeded)
+  var stalledData=eBuildStalled();var stalled=stalledData.stalled;var zombie=stalledData.zombie;
+  var thresholds={2:14,3:10,4:7,5:7};
+  var alerts=stalled.filter(function(s){var th=thresholds[s.ph]||14;return s.days>=th;});
+  // 2. New cases this week (初回アポ日が今週)
+  var weekAgo=new Date(today);weekAgo.setDate(weekAgo.getDate()-7);
+  var newThisWeek=[];
+  E_ROWS.forEach(function(r){
+    var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
+    var cp=ePh(cpRaw);if(cp<=0)return;
+    var apStr=eGet(r,'apDate');if(!apStr)return;
+    var ap=new Date(apStr.replace(/\//g,'-'));if(isNaN(ap))return;
+    if(ap>=weekAgo&&ap<=today){
+      newThisWeek.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,phRaw:cpRaw,ck:eGetN(r,'ck'),apDate:apStr,oppId:eGet(r,'oppId'),channel:eGet(r,'channel'),dealType:eGet(r,'dealType')});
+    }
+  });
+  newThisWeek.sort(function(a,b){return a.member.localeCompare(b.member,'ja');});
+  // 3. Build popup HTML
+  var h='<div class="mbr-overlay" id="mbr-overlay" onclick="if(event.target===this)this.remove()">';
+  h+='<div class="mbr-modal">';
+  h+='<div class="mbr-hdr"><button class="mbr-close" onclick="document.getElementById(\'mbr-overlay\').remove()">&times;</button>';
+  h+='<h2>朝会ブリーフィング</h2><p>'+todayStr+' 時点のアラートと今週の動き</p></div>';
+  h+='<div class="mbr-body">';
+  // Stats summary
+  h+='<div class="mbr-stat">';
+  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--red)">'+alerts.length+'</div><div class="ms-label">滞留アラート</div></div>';
+  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--org)">'+zombie.length+'</div><div class="ms-label">受注予定日超過</div></div>';
+  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--grn)">'+newThisWeek.length+'</div><div class="ms-label">今週の新規案件</div></div>';
+  h+='</div>';
+  // Section 1: Stalled alerts
+  if(alerts.length>0){
+    h+='<div class="mbr-sect">';
+    h+='<div class="mbr-sect-hdr alert">🚨 滞留アラート（閾値超過 '+alerts.length+'件）</div>';
+    alerts.forEach(function(s){
+      var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
+      var dayC=s.days>=21?'color:var(--red);font-weight:700':s.days>=14?'color:var(--org)':'';
+      var phLabel=s.ph===2?'P2 案件化':s.ph===3?'P3 提案':s.ph===4?'P4 面談':s.ph===5?'P5-6 合意':'P'+s.ph;
+      h+='<div class="mbr-row" onclick="window.open(\''+url+'\',\'_blank\')">';
+      h+='<div class="mr-member">'+s.member+'</div>';
+      h+='<div class="mr-name">'+s.name+'</div>';
+      h+='<div class="mr-ph">'+phLabel+'</div>';
+      h+='<div class="mr-days" style="'+dayC+'">'+s.days+'日</div>';
+      h+='<div class="mr-ck">'+eFmt(s.ck)+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  // Section 2: Zombie (overdue)
+  if(zombie.length>0){
+    h+='<div class="mbr-sect">';
+    h+='<div class="mbr-sect-hdr zombie">⚠️ 受注予定日超過（'+zombie.length+'件）DEAD化 or 日付更新</div>';
+    zombie.slice(0,10).forEach(function(s){
+      var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
+      h+='<div class="mbr-row" onclick="window.open(\''+url+'\',\'_blank\')">';
+      h+='<div class="mr-member">'+s.member+'</div>';
+      h+='<div class="mr-name">'+s.name+'</div>';
+      h+='<div class="mr-ph">P'+s.ph+'</div>';
+      h+='<div class="mr-days" style="color:var(--red)">'+s.days+'日</div>';
+      h+='<div class="mr-ck">'+eFmt(s.ck)+'</div>';
+      h+='</div>';
+    });
+    if(zombie.length>10)h+='<div style="text-align:center;padding:6px;font-size:10px;color:var(--ink3)">他 '+(zombie.length-10)+'件</div>';
+    h+='</div>';
+  }
+  // Section 3: New this week
+  if(newThisWeek.length>0){
+    h+='<div class="mbr-sect">';
+    h+='<div class="mbr-sect-hdr new">✨ 今週の新規案件化（'+newThisWeek.length+'件）</div>';
+    newThisWeek.forEach(function(c){
+      var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'#';
+      var chColor=c.channel.indexOf('FS')>=0?'#6366f1':'var(--blue)';
+      h+='<div class="mbr-row" onclick="window.open(\''+url+'\',\'_blank\')">';
+      h+='<div class="mr-member">'+c.member+'</div>';
+      h+='<div class="mr-name">'+c.name+'</div>';
+      h+='<div class="mr-ph" style="color:'+chColor+'">'+(c.channel.indexOf('FS')>=0?'FS':'IS')+'</div>';
+      h+='<div class="mr-days" style="color:var(--ink3)">'+c.apDate+'</div>';
+      h+='<div class="mr-ck">'+eFmt(c.ck)+'</div>';
+      h+='</div>';
+    });
+    h+='</div>';
+  }
+  if(alerts.length===0&&zombie.length===0&&newThisWeek.length===0){
+    h+='<div style="text-align:center;padding:40px;color:var(--ink3)">アラートなし。順調です。</div>';
+  }
+  h+='<div style="text-align:center;padding:12px"><button onclick="document.getElementById(\'mbr-overlay\').remove()" style="background:var(--blue);color:#fff;border:none;padding:10px 32px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">ダッシュボードを開く</button></div>';
+  h+='</div></div></div>';
+  document.body.insertAdjacentHTML('beforeend',h);
+}
+// Trigger morning briefing after data load (only once per session)
+var _mbrShown=false;
+function triggerMorningBriefing(){
+  if(_mbrShown)return;_mbrShown=true;
+  setTimeout(showMorningBriefing,500);
 }
 // Render enterprise overview
 function renderEntOverview(){
@@ -725,6 +845,59 @@ function renderEntOverview(){
     });
     h+='</tbody></table></div></div>';
   }
+  // === Stalled alerts (P2-P5) inline ===
+  if(stalled.length>0){
+    var thresholds2={2:14,3:10,4:7,5:7};
+    var activeAlerts=stalled.filter(function(s){var th=thresholds2[s.ph]||14;return s.days>=th;});
+    if(activeAlerts.length>0){
+      h+='<div class="ent-section" style="border:2px solid var(--org);background:rgba(191,135,0,.03)">';
+      h+='<div class="es-title" style="color:var(--org)">⏰ 滞留アラート（閾値超過 '+activeAlerts.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">P2≥14日 / P3≥10日 / P4≥7日 / P5≥7日</span></div>';
+      h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>滞留</th><th>CK</th><th>受注予定</th><th>Next Action</th></tr></thead><tbody>';
+      activeAlerts.forEach(function(s){
+        var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
+        var dayC=s.days>=21?'color:var(--red);font-weight:700':s.days>=14?'color:var(--org)':'';
+        h+='<tr><td style="font-weight:600;white-space:nowrap">'+s.member+'</td>';
+        h+='<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td>';
+        h+='<td><span class="pill" style="background:rgba(0,0,0,.05);color:var(--ink2);font-size:9px">'+(E_PH_LABELS[s.ph]||'P'+s.ph)+'</span></td>';
+        h+='<td style="font-family:var(--mono);'+dayC+'">'+s.days+'日</td>';
+        h+='<td style="font-family:var(--mono)">'+eFmt(s.ck)+'</td>';
+        h+='<td style="font-size:9px">'+(s.closeDate||'-')+'</td>';
+        h+='<td style="font-size:9px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.nextDate||'')+(s.nextAct?' '+s.nextAct:'')+'</td></tr>';
+      });
+      h+='</tbody></table></div></div>';
+    }
+  }
+  // === 今週の新規案件化 (inline section) ===
+  var weekAgo=new Date(today);weekAgo.setDate(weekAgo.getDate()-7);
+  var newThisWeek=[];
+  E_ROWS.forEach(function(r){
+    var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
+    var cp=ePh(cpRaw);if(cp<=0)return;
+    var apStr=eGet(r,'apDate');if(!apStr)return;
+    var ap=new Date(apStr.replace(/\//g,'-'));if(isNaN(ap))return;
+    if(E_MF!=='all'&&eGet(r,'member')!==E_MF)return;
+    if(ap>=weekAgo&&ap<=today){
+      newThisWeek.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,phRaw:cpRaw,ck:eGetN(r,'ck'),apDate:apStr,oppId:eGet(r,'oppId'),channel:eGet(r,'channel'),dealType:eGet(r,'dealType')});
+    }
+  });
+  if(newThisWeek.length>0){
+    newThisWeek.sort(function(a,b){return a.member.localeCompare(b.member,'ja');});
+    h+='<div class="ent-section" style="border:2px solid var(--grn);background:rgba(26,127,55,.03)">';
+    h+='<div class="es-title" style="color:var(--grn)">✨ 今週の新規案件化（'+newThisWeek.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">直近7日間に初回アポを実施</span></div>';
+    h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>チャネル</th><th>種別</th><th>CK</th><th>アポ日</th></tr></thead><tbody>';
+    newThisWeek.forEach(function(c){
+      var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'#';
+      var chColor=c.channel.indexOf('FS')>=0?'#6366f1':'var(--blue)';
+      h+='<tr><td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
+      h+='<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
+      h+='<td><span class="pill" style="background:rgba(0,0,0,.05);color:var(--ink2);font-size:9px">'+c.phRaw+'</span></td>';
+      h+='<td style="font-size:9px;color:'+chColor+';font-weight:600">'+(c.channel.indexOf('FS')>=0?'FS':'IS')+'</td>';
+      h+='<td style="font-size:9px">'+(c.dealType||'-')+'</td>';
+      h+='<td style="font-family:var(--mono)">'+eFmt(c.ck)+'</td>';
+      h+='<td style="font-size:9px">'+c.apDate+'</td></tr>';
+    });
+    h+='</tbody></table></div></div>';
+  }
   return h;
 }
 // Render pipeline detail (Quip replacement - Excel-like with filters & sorting)
@@ -945,7 +1118,7 @@ function showEnt(){
   var M=document.getElementById('M');
   if(!E_LOADED){
     M.innerHTML='<div style="padding:40px;text-align:center;color:var(--ink3)"><div class="spinner" style="margin:0 auto 12px"></div>商況データを取得中...</div>';
-    fetchEntData().then(function(){renderEnt();});
+    fetchEntData().then(function(){renderEnt();triggerMorningBriefing();});
     return;
   }
   renderEnt();
