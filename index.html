@@ -224,6 +224,17 @@
 .mbr-stat{display:flex;gap:12px;padding:8px 12px;flex-wrap:wrap}
 .mbr-stat-item{background:var(--bg);border-radius:8px;padding:10px 14px;flex:1;min-width:100px;text-align:center}
 .mbr-stat-item .ms-val{font-size:22px;font-weight:700;font-family:var(--mono)}.mbr-stat-item .ms-label{font-size:9px;color:var(--ink3);margin-top:2px}
+.mbr-kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:0 4px}
+.mbr-kpi{background:var(--bg);border-radius:8px;padding:10px 12px}
+.mbr-kpi .mk-label{font-size:9px;color:var(--ink3);font-weight:600;margin-bottom:4px}
+.mbr-kpi .mk-val{font-size:20px;font-weight:700;font-family:var(--mono);line-height:1}
+.mbr-kpi .mk-val .mk-target{font-size:10px;color:var(--ink3);font-weight:400;margin-left:2px}
+.mbr-kpi .mk-bar{height:5px;background:rgba(0,0,0,.08);border-radius:3px;margin:6px 0 3px;overflow:hidden}
+.mbr-kpi .mk-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+.mbr-kpi .mk-pct{font-size:9px;font-weight:600;font-family:var(--mono)}
+.mbr-fcst-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 4px}
+.mbr-fcst-item{background:var(--bg);border-radius:8px;padding:10px 12px;text-align:center}
+@media(max-width:640px){.mbr-kpi-row{grid-template-columns:repeat(2,1fr)}.mbr-fcst-row{grid-template-columns:1fr}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .ent-fc .efc-label{font-size:10px;font-weight:600;color:var(--ink2);margin-bottom:4px}
 .ent-fc .efc-val{font-size:20px;font-weight:700;font-family:var(--mono)}
@@ -458,6 +469,13 @@ function eBuildRevForecast(){
   return{months:months,base:base,todayYM:todayYM};
 }
 // Stalled deals (P1-P7 current phase, DEAD/P8 excluded, closeDate this month or future)
+// === localStorage-backed next action management for stalled cases ===
+function entGetAction(oppId){try{var d=JSON.parse(localStorage.getItem('ent_act_'+oppId)||'{}');return d;}catch(e){return{};}}
+function entSetAction(oppId,data){try{localStorage.setItem('ent_act_'+oppId,JSON.stringify(data));}catch(e){}}
+function entUpdateActionDate(oppId,date){var d=entGetAction(oppId);d.date=date;d.updatedAt=new Date().toISOString();entSetAction(oppId,d);renderEnt();}
+function entToggleActionDone(oppId){var d=entGetAction(oppId);d.done=!d.done;d.updatedAt=new Date().toISOString();entSetAction(oppId,d);renderEnt();}
+function entUpdateActionMemo(oppId,memo){var d=entGetAction(oppId);d.memo=memo;d.updatedAt=new Date().toISOString();entSetAction(oppId,d);}
+
 function eBuildStalled(){
   var today=new Date();var todayYM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
   var stalled=[],zombie=[];
@@ -470,7 +488,7 @@ function eBuildStalled(){
     var apDate=eGet(r,'apDate');if(!apDate)return;
     var ap=new Date(apDate.replace(/\//g,'-'));if(isNaN(ap))return;
     var days=Math.floor((today-ap)/(1000*60*60*24));
-    if(cp===1&&days>1)return;
+    // P1: 初回アポから3日以上経過してもP1のままなら滞留扱い（SF移行漏れの可能性）
     var closeDate=eGet(r,'closeDate');var closeYM=eYM(closeDate);
     var item={name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:closeDate,closeYM:closeYM,oppId:eGet(r,'oppId'),dealType:eGet(r,'dealType'),mfj:eGet(r,'mfj'),nextAct:eGet(r,'nextAct'),nextDate:eGet(r,'nextDate'),mutual:eGet(r,'mutual'),jinsen:eGet(r,'jinsen')};
     // Zombie: closeDate in the past (before this month) - likely forgotten/should be DEAD
@@ -485,15 +503,42 @@ function eBuildStalled(){
 function showMorningBriefing(){
   if(!E_ROWS||E_ROWS.length===0)return;
   var today=new Date();var todayStr=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1)+'/'+(today.getDate()<10?'0':'')+today.getDate();
-  // 1. Stalled deals grouped by phase (P2-P5, includes zombie)
+  var thisYM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
+  // === 1. KPI/KGI progress (今月) ===
+  var kpiData={p1:0,p3:0,p4:0,p8:0,ck:0};
+  var mStart=new Date(today.getFullYear(),today.getMonth(),1);
+  var mEnd=new Date(today.getFullYear(),today.getMonth()+1,0);
+  function inMonth(dStr){if(!dStr)return false;var d=new Date(dStr.replace(/\//g,'-'));return !isNaN(d)&&d>=mStart&&d<=mEnd;}
+  E_ROWS.forEach(function(r){
+    var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
+    var apStr=eGet(r,'apDate'),mdStr=eGet(r,'mendanDate'),clStr=eGet(r,'closeDate');
+    var lp=ePh(eGet(r,'lastPh'));var cpRaw=eGet(r,'curPh');var cp=ePh(cpRaw);
+    if(inMonth(apStr)){kpiData.p1++;if(lp>=3)kpiData.p3++;}
+    if(inMonth(mdStr)&&lp>=4)kpiData.p4++;
+    if(inMonth(clStr)&&cp===8){kpiData.p8++;kpiData.ck+=eGetN(r,'ck');}
+  });
+  // === 2. Pipeline forecast (MIN/MID/MAX CK) ===
+  var fcstMin=0,fcstMid=0,fcstMax=0;
+  E_ROWS.forEach(function(r){
+    var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
+    var cp=ePh(cpRaw);if(cp<1||cp>=8)return;
+    var ck=eGetN(r,'ck');if(ck<=0)return;
+    var mfj=eGet(r,'mfj');
+    if(!mfj||mfj==='-'){if(cp>=5)mfj='MIN';else if(cp===4)mfj='MID';else if(cp>=2)mfj='MAX';else return;}
+    if(mfj==='MIN')fcstMin+=ck;
+    if(mfj==='MIN'||mfj==='MID')fcstMid+=ck;
+    fcstMax+=ck;
+  });
+  // === 3. Stalled deals grouped by phase (P1-P5) ===
   var stalledData=eBuildStalled();var allStalled2=stalledData.stalled.concat(stalledData.zombie);
-  var p2List=allStalled2.filter(function(s){return s.ph===2&&s.days>=14;}).sort(function(a,b){return b.days-a.days;});
-  var p3List=allStalled2.filter(function(s){return s.ph===3&&s.days>=10;}).sort(function(a,b){return b.days-a.days;});
-  var p4List=allStalled2.filter(function(s){return s.ph===4&&s.days>=7;}).sort(function(a,b){return b.days-a.days;});
-  var p5List=allStalled2.filter(function(s){return s.ph===5&&s.days>=7;}).sort(function(a,b){return b.days-a.days;});
-  var alerts=p2List.concat(p3List).concat(p4List).concat(p5List);
-  var zombie=stalledData.zombie;
-  // 2. New cases this week (初回アポ日が今週)
+  var notDone=function(s){var a=entGetAction(s.oppId);return !a.done;};
+  var p1List=allStalled2.filter(function(s){return s.ph===1&&s.days>=3;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  var p2List=allStalled2.filter(function(s){return s.ph===2&&s.days>=14;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  var p3List=allStalled2.filter(function(s){return s.ph===3&&s.days>=10;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  var p4List=allStalled2.filter(function(s){return s.ph===4&&s.days>=7;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  var p5List=allStalled2.filter(function(s){return s.ph===5&&s.days>=7;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  var alerts=p1List.concat(p2List).concat(p3List).concat(p4List).concat(p5List);
+  // === 4. New cases this week ===
   var weekAgo=new Date(today);weekAgo.setDate(weekAgo.getDate()-7);
   var newThisWeek=[];
   E_ROWS.forEach(function(r){
@@ -506,45 +551,72 @@ function showMorningBriefing(){
     }
   });
   newThisWeek.sort(function(a,b){return a.member.localeCompare(b.member,'ja');});
-  // 3. Build popup HTML
+  // === 5. Build popup HTML ===
   var h='<div class="mbr-overlay" id="mbr-overlay" onclick="if(event.target===this)this.remove()">';
   h+='<div class="mbr-modal">';
   h+='<div class="mbr-hdr"><button class="mbr-close" onclick="document.getElementById(\'mbr-overlay\').remove()">&times;</button>';
-  h+='<h2>朝会ブリーフィング</h2><p>'+todayStr+' 時点のアラートと今週の動き</p></div>';
+  h+='<h2>朝会ブリーフィング</h2><p>'+todayStr+' 時点 / '+thisYM+' 進捗</p></div>';
   h+='<div class="mbr-body">';
-  // Stats summary
-  h+='<div class="mbr-stat">';
-  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--red)">'+p2List.length+'</div><div class="ms-label">P2 滞留</div></div>';
-  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--org)">'+p3List.length+'</div><div class="ms-label">P3 滞留</div></div>';
-  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--org)">'+p4List.length+'</div><div class="ms-label">P4 滞留</div></div>';
-  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--grn)">'+newThisWeek.length+'</div><div class="ms-label">今週の新規案件</div></div>';
+  // --- KPI/KGI 進捗 ---
+  function kpiMini(label,val,target,color){
+    var pct=target>0?Math.round(val/target*100):0;
+    var diff=target-val;
+    var pctC=pct>=100?'var(--grn)':pct>=70?'var(--org)':'var(--red)';
+    var barW=target>0?Math.min(100,pct):0;
+    return '<div class="mbr-kpi"><div class="mk-label">'+label+'</div><div class="mk-val" style="color:'+color+'">'+val+'<span class="mk-target">/'+target+'</span></div><div class="mk-bar"><div class="mk-bar-fill" style="width:'+barW+'%;background:'+pctC+'"></div></div><div class="mk-pct" style="color:'+pctC+'">達成率 '+pct+'%'+(target>0?(diff>0?' (残り'+diff+')':' (+'+Math.abs(diff)+')'):'')+'</div></div>';
+  }
+  h+='<div class="mbr-sect-hdr" style="background:#dbeafe;color:var(--blue);margin-bottom:10px">📊 今月の目標達成状況</div>';
+  h+='<div class="mbr-kpi-row">';
+  h+=kpiMini('先行 P1商談',kpiData.p1,E_TARGETS.p1,'var(--ink)');
+  h+=kpiMini('KSF P3提案',kpiData.p3,0,'var(--org)');
+  h+=kpiMini('KPI P4面談',kpiData.p4,E_TARGETS.p4,'var(--org)');
+  h+=kpiMini('KGI P8受注',kpiData.p8,E_TARGETS.p8,'var(--grn)');
+  h+=kpiMini('受注CK(万)',Math.round(kpiData.ck/10000),Math.round(E_TARGETS.ck/10000),'var(--grn)');
   h+='</div>';
-  // Section 1: Stalled alerts grouped by phase
-  function renderPhaseGroup(label,list){
+  // --- Forecast ---
+  h+='<div class="mbr-sect-hdr" style="background:#fef3c7;color:var(--org);margin-top:12px;margin-bottom:8px">🎯 パイプラインCK見込（フォーキャスト）</div>';
+  h+='<div class="mbr-fcst-row">';
+  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--red);font-size:16px">'+eFmt(fcstMin)+'</div><div class="ms-label">MIN（P5-6/MFJ=MIN）</div></div>';
+  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--org);font-size:16px">'+eFmt(fcstMid)+'</div><div class="ms-label">MID（+P4/MFJ=MID）</div></div>';
+  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--grn);font-size:16px">'+eFmt(fcstMax)+'</div><div class="ms-label">MAX（全P1-7）</div></div>';
+  h+='</div>';
+  // --- Stats summary ---
+  h+='<div class="mbr-stat" style="margin-top:12px">';
+  h+='<div class="mbr-stat-item" style="background:#ffebe9"><div class="ms-val" style="color:var(--red)">'+p1List.length+'</div><div class="ms-label">P1 SF移行漏れ</div></div>';
+  h+='<div class="mbr-stat-item" style="background:#fff8c5"><div class="ms-val" style="color:var(--org)">'+p2List.length+'</div><div class="ms-label">P2 滞留</div></div>';
+  h+='<div class="mbr-stat-item" style="background:#fff8c5"><div class="ms-val" style="color:var(--org)">'+p3List.length+'</div><div class="ms-label">P3 滞留</div></div>';
+  h+='<div class="mbr-stat-item" style="background:#fff8c5"><div class="ms-val" style="color:var(--org)">'+p4List.length+'</div><div class="ms-label">P4 滞留</div></div>';
+  h+='<div class="mbr-stat-item" style="background:#dafbe1"><div class="ms-val" style="color:var(--grn)">'+newThisWeek.length+'</div><div class="ms-label">今週の新規</div></div>';
+  h+='</div>';
+  // Stalled alerts grouped by phase (with checkbox + date input)
+  function renderPhaseGroup(label,list,bgColor){
     if(list.length===0)return '';
     var o='<div class="mbr-sect">';
-    o+='<div class="mbr-sect-hdr alert">⏰ '+label+' 滞留（'+list.length+'件）</div>';
+    o+='<div class="mbr-sect-hdr alert" style="background:'+(bgColor||'#ffebe9')+'">⏰ '+label+' 滞留（'+list.length+'件）</div>';
     list.forEach(function(s){
       var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
       var dayC=s.days>=30?'color:var(--red);font-weight:700':s.days>=14?'color:var(--org);font-weight:700':'';
       var jsen=s.jinsen?s.jinsen:'未依頼';
       var jCol=s.jinsen?'color:var(--ink2)':'color:var(--red);font-weight:600';
-      o+='<div class="mbr-row" onclick="window.open(\''+url+'\',\'_blank\')">';
+      var act=entGetAction(s.oppId);var naDate=act.date||'';
+      o+='<div class="mbr-row">';
+      o+='<input type="checkbox" onchange="entToggleActionDone(\''+s.oppId+'\')" style="margin-right:4px">';
       o+='<div class="mr-member">'+s.member+'</div>';
-      o+='<div class="mr-name">'+s.name+'</div>';
+      o+='<div class="mr-name" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</div>';
       o+='<div class="mr-ph" style="font-size:9px;'+jCol+'">'+jsen+'</div>';
       o+='<div class="mr-days" style="'+dayC+'">'+s.days+'日</div>';
-      o+='<div class="mr-ck">'+eFmt(s.ck)+'</div>';
+      o+='<input type="date" value="'+naDate+'" onchange="entUpdateActionDate(\''+s.oppId+'\',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;width:120px" title="ネクストアクション日">';
       o+='</div>';
     });
     o+='</div>';
     return o;
   }
-  h+=renderPhaseGroup('P2 案件化',p2List);
-  h+=renderPhaseGroup('P3 提案',p3List);
-  h+=renderPhaseGroup('P4 面談',p4List);
-  h+=renderPhaseGroup('P5-6 合意',p5List);
-  // Section 3: New this week
+  h+=renderPhaseGroup('P1 SF移行漏れ',p1List,'#ffebe9');
+  h+=renderPhaseGroup('P2 案件化',p2List,'#fff8c5');
+  h+=renderPhaseGroup('P3 提案',p3List,'#fff8c5');
+  h+=renderPhaseGroup('P4 面談',p4List,'#fff8c5');
+  h+=renderPhaseGroup('P5-6 合意',p5List,'#fff8c5');
+  // Section: New this week
   if(newThisWeek.length>0){
     h+='<div class="mbr-sect">';
     h+='<div class="mbr-sect-hdr new">✨ 今週の新規案件化（'+newThisWeek.length+'件）</div>';
@@ -561,7 +633,7 @@ function showMorningBriefing(){
     });
     h+='</div>';
   }
-  if(alerts.length===0&&zombie.length===0&&newThisWeek.length===0){
+  if(alerts.length===0&&newThisWeek.length===0){
     h+='<div style="text-align:center;padding:40px;color:var(--ink3)">アラートなし。順調です。</div>';
   }
   h+='<div style="text-align:center;padding:12px"><button onclick="document.getElementById(\'mbr-overlay\').remove()" style="background:var(--blue);color:#fff;border:none;padding:10px 32px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">ダッシュボードを開く</button></div>';
@@ -831,17 +903,21 @@ function renderEntOverview(){
     else if(j.indexOf('完了')>=0){bg='var(--grn-bg)';col='var(--grn)';}
     return '<span class="pill" style="font-size:9px;background:'+bg+';color:'+col+'">'+j+'</span>';
   }
-  // Render stalled table for a specific phase group
+  // Render stalled table for a specific phase group (with next-action mgmt)
   function renderStalledPhase(phLabel,phNums,thresholdDays,items){
     if(items.length===0)return '';
     var out='<div class="ent-section" style="border:2px solid var(--org);background:rgba(191,135,0,.03);margin-top:8px">';
     out+='<div class="es-title" style="color:var(--org)">⏰ '+phLabel+' 滞留案件（'+items.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">'+thresholdDays+'日以上滞留</span></div>';
-    out+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>人選</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
+    out+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th style="width:24px">✓</th><th>担当</th><th>案件名</th><th>フェーズ</th><th>人選</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th><th>NA日付</th><th>Next Action</th></tr></thead><tbody>';
     items.forEach(function(s){
       var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
       var dayC=s.days>=30?'color:var(--red);font-weight:700':s.days>=21?'color:var(--org);font-weight:700':'color:var(--org)';
       var mfjC=s.mfj==='MAX'?'background:var(--grn-bg);color:var(--grn)':s.mfj==='MID'?'background:#fff8c5;color:var(--org)':s.mfj==='MIN'?'background:#ffebe9;color:var(--red)':'';
-      out+='<tr><td style="font-weight:600;white-space:nowrap">'+s.member+'</td>';
+      var act=entGetAction(s.oppId);
+      var naDate=act.date||'';var done=act.done?'checked':'';
+      var rowStyle=act.done?'opacity:.5;text-decoration:line-through':'';
+      out+='<tr style="'+rowStyle+'"><td><input type="checkbox" '+done+' onchange="entToggleActionDone(\''+s.oppId+'\')"></td>';
+      out+='<td style="font-weight:600;white-space:nowrap">'+s.member+'</td>';
       out+='<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td>';
       out+='<td><span class="pill" style="background:rgba(0,0,0,.05);color:var(--ink2);font-size:9px">'+(E_PH_LABELS[s.ph]||'P'+s.ph)+'</span></td>';
       out+='<td>'+jinsenPill(s.jinsen)+'</td>';
@@ -850,17 +926,22 @@ function renderEntOverview(){
       out+='<td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td>';
       out+='<td style="font-size:9px">'+(s.closeDate||'-')+'</td>';
       out+='<td style="font-family:var(--mono);'+dayC+'">'+s.days+'日</td>';
+      out+='<td><input type="date" value="'+naDate+'" onchange="entUpdateActionDate(\''+s.oppId+'\',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;width:120px"></td>';
       out+='<td style="font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.nextDate?'<span style="color:var(--ink3)">'+s.nextDate+'</span> ':'')+(s.nextAct||'-')+'</td></tr>';
     });
     out+='</tbody></table></div></div>';
     return out;
   }
-  // P2 / P3 / P4 / P5 で分類（受注予定日超過も含めて滞留フェーズ別に分類）
+  // P1 / P2 / P3 / P4 / P5 で分類（受注予定日超過も含めて滞留フェーズ別に分類）
   var allStalled=stalled.concat(zombie);
-  var p2List=allStalled.filter(function(s){return s.ph===2&&s.days>=14;}).sort(function(a,b){return b.days-a.days;});
-  var p3List=allStalled.filter(function(s){return s.ph===3&&s.days>=10;}).sort(function(a,b){return b.days-a.days;});
-  var p4List=allStalled.filter(function(s){return s.ph===4&&s.days>=7;}).sort(function(a,b){return b.days-a.days;});
-  var p5List=allStalled.filter(function(s){return s.ph===5&&s.days>=7;}).sort(function(a,b){return b.days-a.days;});
+  // Hide cases marked as done in localStorage
+  var notDone=function(s){var a=entGetAction(s.oppId);return !a.done;};
+  var p1List=allStalled.filter(function(s){return s.ph===1&&s.days>=3;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  var p2List=allStalled.filter(function(s){return s.ph===2&&s.days>=14;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  var p3List=allStalled.filter(function(s){return s.ph===3&&s.days>=10;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  var p4List=allStalled.filter(function(s){return s.ph===4&&s.days>=7;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  var p5List=allStalled.filter(function(s){return s.ph===5&&s.days>=7;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  h+=renderStalledPhase('P1 SF移行漏れ',[1],3,p1List);
   h+=renderStalledPhase('P2 案件化',[2],14,p2List);
   h+=renderStalledPhase('P3 提案',[3],10,p3List);
   h+=renderStalledPhase('P4 面談',[4],7,p4List);
