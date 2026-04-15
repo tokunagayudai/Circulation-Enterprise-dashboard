@@ -358,7 +358,7 @@ var E_MGR='徳永 雄大';
 // Phase parser
 function ePh(s){if(!s)return 0;if(s.indexOf('08')>=0)return 8;if(s.indexOf('07')>=0)return 7;if(s.indexOf('06')>=0)return 5;if(s.indexOf('05')>=0)return 5;if(s.indexOf('04')>=0)return 4;if(s.indexOf('03')>=0)return 3;if(s.indexOf('02')>=0)return 2;if(s.indexOf('01')>=0)return 1;if(s.indexOf('DEAD')>=0)return -1;return 0;}
 // Column finder for enterprise CSV
-function eDetect(h){var m={};var kw={member:['主担当者'],name:['案件名'],lastPh:['最終到達'],apDate:['初回アポ','アポイント日'],mendanDate:['面談日'],closeDate:['受注予定日','受注日'],dealType:['新規/継続','新規／継続'],channel:['施策区分'],ck:['CK'],deadReason:['DEAD理由'],startDate:['契約開始'],endDate:['契約終了'],billM:['月額.*顧客請求','月額.*請求'],payM:['月額.*専門家','月額.*支払'],cancel:['解約日'],oppId:['案件 ID','案件ID','Opportunity ID'],mfj:['Manager Forecast Judge','Manager Forecast','解約リスク'],recycle:['リサイクル選択','リサイクルステータス'],proposalDate:['人選結果メール初回送付日','人選結果メール','提案実施日','提案日'],nextAct:['ネクストアクション$','ネクストアクション(?!実施)'],nextDate:['ネクストアクション実施日'],mutual:['Mutual Close']};for(var k in kw){m[k]=-1;for(var w=0;w<kw[k].length;w++){for(var i=0;i<h.length;i++){if(h[i].match(new RegExp(kw[k][w]))){m[k]=i;break;}}if(m[k]>=0)break;}}
+function eDetect(h){var m={};var kw={member:['主担当者'],name:['案件名'],lastPh:['最終到達'],apDate:['初回アポ','アポイント日'],mendanDate:['面談日'],closeDate:['受注予定日','受注日'],dealType:['新規/継続','新規／継続'],channel:['施策区分'],ck:['CK'],deadReason:['DEAD理由'],startDate:['契約開始'],endDate:['契約終了'],billM:['月額.*顧客請求','月額.*請求'],payM:['月額.*専門家','月額.*支払'],cancel:['解約日'],oppId:['案件 ID','案件ID','Opportunity ID'],mfj:['Manager Forecast Judge','Manager Forecast','解約リスク'],recycle:['リサイクル選択','リサイクルステータス'],proposalDate:['人選結果メール初回送付日','人選結果メール','提案実施日','提案日'],jinsen:['^人選$','人選ステータス','人選状況'],nextAct:['ネクストアクション$','ネクストアクション(?!実施)'],nextDate:['ネクストアクション実施日'],mutual:['Mutual Close']};for(var k in kw){m[k]=-1;for(var w=0;w<kw[k].length;w++){for(var i=0;i<h.length;i++){if(h[i].match(new RegExp(kw[k][w]))){m[k]=i;break;}}if(m[k]>=0)break;}}
   // curPh: 「フェーズ」単体（「最終到達フェーズ」は除外）
   m.curPh=-1;for(var i=0;i<h.length;i++){var hv=h[i].trim();if(hv==='フェーズ'||(hv.indexOf('フェーズ')>=0&&hv.indexOf('最終')<0&&hv.indexOf('到達')<0)){m.curPh=i;break;}}
   console.log('COL_MAP detected:',m);console.log('Headers:',h);
@@ -472,7 +472,7 @@ function eBuildStalled(){
     var days=Math.floor((today-ap)/(1000*60*60*24));
     if(cp===1&&days>1)return;
     var closeDate=eGet(r,'closeDate');var closeYM=eYM(closeDate);
-    var item={name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:closeDate,closeYM:closeYM,oppId:eGet(r,'oppId'),dealType:eGet(r,'dealType'),mfj:eGet(r,'mfj'),nextAct:eGet(r,'nextAct'),nextDate:eGet(r,'nextDate'),mutual:eGet(r,'mutual')};
+    var item={name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,days:days,apDate:apDate,ck:eGetN(r,'ck'),closeDate:closeDate,closeYM:closeYM,oppId:eGet(r,'oppId'),dealType:eGet(r,'dealType'),mfj:eGet(r,'mfj'),nextAct:eGet(r,'nextAct'),nextDate:eGet(r,'nextDate'),mutual:eGet(r,'mutual'),jinsen:eGet(r,'jinsen')};
     // Zombie: closeDate in the past (before this month) - likely forgotten/should be DEAD
     if(closeYM&&closeYM<todayYM){zombie.push(item);return;}
     stalled.push(item);
@@ -485,10 +485,14 @@ function eBuildStalled(){
 function showMorningBriefing(){
   if(!E_ROWS||E_ROWS.length===0)return;
   var today=new Date();var todayStr=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1)+'/'+(today.getDate()<10?'0':'')+today.getDate();
-  // 1. Stalled deals (P2-P5, threshold exceeded)
-  var stalledData=eBuildStalled();var stalled=stalledData.stalled;var zombie=stalledData.zombie;
-  var thresholds={2:14,3:10,4:7,5:7};
-  var alerts=stalled.filter(function(s){var th=thresholds[s.ph]||14;return s.days>=th;});
+  // 1. Stalled deals grouped by phase (P2-P5, includes zombie)
+  var stalledData=eBuildStalled();var allStalled2=stalledData.stalled.concat(stalledData.zombie);
+  var p2List=allStalled2.filter(function(s){return s.ph===2&&s.days>=14;}).sort(function(a,b){return b.days-a.days;});
+  var p3List=allStalled2.filter(function(s){return s.ph===3&&s.days>=10;}).sort(function(a,b){return b.days-a.days;});
+  var p4List=allStalled2.filter(function(s){return s.ph===4&&s.days>=7;}).sort(function(a,b){return b.days-a.days;});
+  var p5List=allStalled2.filter(function(s){return s.ph===5&&s.days>=7;}).sort(function(a,b){return b.days-a.days;});
+  var alerts=p2List.concat(p3List).concat(p4List).concat(p5List);
+  var zombie=stalledData.zombie;
   // 2. New cases this week (初回アポ日が今週)
   var weekAgo=new Date(today);weekAgo.setDate(weekAgo.getDate()-7);
   var newThisWeek=[];
@@ -510,45 +514,36 @@ function showMorningBriefing(){
   h+='<div class="mbr-body">';
   // Stats summary
   h+='<div class="mbr-stat">';
-  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--red)">'+alerts.length+'</div><div class="ms-label">滞留アラート</div></div>';
-  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--org)">'+zombie.length+'</div><div class="ms-label">受注予定日超過</div></div>';
+  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--red)">'+p2List.length+'</div><div class="ms-label">P2 滞留</div></div>';
+  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--org)">'+p3List.length+'</div><div class="ms-label">P3 滞留</div></div>';
+  h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--org)">'+p4List.length+'</div><div class="ms-label">P4 滞留</div></div>';
   h+='<div class="mbr-stat-item"><div class="ms-val" style="color:var(--grn)">'+newThisWeek.length+'</div><div class="ms-label">今週の新規案件</div></div>';
   h+='</div>';
-  // Section 1: Stalled alerts
-  if(alerts.length>0){
-    h+='<div class="mbr-sect">';
-    h+='<div class="mbr-sect-hdr alert">🚨 滞留アラート（閾値超過 '+alerts.length+'件）</div>';
-    alerts.forEach(function(s){
+  // Section 1: Stalled alerts grouped by phase
+  function renderPhaseGroup(label,list){
+    if(list.length===0)return '';
+    var o='<div class="mbr-sect">';
+    o+='<div class="mbr-sect-hdr alert">⏰ '+label+' 滞留（'+list.length+'件）</div>';
+    list.forEach(function(s){
       var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
-      var dayC=s.days>=21?'color:var(--red);font-weight:700':s.days>=14?'color:var(--org)':'';
-      var phLabel=s.ph===2?'P2 案件化':s.ph===3?'P3 提案':s.ph===4?'P4 面談':s.ph===5?'P5-6 合意':'P'+s.ph;
-      h+='<div class="mbr-row" onclick="window.open(\''+url+'\',\'_blank\')">';
-      h+='<div class="mr-member">'+s.member+'</div>';
-      h+='<div class="mr-name">'+s.name+'</div>';
-      h+='<div class="mr-ph">'+phLabel+'</div>';
-      h+='<div class="mr-days" style="'+dayC+'">'+s.days+'日</div>';
-      h+='<div class="mr-ck">'+eFmt(s.ck)+'</div>';
-      h+='</div>';
+      var dayC=s.days>=30?'color:var(--red);font-weight:700':s.days>=14?'color:var(--org);font-weight:700':'';
+      var jsen=s.jinsen?s.jinsen:'未依頼';
+      var jCol=s.jinsen?'color:var(--ink2)':'color:var(--red);font-weight:600';
+      o+='<div class="mbr-row" onclick="window.open(\''+url+'\',\'_blank\')">';
+      o+='<div class="mr-member">'+s.member+'</div>';
+      o+='<div class="mr-name">'+s.name+'</div>';
+      o+='<div class="mr-ph" style="font-size:9px;'+jCol+'">'+jsen+'</div>';
+      o+='<div class="mr-days" style="'+dayC+'">'+s.days+'日</div>';
+      o+='<div class="mr-ck">'+eFmt(s.ck)+'</div>';
+      o+='</div>';
     });
-    h+='</div>';
+    o+='</div>';
+    return o;
   }
-  // Section 2: Zombie (overdue)
-  if(zombie.length>0){
-    h+='<div class="mbr-sect">';
-    h+='<div class="mbr-sect-hdr zombie">⚠️ 受注予定日超過（'+zombie.length+'件）DEAD化 or 日付更新</div>';
-    zombie.slice(0,10).forEach(function(s){
-      var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
-      h+='<div class="mbr-row" onclick="window.open(\''+url+'\',\'_blank\')">';
-      h+='<div class="mr-member">'+s.member+'</div>';
-      h+='<div class="mr-name">'+s.name+'</div>';
-      h+='<div class="mr-ph">P'+s.ph+'</div>';
-      h+='<div class="mr-days" style="color:var(--red)">'+s.days+'日</div>';
-      h+='<div class="mr-ck">'+eFmt(s.ck)+'</div>';
-      h+='</div>';
-    });
-    if(zombie.length>10)h+='<div style="text-align:center;padding:6px;font-size:10px;color:var(--ink3)">他 '+(zombie.length-10)+'件</div>';
-    h+='</div>';
-  }
+  h+=renderPhaseGroup('P2 案件化',p2List);
+  h+=renderPhaseGroup('P3 提案',p3List);
+  h+=renderPhaseGroup('P4 面談',p4List);
+  h+=renderPhaseGroup('P5-6 合意',p5List);
   // Section 3: New this week
   if(newThisWeek.length>0){
     h+='<div class="mbr-sect">';
@@ -824,49 +819,52 @@ function renderEntOverview(){
     h+=qRow(m,qMembers[m],m===E_MGR);
   });
   h+='</tbody></table></div></div>';
-  // Stalled/zombie sections
+  // Stalled sections grouped by phase (P2/P3/P4/P5)
   var stalledData=eBuildStalled();var stalled=stalledData.stalled;var zombie=stalledData.zombie;
   if(E_MF!=='all'){stalled=stalled.filter(function(s){return s.member===E_MF;});zombie=zombie.filter(function(s){return s.member===E_MF;});}
-  if(zombie.length>0){
-    h+='<div class="ent-section" style="border:2px solid var(--red);background:rgba(207,34,46,.03)"><div class="es-title" style="color:var(--red)">🚨 受注予定日超過案件（'+zombie.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">DEAD化 or 受注予定日更新が必要</span></div>';
-    h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
-    zombie.forEach(function(s){
-      var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
+  // Helper: render jinsen pill with color
+  function jinsenPill(j){
+    if(!j)return '<span style="color:var(--red);font-size:9px;font-weight:600">未依頼</span>';
+    var lower=j.toLowerCase();var bg='rgba(0,0,0,.05)',col='var(--ink2)';
+    if(j.indexOf('依頼')>=0&&j.indexOf('済')>=0){bg='#fff8c5';col='var(--org)';}
+    else if(j.indexOf('対応')>=0||j.indexOf('中')>=0){bg='#dbeafe';col='var(--blue)';}
+    else if(j.indexOf('完了')>=0){bg='var(--grn-bg)';col='var(--grn)';}
+    return '<span class="pill" style="font-size:9px;background:'+bg+';color:'+col+'">'+j+'</span>';
+  }
+  // Render stalled table for a specific phase group
+  function renderStalledPhase(phLabel,phNums,thresholdDays,items){
+    if(items.length===0)return '';
+    var out='<div class="ent-section" style="border:2px solid var(--org);background:rgba(191,135,0,.03);margin-top:8px">';
+    out+='<div class="es-title" style="color:var(--org)">⏰ '+phLabel+' 滞留案件（'+items.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">'+thresholdDays+'日以上滞留</span></div>';
+    out+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>人選</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
+    items.forEach(function(s){
+      var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
+      var dayC=s.days>=30?'color:var(--red);font-weight:700':s.days>=21?'color:var(--org);font-weight:700':'color:var(--org)';
       var mfjC=s.mfj==='MAX'?'background:var(--grn-bg);color:var(--grn)':s.mfj==='MID'?'background:#fff8c5;color:var(--org)':s.mfj==='MIN'?'background:#ffebe9;color:var(--red)':'';
-      h+='<tr><td style="font-weight:600;white-space:nowrap">'+s.member+'</td>';
-      h+='<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td>';
-      h+='<td><span class="pill" style="background:rgba(0,0,0,.05);color:var(--ink2);font-size:9px">P'+s.ph+'</span></td>';
-      h+='<td>'+(s.mfj?'<span class="pill" style="font-size:9px;'+mfjC+'">'+s.mfj+'</span>':'-')+'</td>';
-      h+='<td style="font-size:9px">'+(s.dealType||'-')+'</td>';
-      h+='<td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td>';
-      h+='<td style="font-size:9px;color:var(--red);font-weight:600">'+(s.closeDate||'-')+'</td>';
-      h+='<td style="font-family:var(--mono);color:var(--red);font-weight:700">'+s.days+'日</td>';
-      h+='<td style="font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.nextDate?'<span style="color:var(--ink3)">'+s.nextDate+'</span> ':'')+(s.nextAct||'-')+'</td></tr>';
+      out+='<tr><td style="font-weight:600;white-space:nowrap">'+s.member+'</td>';
+      out+='<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td>';
+      out+='<td><span class="pill" style="background:rgba(0,0,0,.05);color:var(--ink2);font-size:9px">'+(E_PH_LABELS[s.ph]||'P'+s.ph)+'</span></td>';
+      out+='<td>'+jinsenPill(s.jinsen)+'</td>';
+      out+='<td>'+(s.mfj?'<span class="pill" style="font-size:9px;'+mfjC+'">'+s.mfj+'</span>':'-')+'</td>';
+      out+='<td style="font-size:9px">'+(s.dealType||'-')+'</td>';
+      out+='<td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td>';
+      out+='<td style="font-size:9px">'+(s.closeDate||'-')+'</td>';
+      out+='<td style="font-family:var(--mono);'+dayC+'">'+s.days+'日</td>';
+      out+='<td style="font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.nextDate?'<span style="color:var(--ink3)">'+s.nextDate+'</span> ':'')+(s.nextAct||'-')+'</td></tr>';
     });
-    h+='</tbody></table></div></div>';
+    out+='</tbody></table></div></div>';
+    return out;
   }
-  // === Stalled alerts (P2-P5) inline ===
-  if(stalled.length>0){
-    var thresholds2={2:14,3:10,4:7,5:7};
-    var activeAlerts=stalled.filter(function(s){var th=thresholds2[s.ph]||14;return s.days>=th;});
-    if(activeAlerts.length>0){
-      h+='<div class="ent-section" style="border:2px solid var(--org);background:rgba(191,135,0,.03)">';
-      h+='<div class="es-title" style="color:var(--org)">⏰ 滞留アラート（閾値超過 '+activeAlerts.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">P2≥14日 / P3≥10日 / P4≥7日 / P5≥7日</span></div>';
-      h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>滞留</th><th>CK</th><th>受注予定</th><th>Next Action</th></tr></thead><tbody>';
-      activeAlerts.forEach(function(s){
-        var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
-        var dayC=s.days>=21?'color:var(--red);font-weight:700':s.days>=14?'color:var(--org)':'';
-        h+='<tr><td style="font-weight:600;white-space:nowrap">'+s.member+'</td>';
-        h+='<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td>';
-        h+='<td><span class="pill" style="background:rgba(0,0,0,.05);color:var(--ink2);font-size:9px">'+(E_PH_LABELS[s.ph]||'P'+s.ph)+'</span></td>';
-        h+='<td style="font-family:var(--mono);'+dayC+'">'+s.days+'日</td>';
-        h+='<td style="font-family:var(--mono)">'+eFmt(s.ck)+'</td>';
-        h+='<td style="font-size:9px">'+(s.closeDate||'-')+'</td>';
-        h+='<td style="font-size:9px;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.nextDate||'')+(s.nextAct?' '+s.nextAct:'')+'</td></tr>';
-      });
-      h+='</tbody></table></div></div>';
-    }
-  }
+  // P2 / P3 / P4 / P5 で分類（受注予定日超過も含めて滞留フェーズ別に分類）
+  var allStalled=stalled.concat(zombie);
+  var p2List=allStalled.filter(function(s){return s.ph===2&&s.days>=14;}).sort(function(a,b){return b.days-a.days;});
+  var p3List=allStalled.filter(function(s){return s.ph===3&&s.days>=10;}).sort(function(a,b){return b.days-a.days;});
+  var p4List=allStalled.filter(function(s){return s.ph===4&&s.days>=7;}).sort(function(a,b){return b.days-a.days;});
+  var p5List=allStalled.filter(function(s){return s.ph===5&&s.days>=7;}).sort(function(a,b){return b.days-a.days;});
+  h+=renderStalledPhase('P2 案件化',[2],14,p2List);
+  h+=renderStalledPhase('P3 提案',[3],10,p3List);
+  h+=renderStalledPhase('P4 面談',[4],7,p4List);
+  h+=renderStalledPhase('P5-6 合意',[5],7,p5List);
   // === 今週の新規案件化 (inline section) ===
   var weekAgo=new Date(today);weekAgo.setDate(weekAgo.getDate()-7);
   var newThisWeek=[];
