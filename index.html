@@ -472,9 +472,38 @@ function eBuildRevForecast(){
 // === localStorage-backed next action management for stalled cases ===
 function entGetAction(oppId){try{var d=JSON.parse(localStorage.getItem('ent_act_'+oppId)||'{}');return d;}catch(e){return{};}}
 function entSetAction(oppId,data){try{localStorage.setItem('ent_act_'+oppId,JSON.stringify(data));}catch(e){}}
+// Auto-revive logic: if NA date is past, consider the item as "not done" for display
+function entIsActiveParked(oppId){
+  var d=entGetAction(oppId);
+  if(!d.done)return false;
+  // If date set and date <= today → NOT parked anymore (revived)
+  if(d.date){
+    var today=new Date();today.setHours(0,0,0,0);
+    var nad=new Date(d.date);nad.setHours(0,0,0,0);
+    if(nad<=today)return false;
+  }
+  return true;
+}
 function entUpdateActionDate(oppId,date){var d=entGetAction(oppId);d.date=date;d.updatedAt=new Date().toISOString();entSetAction(oppId,d);renderEnt();}
 function entToggleActionDone(oppId){var d=entGetAction(oppId);d.done=!d.done;d.updatedAt=new Date().toISOString();entSetAction(oppId,d);renderEnt();}
 function entUpdateActionMemo(oppId,memo){var d=entGetAction(oppId);d.memo=memo;d.updatedAt=new Date().toISOString();entSetAction(oppId,d);}
+// Quick date setter (today / tomorrow / friday / next monday)
+function entSetQuickDate(oppId,offset){
+  var d=new Date();d.setDate(d.getDate()+offset);
+  var ymd=d.getFullYear()+'-'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1)+'-'+(d.getDate()<10?'0':'')+d.getDate();
+  var data=entGetAction(oppId);data.date=ymd;data.done=true;data.updatedAt=new Date().toISOString();entSetAction(oppId,data);renderEnt();
+}
+// Clear all done flags (全件復活)
+function entClearAllDone(){
+  if(!confirm('対応済みにした全案件をリストに戻しますか？'))return;
+  for(var i=0;i<localStorage.length;i++){
+    var k=localStorage.key(i);
+    if(k&&k.indexOf('ent_act_')===0){
+      try{var d=JSON.parse(localStorage.getItem(k)||'{}');d.done=false;localStorage.setItem(k,JSON.stringify(d));}catch(e){}
+    }
+  }
+  renderEnt();
+}
 
 function eBuildStalled(){
   var today=new Date();var todayYM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
@@ -531,12 +560,12 @@ function showMorningBriefing(){
   });
   // === 3. Stalled deals grouped by phase (P1-P5) ===
   var stalledData=eBuildStalled();var allStalled2=stalledData.stalled.concat(stalledData.zombie);
-  var notDone=function(s){var a=entGetAction(s.oppId);return !a.done;};
-  var p1List=allStalled2.filter(function(s){return s.ph===1&&s.days>=3;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
-  var p2List=allStalled2.filter(function(s){return s.ph===2&&s.days>=14;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
-  var p3List=allStalled2.filter(function(s){return s.ph===3&&s.days>=10;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
-  var p4List=allStalled2.filter(function(s){return s.ph===4&&s.days>=7;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
-  var p5List=allStalled2.filter(function(s){return s.ph===5&&s.days>=7;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
+  var notParked=function(s){return !entIsActiveParked(s.oppId);};
+  var p1List=allStalled2.filter(function(s){return s.ph===1&&s.days>=3;}).filter(notParked).sort(function(a,b){return b.days-a.days;});
+  var p2List=allStalled2.filter(function(s){return s.ph===2&&s.days>=14;}).filter(notParked).sort(function(a,b){return b.days-a.days;});
+  var p3List=allStalled2.filter(function(s){return s.ph===3&&s.days>=10;}).filter(notParked).sort(function(a,b){return b.days-a.days;});
+  var p4List=allStalled2.filter(function(s){return s.ph===4&&s.days>=7;}).filter(notParked).sort(function(a,b){return b.days-a.days;});
+  var p5List=allStalled2.filter(function(s){return s.ph===5&&s.days>=7;}).filter(notParked).sort(function(a,b){return b.days-a.days;});
   var alerts=p1List.concat(p2List).concat(p3List).concat(p4List).concat(p5List);
   // === 4. New cases this week ===
   var weekAgo=new Date(today);weekAgo.setDate(weekAgo.getDate()-7);
@@ -588,7 +617,15 @@ function showMorningBriefing(){
   h+='<div class="mbr-stat-item" style="background:#fff8c5"><div class="ms-val" style="color:var(--org)">'+p4List.length+'</div><div class="ms-label">P4 滞留</div></div>';
   h+='<div class="mbr-stat-item" style="background:#dafbe1"><div class="ms-val" style="color:var(--grn)">'+newThisWeek.length+'</div><div class="ms-label">今週の新規</div></div>';
   h+='</div>';
-  // Stalled alerts grouped by phase (with checkbox + date input)
+  // Usage guide (shown if any stalled exists)
+  if(alerts.length>0){
+    h+='<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-top:12px;font-size:11px;color:#1e40af;line-height:1.55">';
+    h+='<strong>💡 使い方</strong>：';
+    h+='[<strong>保留</strong>]チェック＝リストから一時非表示 / ';
+    h+='[<strong>明日</strong>][<strong>来週</strong>]ボタン＝その日まで自動保留→日付を過ぎると自動復活';
+    h+='</div>';
+  }
+  // Stalled alerts grouped by phase (with checkbox + date input + quick buttons)
   function renderPhaseGroup(label,list,bgColor){
     if(list.length===0)return '';
     var o='<div class="mbr-sect">';
@@ -599,13 +636,15 @@ function showMorningBriefing(){
       var jsen=s.jinsen?s.jinsen:'未依頼';
       var jCol=s.jinsen?'color:var(--ink2)':'color:var(--red);font-weight:600';
       var act=entGetAction(s.oppId);var naDate=act.date||'';
-      o+='<div class="mbr-row">';
-      o+='<input type="checkbox" onchange="entToggleActionDone(\''+s.oppId+'\')" style="margin-right:4px">';
+      o+='<div class="mbr-row" style="flex-wrap:wrap">';
+      o+='<input type="checkbox" onchange="entToggleActionDone(\''+s.oppId+'\')" title="保留（一時非表示）" style="margin-right:4px;width:15px;height:15px;cursor:pointer">';
       o+='<div class="mr-member">'+s.member+'</div>';
-      o+='<div class="mr-name" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</div>';
+      o+='<div class="mr-name" style="cursor:pointer" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</div>';
       o+='<div class="mr-ph" style="font-size:9px;'+jCol+'">'+jsen+'</div>';
       o+='<div class="mr-days" style="'+dayC+'">'+s.days+'日</div>';
-      o+='<input type="date" value="'+naDate+'" onchange="entUpdateActionDate(\''+s.oppId+'\',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;width:120px" title="ネクストアクション日">';
+      o+='<input type="date" value="'+naDate+'" onchange="entUpdateActionDate(\''+s.oppId+'\',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;width:118px" title="ネクストアクション日">';
+      o+='<button onclick="entSetQuickDate(\''+s.oppId+'\',1)" title="明日まで保留" style="font-size:9px;padding:2px 6px;border:1px solid var(--bd);border-radius:4px;background:#fff;cursor:pointer">明日</button>';
+      o+='<button onclick="entSetQuickDate(\''+s.oppId+'\',7)" title="1週間後まで保留" style="font-size:9px;padding:2px 6px;border:1px solid var(--bd);border-radius:4px;background:#fff;cursor:pointer">来週</button>';
       o+='</div>';
     });
     o+='</div>';
@@ -904,19 +943,28 @@ function renderEntOverview(){
     return '<span class="pill" style="font-size:9px;background:'+bg+';color:'+col+'">'+j+'</span>';
   }
   // Render stalled table for a specific phase group (with next-action mgmt)
-  function renderStalledPhase(phLabel,phNums,thresholdDays,items){
-    if(items.length===0)return '';
+  function renderStalledPhase(phLabel,phNums,thresholdDays,items,parkedCount){
+    if(items.length===0&&parkedCount===0)return '';
+    var showParked=window.E_SHOW_PARKED||false;
     var out='<div class="ent-section" style="border:2px solid var(--org);background:rgba(191,135,0,.03);margin-top:8px">';
-    out+='<div class="es-title" style="color:var(--org)">⏰ '+phLabel+' 滞留案件（'+items.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">'+thresholdDays+'日以上滞留</span></div>';
-    out+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th style="width:24px">✓</th><th>担当</th><th>案件名</th><th>フェーズ</th><th>人選</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th><th>NA日付</th><th>Next Action</th></tr></thead><tbody>';
+    out+='<div class="es-title" style="color:var(--org);display:flex;align-items:center;gap:8px;flex-wrap:wrap">⏰ '+phLabel+' 滞留案件（'+items.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3)">'+thresholdDays+'日以上滞留</span>';
+    if(parkedCount>0)out+='<span style="font-size:10px;color:var(--ink3);margin-left:auto">保留中 '+parkedCount+'件</span>';
+    out+='</div>';
+    if(items.length===0){out+='<div style="text-align:center;padding:20px;color:var(--ink3);font-size:11px">✅ このフェーズの滞留案件なし</div></div>';return out;}
+    out+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr>';
+    out+='<th style="width:32px" title="保留（リストから一時非表示）">保留</th>';
+    out+='<th>担当</th><th>案件名</th><th>フェーズ</th><th>人選</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>滞留</th>';
+    out+='<th title="ネクストアクション日を設定すると自動的に保留。日付が来たら自動で戻る">NAアクション日</th>';
+    out+='<th>Next Action</th></tr></thead><tbody>';
     items.forEach(function(s){
       var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
       var dayC=s.days>=30?'color:var(--red);font-weight:700':s.days>=21?'color:var(--org);font-weight:700':'color:var(--org)';
       var mfjC=s.mfj==='MAX'?'background:var(--grn-bg);color:var(--grn)':s.mfj==='MID'?'background:#fff8c5;color:var(--org)':s.mfj==='MIN'?'background:#ffebe9;color:var(--red)':'';
       var act=entGetAction(s.oppId);
       var naDate=act.date||'';var done=act.done?'checked':'';
-      var rowStyle=act.done?'opacity:.5;text-decoration:line-through':'';
-      out+='<tr style="'+rowStyle+'"><td><input type="checkbox" '+done+' onchange="entToggleActionDone(\''+s.oppId+'\')"></td>';
+      var rowStyle=act.done?'opacity:.55':'';
+      out+='<tr style="'+rowStyle+'">';
+      out+='<td><input type="checkbox" '+done+' onchange="entToggleActionDone(\''+s.oppId+'\')" title="保留（リストから一時非表示）" style="width:16px;height:16px;cursor:pointer"></td>';
       out+='<td style="font-weight:600;white-space:nowrap">'+s.member+'</td>';
       out+='<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+s.name+'</td>';
       out+='<td><span class="pill" style="background:rgba(0,0,0,.05);color:var(--ink2);font-size:9px">'+(E_PH_LABELS[s.ph]||'P'+s.ph)+'</span></td>';
@@ -926,7 +974,11 @@ function renderEntOverview(){
       out+='<td style="font-family:var(--mono)">'+(s.ck?eFmt(s.ck):'-')+'</td>';
       out+='<td style="font-size:9px">'+(s.closeDate||'-')+'</td>';
       out+='<td style="font-family:var(--mono);'+dayC+'">'+s.days+'日</td>';
-      out+='<td><input type="date" value="'+naDate+'" onchange="entUpdateActionDate(\''+s.oppId+'\',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;width:120px"></td>';
+      out+='<td><div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap">';
+      out+='<input type="date" value="'+naDate+'" onchange="entUpdateActionDate(\''+s.oppId+'\',this.value)" style="font-size:10px;padding:2px 4px;border:1px solid var(--bd);border-radius:4px;width:118px">';
+      out+='<button onclick="entSetQuickDate(\''+s.oppId+'\',1)" title="明日まで保留" style="font-size:9px;padding:2px 6px;border:1px solid var(--bd);border-radius:4px;background:#fff;cursor:pointer">明日</button>';
+      out+='<button onclick="entSetQuickDate(\''+s.oppId+'\',7)" title="1週間後まで保留" style="font-size:9px;padding:2px 6px;border:1px solid var(--bd);border-radius:4px;background:#fff;cursor:pointer">来週</button>';
+      out+='</div></td>';
       out+='<td style="font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(s.nextDate?'<span style="color:var(--ink3)">'+s.nextDate+'</span> ':'')+(s.nextAct||'-')+'</td></tr>';
     });
     out+='</tbody></table></div></div>';
@@ -934,18 +986,43 @@ function renderEntOverview(){
   }
   // P1 / P2 / P3 / P4 / P5 で分類（受注予定日超過も含めて滞留フェーズ別に分類）
   var allStalled=stalled.concat(zombie);
-  // Hide cases marked as done in localStorage
-  var notDone=function(s){var a=entGetAction(s.oppId);return !a.done;};
-  var p1List=allStalled.filter(function(s){return s.ph===1&&s.days>=3;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
-  var p2List=allStalled.filter(function(s){return s.ph===2&&s.days>=14;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
-  var p3List=allStalled.filter(function(s){return s.ph===3&&s.days>=10;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
-  var p4List=allStalled.filter(function(s){return s.ph===4&&s.days>=7;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
-  var p5List=allStalled.filter(function(s){return s.ph===5&&s.days>=7;}).filter(notDone).sort(function(a,b){return b.days-a.days;});
-  h+=renderStalledPhase('P1 SF移行漏れ',[1],3,p1List);
-  h+=renderStalledPhase('P2 案件化',[2],14,p2List);
-  h+=renderStalledPhase('P3 提案',[3],10,p3List);
-  h+=renderStalledPhase('P4 面談',[4],7,p4List);
-  h+=renderStalledPhase('P5-6 合意',[5],7,p5List);
+  var showParked=window.E_SHOW_PARKED||false;
+  // Filter: show all if showParked, else hide parked items
+  var notParked=function(s){return !entIsActiveParked(s.oppId);};
+  function filterPh(ph,days){
+    var all=allStalled.filter(function(s){return s.ph===ph&&s.days>=days;});
+    var active=all.filter(notParked).sort(function(a,b){return b.days-a.days;});
+    var parked=all.filter(function(s){return entIsActiveParked(s.oppId);});
+    return{active:active,parkedCount:parked.length};
+  }
+  var p1=filterPh(1,3),p2=filterPh(2,14),p3=filterPh(3,10),p4=filterPh(4,7),p5=filterPh(5,7);
+  var totalParked=p1.parkedCount+p2.parkedCount+p3.parkedCount+p4.parkedCount+p5.parkedCount;
+  // Usage guide banner + toggle
+  if(p1.active.length+p2.active.length+p3.active.length+p4.active.length+p5.active.length>0||totalParked>0){
+    h+='<div class="ent-section" style="background:#eff6ff;border:1px solid #bfdbfe;padding:10px 14px;margin-top:8px">';
+    h+='<div style="font-size:11px;color:#1e40af;line-height:1.6">';
+    h+='<strong>💡 滞留案件の使い方</strong>：';
+    h+='「<strong>保留</strong>」にチェック＝一時的にリストから非表示。';
+    h+='「<strong>NAアクション日</strong>」を設定すれば、その日付までは自動的に保留され、日付を過ぎると自動でリストに戻ります。';
+    h+='</div>';
+    h+='<div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">';
+    h+='<button onclick="window.E_SHOW_PARKED='+(!showParked)+';renderEnt()" style="font-size:10px;padding:4px 10px;border:1px solid var(--bd);border-radius:6px;background:'+(showParked?'var(--blue)':'#fff')+';color:'+(showParked?'#fff':'var(--ink)')+';cursor:pointer">'+(showParked?'✓ 保留中も表示':'保留中も表示する')+'</button>';
+    if(totalParked>0)h+='<span style="font-size:10px;color:var(--ink3)">現在 '+totalParked+'件を保留中</span>';
+    if(totalParked>0)h+='<button onclick="entClearAllDone()" style="font-size:10px;padding:4px 10px;border:1px solid var(--bd);border-radius:6px;background:#fff;cursor:pointer;margin-left:auto">全保留を解除</button>';
+    h+='</div></div>';
+  }
+  // If showParked enabled, render all (active+parked), else render only active
+  function getDisplayList(pr){if(showParked){return allStalled.filter(function(s){return s.ph===pr.ph&&s.days>=pr.th;}).sort(function(a,b){var ap=entIsActiveParked(a.oppId)?1:0,bp=entIsActiveParked(b.oppId)?1:0;if(ap!==bp)return ap-bp;return b.days-a.days;});}return pr.list;}
+  var p1List=showParked?allStalled.filter(function(s){return s.ph===1&&s.days>=3;}).sort(function(a,b){var ap=entIsActiveParked(a.oppId)?1:0,bp=entIsActiveParked(b.oppId)?1:0;if(ap!==bp)return ap-bp;return b.days-a.days;}):p1.active;
+  var p2List=showParked?allStalled.filter(function(s){return s.ph===2&&s.days>=14;}).sort(function(a,b){var ap=entIsActiveParked(a.oppId)?1:0,bp=entIsActiveParked(b.oppId)?1:0;if(ap!==bp)return ap-bp;return b.days-a.days;}):p2.active;
+  var p3List=showParked?allStalled.filter(function(s){return s.ph===3&&s.days>=10;}).sort(function(a,b){var ap=entIsActiveParked(a.oppId)?1:0,bp=entIsActiveParked(b.oppId)?1:0;if(ap!==bp)return ap-bp;return b.days-a.days;}):p3.active;
+  var p4List=showParked?allStalled.filter(function(s){return s.ph===4&&s.days>=7;}).sort(function(a,b){var ap=entIsActiveParked(a.oppId)?1:0,bp=entIsActiveParked(b.oppId)?1:0;if(ap!==bp)return ap-bp;return b.days-a.days;}):p4.active;
+  var p5List=showParked?allStalled.filter(function(s){return s.ph===5&&s.days>=7;}).sort(function(a,b){var ap=entIsActiveParked(a.oppId)?1:0,bp=entIsActiveParked(b.oppId)?1:0;if(ap!==bp)return ap-bp;return b.days-a.days;}):p5.active;
+  h+=renderStalledPhase('P1 SF移行漏れ',[1],3,p1List,p1.parkedCount);
+  h+=renderStalledPhase('P2 案件化',[2],14,p2List,p2.parkedCount);
+  h+=renderStalledPhase('P3 提案',[3],10,p3List,p3.parkedCount);
+  h+=renderStalledPhase('P4 面談',[4],7,p4List,p4.parkedCount);
+  h+=renderStalledPhase('P5-6 合意',[5],7,p5List,p5.parkedCount);
   // === 今週の新規案件化 (inline section) ===
   var weekAgo=new Date(today);weekAgo.setDate(weekAgo.getDate()-7);
   var newThisWeek=[];
