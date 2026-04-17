@@ -571,12 +571,13 @@ function showMorningBriefing(){
   var weekAgo=new Date(today);weekAgo.setDate(weekAgo.getDate()-7);
   var newThisWeek=[];
   E_ROWS.forEach(function(r){
-    var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
-    var cp=ePh(cpRaw);if(cp<=0)return;
+    var cpRaw=eGet(r,'curPh');
+    var cp=ePh(cpRaw);
+    var lp=ePh(eGet(r,'lastPh'));
     var apStr=eGet(r,'apDate');if(!apStr)return;
     var ap=new Date(apStr.replace(/\//g,'-'));if(isNaN(ap))return;
     if(ap>=weekAgo&&ap<=today){
-      newThisWeek.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,phRaw:cpRaw,ck:eGetN(r,'ck'),apDate:apStr,oppId:eGet(r,'oppId'),channel:eGet(r,'channel'),dealType:eGet(r,'dealType')});
+      newThisWeek.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,lp:lp,phRaw:cpRaw,ck:eGetN(r,'ck'),apDate:apStr,oppId:eGet(r,'oppId'),channel:eGet(r,'channel'),dealType:eGet(r,'dealType'),isDead:cpRaw.indexOf('DEAD')>=0});
     }
   });
   newThisWeek.sort(function(a,b){return a.member.localeCompare(b.member,'ja');});
@@ -615,7 +616,7 @@ function showMorningBriefing(){
   h+='<div class="mbr-stat-item" style="background:#fff8c5"><div class="ms-val" style="color:var(--org)">'+p2List.length+'</div><div class="ms-label">P2 滞留</div></div>';
   h+='<div class="mbr-stat-item" style="background:#fff8c5"><div class="ms-val" style="color:var(--org)">'+p3List.length+'</div><div class="ms-label">P3 滞留</div></div>';
   h+='<div class="mbr-stat-item" style="background:#fff8c5"><div class="ms-val" style="color:var(--org)">'+p4List.length+'</div><div class="ms-label">P4 滞留</div></div>';
-  h+='<div class="mbr-stat-item" style="background:#dafbe1"><div class="ms-val" style="color:var(--grn)">'+newThisWeek.length+'</div><div class="ms-label">今週の新規</div></div>';
+  h+='<div class="mbr-stat-item" style="background:#dafbe1"><div class="ms-val" style="color:var(--grn)">'+newThisWeek.length+'</div><div class="ms-label">今週の新規商談</div></div>';
   h+='</div>';
   // Usage guide (shown if any stalled exists)
   if(alerts.length>0){
@@ -658,7 +659,9 @@ function showMorningBriefing(){
   // Section: New this week
   if(newThisWeek.length>0){
     h+='<div class="mbr-sect">';
-    h+='<div class="mbr-sect-hdr new">✨ 今週の新規案件化（'+newThisWeek.length+'件）</div>';
+    var mbrP2=newThisWeek.filter(function(c){return c.lp>=2&&!c.isDead;});
+    var mbrP1=newThisWeek.filter(function(c){return c.lp<2&&!c.isDead;});
+    h+='<div class="mbr-sect-hdr new">✨ 今週の新規（'+newThisWeek.length+'件）P2+案件化: '+mbrP2.length+' / P1商談のみ: '+mbrP1.length+'</div>';
     newThisWeek.forEach(function(c){
       var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'#';
       var chColor=c.channel.indexOf('FS')>=0?'#6366f1':'var(--blue)';
@@ -723,16 +726,21 @@ function renderEntOverview(){
     if(E_MF!=='all'&&m!==E_MF)return;
     var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
     var apStr=eGet(r,'apDate'),mdStr=eGet(r,'mendanDate'),clStr=eGet(r,'closeDate');
+    var prStr=eGet(r,'proposalDate');// 人選結果メール初回送付日 = 提案日
     var lp=ePh(eGet(r,'lastPh'));var cpRaw=eGet(r,'curPh');var cp=ePh(cpRaw);
     var ch=eGet(r,'channel');
+    // P1商談: アポ日が期間内
     if(inRange(apStr)){
       kpi.p1++;byMember[m].p1++;
       if(ch.indexOf('FS')>=0){kpi.fs++;byMember[m].fs++;}else{kpi.is++;byMember[m].is++;}
-      if(lp>=3){kpi.p3++;byMember[m].p3++;}
       if(lp>=2)kpi.p2++;
       if(cpRaw.indexOf('DEAD')>=0){kpi.deadM++;byMember[m].deadM++;}
     }
+    // KSF P3提案: 提案日(proposalDate)が期間内 AND 最終到達≥P3
+    if(inRange(prStr)&&lp>=3){kpi.p3++;byMember[m].p3++;}
+    // KPI P4面談: 面談日が期間内 AND 最終到達≥P4
     if(inRange(mdStr)&&lp>=4){kpi.p4++;byMember[m].p4++;}
+    // KGI P8受注: 受注日が期間内 AND 現フェーズ=P8
     if(inRange(clStr)&&cp===8){kpi.p8++;kpi.ck+=eGetN(r,'ck');byMember[m].p8++;byMember[m].ck+=eGetN(r,'ck');}
   });
   // Team breakdown HTML for KPI cards
@@ -753,10 +761,31 @@ function renderEntOverview(){
   h+=kpiCard('先行指標: P1商談合計',kpi.p1,E_TARGETS.p1,'var(--ink)','アポ日='+monthLabel,'p1','p1');
   h+=kpiCard('└ IS経由 商談',kpi.is,0,'var(--blue)','アポ取得月','is','is');
   h+=kpiCard('└ FS経由 商談',kpi.fs,0,'#6366f1','アポ取得月','fs','fs');
-  h+=kpiCard('KSF 提案実施 (P3)',kpi.p3,0,'var(--org)','最終到達≥P3','p3','p3');
+  h+=kpiCard('KSF 提案実施 (P3)',kpi.p3,0,'var(--org)','提案日='+monthLabel,'p3','p3');
   h+=kpiCard('KPI 面談実施 (P4)',kpi.p4,E_TARGETS.p4,'var(--org)','面談日='+monthLabel,'p4','p4');
   h+=kpiCard('KGI 新規受注 (P8)',kpi.p8,E_TARGETS.p8,'var(--grn)','受注予定日='+monthLabel,'p8','p8');
   h+='</div>';
+  // 担当者別 IS/FS × P1/P3/P4/P8 ミニグラフ
+  if(E_MF==='all'){
+    var maxP1=1;mList.forEach(function(m){if(m!==E_MGR&&byMember[m].p1>maxP1)maxP1=byMember[m].p1;});
+    h+='<div class="ent-section" style="padding:10px 14px"><div class="es-title">担当者別KPI（'+monthLabel+'）</div>';
+    h+='<div style="display:grid;grid-template-columns:80px repeat(4,1fr);gap:4px;font-size:10px;align-items:center">';
+    h+='<div style="font-weight:600;color:var(--ink3)">担当</div><div style="color:var(--ink3)">P1商談</div><div style="color:var(--ink3)">P3提案</div><div style="color:var(--ink3)">P4面談</div><div style="color:var(--ink3)">P8受注</div>';
+    mList.forEach(function(m){
+      var d=byMember[m];var isMgr=m===E_MGR;
+      var op=isMgr?'opacity:.5':'';
+      var isW=d.p1>0?Math.max(4,d.is/maxP1*100):0;
+      var fsW=d.p1>0?Math.max(4,d.fs/maxP1*100):0;
+      h+='<div style="font-weight:600;'+op+'">'+m.split(' ')[0]+(isMgr?' <span style="font-size:7px;background:var(--purple);color:#fff;padding:1px 4px;border-radius:3px">Mgr</span>':'')+'</div>';
+      h+='<div style="'+op+'"><div style="display:flex;gap:1px;align-items:center"><div style="height:14px;width:'+isW+'%;background:var(--blue);border-radius:2px;min-width:1px" title="IS:'+d.is+'"></div><div style="height:14px;width:'+fsW+'%;background:#6366f1;border-radius:2px;min-width:1px" title="FS:'+d.fs+'"></div><span style="margin-left:4px;font-family:var(--mono);font-weight:600">'+d.p1+'</span></div></div>';
+      h+='<div style="'+op+'"><span style="font-family:var(--mono);font-weight:600">'+d.p3+'</span></div>';
+      h+='<div style="'+op+'"><span style="font-family:var(--mono);font-weight:600">'+d.p4+'</span></div>';
+      h+='<div style="'+op+'"><span style="font-family:var(--mono);font-weight:700;color:var(--grn)">'+d.p8+'</span></div>';
+    });
+    h+='</div>';
+    h+='<div style="display:flex;gap:12px;margin-top:6px;font-size:9px;color:var(--ink3)"><span><span style="display:inline-block;width:8px;height:8px;background:var(--blue);border-radius:2px;vertical-align:middle"></span> IS経由</span><span><span style="display:inline-block;width:8px;height:8px;background:#6366f1;border-radius:2px;vertical-align:middle"></span> FS経由</span></div>';
+    h+='</div>';
+  }
   // Row 2: 実績系 月次売上/月次粗利/受注CK/稼働PN/満了予定/DEAD（クリックでドリルダウン）
   var pnNow=eBuildPN();
   // 今月満了予定PN
@@ -784,16 +813,21 @@ function renderEntOverview(){
     var m=eGet(r,'member');if(E_MF!=='all'&&m!==E_MF)return;
     var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
     var apStr=eGet(r,'apDate'),mdStr=eGet(r,'mendanDate'),clStr=eGet(r,'closeDate');
+    var prStr=eGet(r,'proposalDate');
     var lp=ePh(eGet(r,'lastPh'));var cpRaw=eGet(r,'curPh');var cp=ePh(cpRaw);
     var ch=eGet(r,'channel');var ck=eGetN(r,'ck');var oppId=eGet(r,'oppId');var name=eGet(r,'name');
-    var info={name:name,member:m,oppId:oppId,ck:ck,apDate:apStr,mendanDate:mdStr,closeDate:clStr,phase:cpRaw,lastPh:eGet(r,'lastPh')};
+    var info={name:name,member:m,oppId:oppId,ck:ck,apDate:apStr,mendanDate:mdStr,closeDate:clStr,phase:cpRaw,lastPh:eGet(r,'lastPh'),proposalDate:prStr};
+    // P1商談: アポ日が期間内
     if(inRange(apStr)){
       window._entDrillData.p1.push(info);
       if(ch.indexOf('FS')>=0)window._entDrillData.fs.push(info);else window._entDrillData.is.push(info);
-      if(lp>=3)window._entDrillData.p3.push(info);
       if(cpRaw.indexOf('DEAD')>=0)window._entDrillData.deadM.push(info);
     }
+    // KSF P3提案: 提案日が期間内 AND 最終到達≥P3
+    if(inRange(prStr)&&lp>=3)window._entDrillData.p3.push(info);
+    // KPI P4面談: 面談日が期間内 AND 最終到達≥P4
     if(inRange(mdStr)&&lp>=4)window._entDrillData.p4.push(info);
+    // KGI P8受注: 受注日が期間内 AND 現フェーズ=P8
     if(inRange(clStr)&&cp===8)window._entDrillData.p8.push(info);
   });
   h+='<div class="ent-kpi-row">';
@@ -1131,23 +1165,27 @@ function renderEntOverview(){
   h+=renderStalledPhase('P3 提案',[3],10,p3List,p3.parkedCount);
   h+=renderStalledPhase('P4 面談',[4],7,p4List,p4.parkedCount);
   h+=renderStalledPhase('P5-6 合意',[5],7,p5List,p5.parkedCount);
-  // === 今週の新規案件化 (inline section) ===
+  // === 今週の新規商談（P1）+ 案件化（P2+）(inline section) ===
   var weekAgo=new Date(today);weekAgo.setDate(weekAgo.getDate()-7);
   var newThisWeek=[];
   E_ROWS.forEach(function(r){
-    var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
-    var cp=ePh(cpRaw);if(cp<=0)return;
+    var cpRaw=eGet(r,'curPh');
+    var cp=ePh(cpRaw);if(cp<=0&&cpRaw.indexOf('DEAD')<0)return;
     var apStr=eGet(r,'apDate');if(!apStr)return;
     var ap=new Date(apStr.replace(/\//g,'-'));if(isNaN(ap))return;
     if(E_MF!=='all'&&eGet(r,'member')!==E_MF)return;
     if(ap>=weekAgo&&ap<=today){
-      newThisWeek.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,phRaw:cpRaw,ck:eGetN(r,'ck'),apDate:apStr,oppId:eGet(r,'oppId'),channel:eGet(r,'channel'),dealType:eGet(r,'dealType')});
+      var lp=ePh(eGet(r,'lastPh'));
+      newThisWeek.push({name:eGet(r,'name'),member:eGet(r,'member'),ph:cp,lp:lp,phRaw:cpRaw,ck:eGetN(r,'ck'),apDate:apStr,oppId:eGet(r,'oppId'),channel:eGet(r,'channel'),dealType:eGet(r,'dealType'),isDead:cpRaw.indexOf('DEAD')>=0});
     }
   });
+  var newP2plus=newThisWeek.filter(function(c){return c.lp>=2&&!c.isDead;});
+  var newP1only=newThisWeek.filter(function(c){return c.lp<2&&!c.isDead;});
+  var newDead=newThisWeek.filter(function(c){return c.isDead;});
   if(newThisWeek.length>0){
     newThisWeek.sort(function(a,b){return a.member.localeCompare(b.member,'ja');});
     h+='<div class="ent-section" style="border:2px solid var(--grn);background:rgba(26,127,55,.03)">';
-    h+='<div class="es-title" style="color:var(--grn)">✨ 今週の新規案件化（'+newThisWeek.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">直近7日間に初回アポを実施</span></div>';
+    h+='<div class="es-title" style="color:var(--grn)">✨ 今週の新規（'+newThisWeek.length+'件）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">直近7日間のアポ日 / P2+案件化: '+newP2plus.length+'件 / P1商談のみ: '+newP1only.length+'件 / DEAD: '+newDead.length+'件</span></div>';
     h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>チャネル</th><th>種別</th><th>CK</th><th>アポ日</th></tr></thead><tbody>';
     newThisWeek.forEach(function(c){
       var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'#';
