@@ -360,7 +360,7 @@ function fmt$(v){return v>=100000000?'¥'+(v/100000000).toFixed(1)+'億':v>=1000
 // ===================================================================
 // ENTERPRISE ANALYTICS MODULE — 商況ダッシュボード
 // ===================================================================
-var E_ROWS=[],E_JUCHU=[],E_PN2=[],E_LOADED=false,E_TAB='overview',E_COL={};
+var E_ROWS=[],E_JUCHU=[],E_PN2=[],E_YOSAN=[],E_YOSAN_H=[],E_LOADED=false,E_TAB='overview',E_COL={};
 var E_PHASE={'01':1,'02':2,'03':3,'04':4,'05':5,'06':6,'07':7,'08':8};
 var E_PH_LABELS={1:'P1 商談',2:'P2 案件化',3:'P3 提案',4:'P4 面談',5:'P5-6 合意',7:'P7 契約前',8:'P8 受注'};
 var E_PH_COLORS={1:'var(--blue)',2:'#6366f1',3:'var(--org)',4:'#ea580c',5:'#0d9488',7:'#7c3aed',8:'var(--grn)'};
@@ -385,20 +385,102 @@ function fetchEntData(){
   return Promise.all([
     fetch(GAS_URL+'?sheet=funnel').then(function(r){return r.text();}),
     fetch(GAS_URL+'?sheet=juchu').then(function(r){return r.text();}),
-    fetch(GAS_URL+'?sheet=acplan_pn').then(function(r){return r.text();})
+    fetch(GAS_URL+'?sheet=acplan_pn').then(function(r){return r.text();}),
+    fetch(GAS_URL+'?sheet=yosan').then(function(r){return r.text();}).catch(function(){return '';})
   ]).then(function(res){
     if(res[0].length<50)return;
     var f=pCSV(res[0]);E_COL=eDetect(f.h);E_ROWS=f.r;
     var j=pCSV(res[1]);E_JUCHU=j.r;
     var p=pCSV(res[2]);E_PN2=p.r;window.E_PN_H=p.h;
+    if(res[3]&&res[3].length>20){var y=pCSV(res[3]);E_YOSAN=y.r;E_YOSAN_H=y.h;console.log('Yosan header:',y.h);console.log('Yosan sample:',y.r&&y.r[0]);}
     // Detect 継続意向 column in pn header
     window.E_PN_KEIZOKU_COL=-1;
     if(p.h)for(var pi=0;pi<p.h.length;pi++){if(p.h[pi].indexOf('継続意向')>=0){window.E_PN_KEIZOKU_COL=pi;break;}}
     E_LOADED=true;
-    console.log('Enterprise data loaded: funnel='+E_ROWS.length+' juchu='+E_JUCHU.length+' pn='+E_PN2.length);
+    console.log('Enterprise data loaded: funnel='+E_ROWS.length+' juchu='+E_JUCHU.length+' pn='+E_PN2.length+' yosan='+E_YOSAN.length);
     console.log('PN 継続意向 col:',window.E_PN_KEIZOKU_COL);
     if(E_PN2.length>0){console.log('PN first row sample:',E_PN2[0].slice(0,15));console.log('PN header:',p.h);}
   }).catch(function(err){console.warn('Enterprise fetch error:',err);});
+}
+
+// === 予算データのパース ===
+// yosanシート想定構造: 担当者 / 月 / CK予算 / 実績CK ... のような形式
+// スプレッドシートのヘッダー構造を自動検出する
+function eParseYosan(){
+  if(!E_YOSAN||E_YOSAN.length===0||!E_YOSAN_H)return null;
+  var h=E_YOSAN_H;
+  var col={};
+  for(var i=0;i<h.length;i++){
+    var hv=(h[i]||'').toString().trim();
+    if(hv.match(/担当者|名前|メンバー/))col.member=i;
+    else if(hv.match(/^月$|年月|yyyy.*mm|月度/i))col.month=i;
+    else if(hv.match(/予算.*CK|CK.*予算|CK予算|budget.*ck|ck.*budget/i))col.budget=i;
+    else if(hv.match(/実績.*CK|CK.*実績|受注.*CK|CK.*受注/i))col.actual=i;
+  }
+  // If no "月" column, maybe it's a wide-format with month columns
+  var isWide=col.month===undefined;
+  console.log('Yosan col detected:',col,'wide:',isWide,'headers:',h);
+  // Parse out: { byMember:{ '徳永 雄大':{budget:..., actual:..., monthly:{YYYY/MM:{b:, a:}} } }, team:{...} }
+  var byMember={};var team={budget:0,actual:0,monthly:{}};
+  if(isWide){
+    // Wide format: row per member, columns per month
+    // Find month columns: cells like "2026/04", "4月", etc.
+    var monthCols=[];
+    for(var i=0;i<h.length;i++){
+      var hv=(h[i]||'').toString().trim();
+      var m1=hv.match(/(\d{4})[\/\-年](\d{1,2})/);
+      var m2=hv.match(/^(\d{1,2})月$/);
+      if(m1){monthCols.push({idx:i,ym:m1[1]+'/'+(m1[2].length===1?'0':'')+m1[2]});}
+      else if(m2){var yr=(new Date()).getFullYear();monthCols.push({idx:i,ym:yr+'/'+(m2[1].length===1?'0':'')+m2[1]});}
+    }
+    E_YOSAN.forEach(function(r){
+      var mem=col.member>=0?(r[col.member]||'').toString().trim():'';
+      if(!mem||mem==='合計'||mem==='Total')return;
+      if(!byMember[mem])byMember[mem]={budget:0,actual:0,monthly:{}};
+      monthCols.forEach(function(mc){
+        var v=parseFloat(((r[mc.idx]||'0').toString()).replace(/[,¥\s円]/g,''))||0;
+        byMember[mem].budget+=v;
+        byMember[mem].monthly[mc.ym]=(byMember[mem].monthly[mc.ym]||0)+v;
+        team.budget+=v;
+        team.monthly[mc.ym]=(team.monthly[mc.ym]||0)+v;
+      });
+    });
+  }else{
+    // Long format: each row is member × month × budget
+    E_YOSAN.forEach(function(r){
+      var mem=(r[col.member]||'').toString().trim();
+      if(!mem||mem==='合計'||mem==='Total')return;
+      var mo=(r[col.month]||'').toString().trim();
+      var b=parseFloat(((r[col.budget!==undefined?col.budget:-1]||'0').toString()).replace(/[,¥\s円]/g,''))||0;
+      var a=parseFloat(((r[col.actual!==undefined?col.actual:-1]||'0').toString()).replace(/[,¥\s円]/g,''))||0;
+      if(!byMember[mem])byMember[mem]={budget:0,actual:0,monthly:{}};
+      byMember[mem].budget+=b;
+      byMember[mem].actual+=a;
+      byMember[mem].monthly[mo]={b:b,a:a};
+      team.budget+=b;team.actual+=a;
+      if(!team.monthly[mo])team.monthly[mo]={b:0,a:0};
+      team.monthly[mo].b+=b;team.monthly[mo].a+=a;
+    });
+  }
+  // Calculate actual CK per month from E_ROWS (fallback if yosan doesn't have actuals)
+  return {byMember:byMember,team:team,isWide:isWide};
+}
+
+// 実績CK計算: funnelシートから受注日ベースで月次集計
+function eCalcActualCK(periodStart,periodEnd,memberFilter){
+  var total=0;var byMember={};
+  E_ROWS.forEach(function(r){
+    var m=eGet(r,'member');if(!m)return;
+    if(memberFilter&&memberFilter!=='all'&&m!==memberFilter)return;
+    var cp=ePh(eGet(r,'curPh'));if(cp!==8)return;
+    var clStr=eGet(r,'closeDate');if(!clStr)return;
+    var cd=new Date(clStr.replace(/\//g,'-'));if(isNaN(cd))return;
+    if(cd>=periodStart&&cd<=periodEnd){
+      var ck=eGetN(r,'ck');total+=ck;
+      byMember[m]=(byMember[m]||0)+ck;
+    }
+  });
+  return {total:total,byMember:byMember};
 }
 // Build funnel stats
 function eBuildFunnel(rows,memberFilter){
@@ -594,6 +676,46 @@ function showMorningBriefing(){
     var pctC=pct>=100?'var(--grn)':pct>=70?'var(--org)':'var(--red)';
     var barW=target>0?Math.min(100,pct):0;
     return '<div class="mbr-kpi"><div class="mk-label">'+label+'</div><div class="mk-val" style="color:'+color+'">'+val+'<span class="mk-target">/'+target+'</span></div><div class="mk-bar"><div class="mk-bar-fill" style="width:'+barW+'%;background:'+pctC+'"></div></div><div class="mk-pct" style="color:'+pctC+'">達成率 '+pct+'%'+(target>0?(diff>0?' (残り'+diff+')':' (+'+Math.abs(diff)+')'):'')+'</div></div>';
+  }
+  // --- CK予算 vs 実績 (yosanシートがあれば) ---
+  var yData=eParseYosan();
+  if(yData&&(yData.team.budget>0||Object.keys(yData.byMember).length>0)){
+    var fyStart=new Date(2025,7,1),fyEnd=new Date(2026,6,31,23,59,59);
+    var actCK=eCalcActualCK(fyStart,fyEnd,'all');
+    var totBudget=yData.team.budget;var totActual=actCK.total;
+    var achPct=totBudget>0?Math.round(totActual/totBudget*100):0;
+    var achCol=achPct>=100?'var(--grn)':achPct>=70?'var(--org)':'var(--red)';
+    var barW=Math.min(100,achPct);
+    h+='<div class="mbr-sect-hdr" style="background:#dbeafe;color:var(--blue);margin-bottom:8px">💰 CK予算 vs 実績（今期累計）</div>';
+    h+='<div style="background:var(--bg);border-radius:8px;padding:14px 18px;margin-bottom:12px">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">';
+    h+='<div><span style="font-size:11px;color:var(--ink3)">今期予算</span> <span style="font-family:var(--mono);font-size:18px;font-weight:700">'+eFmt(totBudget)+'</span></div>';
+    h+='<div><span style="font-size:11px;color:var(--ink3)">実績</span> <span style="font-family:var(--mono);font-size:20px;font-weight:700;color:'+achCol+'">'+eFmt(totActual)+'</span> <span style="font-size:14px;color:'+achCol+';font-weight:600">'+achPct+'%</span></div>';
+    h+='</div>';
+    h+='<div style="height:10px;background:rgba(0,0,0,.08);border-radius:5px;overflow:hidden"><div style="height:100%;width:'+barW+'%;background:'+achCol+';border-radius:5px;transition:width .3s"></div></div>';
+    h+='<div style="font-size:10px;color:var(--ink3);margin-top:4px">残り予算: '+eFmt(Math.max(0,totBudget-totActual))+(totActual>totBudget?' (+超過'+eFmt(totActual-totBudget)+')':'')+'</div>';
+    // 担当者別内訳
+    var memNames=Object.keys(yData.byMember).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
+    if(memNames.length>0){
+      h+='<div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">';
+      memNames.forEach(function(m){
+        var mb=yData.byMember[m].budget;
+        var ma=actCK.byMember[m]||0;
+        if(mb<=0&&ma<=0)return;
+        var mp=mb>0?Math.round(ma/mb*100):0;
+        var mc=mp>=100?'var(--grn)':mp>=70?'var(--org)':'var(--red)';
+        h+='<div style="padding:8px 10px;background:#fff;border-radius:6px;border:1px solid var(--bd)">';
+        h+='<div style="font-size:10px;font-weight:600">'+m+'</div>';
+        h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:3px">';
+        h+='<span style="font-size:9px;color:var(--ink3)">予:'+eFmt(mb)+'</span>';
+        h+='<span style="font-family:var(--mono);font-size:13px;font-weight:700;color:'+mc+'">'+eFmt(ma)+' <span style="font-size:10px">('+mp+'%)</span></span>';
+        h+='</div>';
+        h+='<div style="height:5px;background:rgba(0,0,0,.06);border-radius:3px;overflow:hidden;margin-top:3px"><div style="height:100%;width:'+Math.min(100,mp)+'%;background:'+mc+'"></div></div>';
+        h+='</div>';
+      });
+      h+='</div>';
+    }
+    h+='</div>';
   }
   h+='<div class="mbr-sect-hdr" style="background:#dbeafe;color:var(--blue);margin-bottom:10px">📊 今月の目標達成状況</div>';
   h+='<div class="mbr-kpi-row">';
@@ -878,6 +1000,83 @@ function renderEntOverview(){
     var pct=Math.round(v/tgt*100);
     var col=pct>=100?'var(--grn)':pct>=70?'var(--org)':'var(--red)';
     return '<td style="font-family:var(--mono)"><span style="font-weight:700">'+v+'</span><span style="font-size:9px;color:var(--ink3)">/'+tgt+'</span><br><span style="font-size:9px;color:'+col+';font-weight:600">'+pct+'%</span></td>';
+  }
+  // === CK予算 vs 実績（yosanシート連動）===
+  var yosanData=eParseYosan();
+  if(yosanData&&(yosanData.team.budget>0||Object.keys(yosanData.byMember).length>0)){
+    var fyStart2=new Date(2025,7,1),fyEnd2=new Date(2026,6,31,23,59,59);
+    var actCK2=eCalcActualCK(fyStart2,fyEnd2,E_MF);
+    // 今月の予算と実績
+    var thisYM2=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
+    var mStart=new Date(today.getFullYear(),today.getMonth(),1);
+    var mEnd=new Date(today.getFullYear(),today.getMonth()+1,0,23,59,59);
+    var mActCK=eCalcActualCK(mStart,mEnd,E_MF);
+    var mBudget=0;
+    if(E_MF==='all'){
+      mBudget=(yosanData.team.monthly[thisYM2]&&yosanData.team.monthly[thisYM2].b)||yosanData.team.monthly[thisYM2]||0;
+      if(typeof mBudget==='object')mBudget=mBudget.b||0;
+    }else if(yosanData.byMember[E_MF]){
+      mBudget=yosanData.byMember[E_MF].monthly[thisYM2]||0;
+      if(typeof mBudget==='object')mBudget=mBudget.b||0;
+    }
+    // 今期累計
+    var fyBudget=E_MF==='all'?yosanData.team.budget:(yosanData.byMember[E_MF]?yosanData.byMember[E_MF].budget:0);
+    var fyActual=actCK2.total;
+    var fyPct=fyBudget>0?Math.round(fyActual/fyBudget*100):0;
+    var fyCol=fyPct>=100?'var(--grn)':fyPct>=70?'var(--org)':'var(--red)';
+    var mPct=mBudget>0?Math.round(mActCK.total/mBudget*100):0;
+    var mCol=mPct>=100?'var(--grn)':mPct>=70?'var(--org)':'var(--red)';
+    h+='<div class="ent-section" style="border:2px solid var(--blue);background:rgba(0,121,192,.03)">';
+    h+='<div class="es-title" style="color:var(--blue)">💰 CK予算 vs 実績'+(E_MF==='all'?'（チーム全体）':'（'+E_MF+'）')+'</div>';
+    // 今月 & 今期累計を2カラム
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">';
+    // 今月
+    h+='<div style="background:#fff;padding:14px;border-radius:8px;border:1px solid var(--bd)">';
+    h+='<div style="font-size:11px;color:var(--ink3);margin-bottom:6px">今月（'+thisYM2+'）</div>';
+    h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">';
+    h+='<span style="font-size:10px;color:var(--ink3)">予算 <span style="font-family:var(--mono);color:var(--ink);font-weight:600">'+eFmt(mBudget)+'</span></span>';
+    h+='<div><span style="font-family:var(--mono);font-size:22px;font-weight:700;color:'+mCol+'">'+eFmt(mActCK.total)+'</span> <span style="font-size:14px;font-weight:600;color:'+mCol+'">'+(mBudget>0?mPct+'%':'-')+'</span></div>';
+    h+='</div>';
+    h+='<div style="height:10px;background:rgba(0,0,0,.08);border-radius:5px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,mPct)+'%;background:'+mCol+';border-radius:5px"></div></div>';
+    if(mBudget>0)h+='<div style="font-size:10px;color:var(--ink3);margin-top:4px">残り予算 '+eFmt(Math.max(0,mBudget-mActCK.total))+(mActCK.total>mBudget?' (+超過'+eFmt(mActCK.total-mBudget)+')':'')+'</div>';
+    h+='</div>';
+    // 今期累計
+    h+='<div style="background:#fff;padding:14px;border-radius:8px;border:1px solid var(--bd)">';
+    h+='<div style="font-size:11px;color:var(--ink3);margin-bottom:6px">今期累計（2025/08〜）</div>';
+    h+='<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">';
+    h+='<span style="font-size:10px;color:var(--ink3)">予算 <span style="font-family:var(--mono);color:var(--ink);font-weight:600">'+eFmt(fyBudget)+'</span></span>';
+    h+='<div><span style="font-family:var(--mono);font-size:22px;font-weight:700;color:'+fyCol+'">'+eFmt(fyActual)+'</span> <span style="font-size:14px;font-weight:600;color:'+fyCol+'">'+(fyBudget>0?fyPct+'%':'-')+'</span></div>';
+    h+='</div>';
+    h+='<div style="height:10px;background:rgba(0,0,0,.08);border-radius:5px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,fyPct)+'%;background:'+fyCol+';border-radius:5px"></div></div>';
+    if(fyBudget>0)h+='<div style="font-size:10px;color:var(--ink3);margin-top:4px">残り予算 '+eFmt(Math.max(0,fyBudget-fyActual))+(fyActual>fyBudget?' (+超過'+eFmt(fyActual-fyBudget)+')':'')+'</div>';
+    h+='</div>';
+    h+='</div>';
+    // 担当者別内訳（全員表示時のみ）
+    if(E_MF==='all'){
+      var yMemNames=Object.keys(yosanData.byMember).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
+      if(yMemNames.length>0){
+        h+='<div style="margin-top:14px"><div style="font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:6px">担当者別 今期累計</div>';
+        h+='<div style="overflow-x:auto"><table class="ent-table" style="font-size:11px">';
+        h+='<thead><tr><th>担当</th><th>予算</th><th>実績CK</th><th>達成率</th><th>差分</th><th>進捗</th></tr></thead><tbody>';
+        yMemNames.forEach(function(m){
+          var mb=yosanData.byMember[m].budget;
+          var ma=actCK2.byMember[m]||0;
+          if(mb<=0&&ma<=0)return;
+          var mp=mb>0?Math.round(ma/mb*100):0;
+          var mc=mp>=100?'var(--grn)':mp>=70?'var(--org)':'var(--red)';
+          var diff=mb-ma;
+          h+='<tr'+(m===E_MGR?' class="ent-mgr"':'')+'><td style="font-weight:600">'+m+(m===E_MGR?' <span style="font-size:7px;background:var(--purple);color:#fff;padding:1px 4px;border-radius:3px">Mgr</span>':'')+'</td>';
+          h+='<td style="font-family:var(--mono)">'+eFmt(mb)+'</td>';
+          h+='<td style="font-family:var(--mono);font-weight:700;color:'+mc+'">'+eFmt(ma)+'</td>';
+          h+='<td style="font-family:var(--mono);font-weight:700;color:'+mc+'">'+mp+'%</td>';
+          h+='<td style="font-family:var(--mono);color:'+(diff>0?'var(--red)':'var(--grn)')+'">'+(diff>0?'残 '+eFmt(diff):'+'+eFmt(-diff))+'</td>';
+          h+='<td><div style="height:8px;width:120px;background:rgba(0,0,0,.06);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,mp)+'%;background:'+mc+'"></div></div></td>';
+          h+='</tr>';
+        });
+        h+='</tbody></table></div></div>';
+      }
+    }
+    h+='</div>';
   }
   h+='<div class="ent-section"><div class="es-title" style="color:var(--blue)">👥 チーム全体サマリー（アソシエイト含む・継続案件を除くP1/P3/P4）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">目標は半期累計</span></div>';
   h+='<div style="overflow-x:auto"><table class="ent-table" style="font-size:11px">';
