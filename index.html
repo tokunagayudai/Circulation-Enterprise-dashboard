@@ -714,25 +714,31 @@ function showMorningBriefing(){
   h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--org);font-size:18px">'+eFmt(fcstMid)+'</div><div class="ms-label">MID</div></div>';
   h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--red);font-size:18px">'+eFmt(fcstMax)+'</div><div class="ms-label">MAX</div></div>';
   h+='</div>';
-  // --- CK予算 vs 実績（Quip風：予算/CK実績/ヨミMIN/MID/MAX） ---
+  // --- CK予算 vs 実績（Quip風：予算/CK実績/率/ヨミMIN/MID/MAX） ---
   if(yData&&yData.team.budget>0){
     var yt2=yData.team;
     var jPct2=yt2.budget>0?Math.round(yt2.jisseki/yt2.budget*100):0;
     var jCol2=jPct2>=100?'var(--grn)':jPct2>=50?'var(--org)':'var(--red)';
-    // Per-member MFJ breakdown
-    function mfjBreak(m){
-      var min=0,mid=0,max=0;
+    // MFJカラムから直接集計（未記載はスキップ）
+    // MIN = MFJ=MIN案件のCK合計
+    // MID = MIN + MFJ=MID案件のCK合計
+    // MAX = MIN + MID + MFJ=MAX案件のCK合計
+    function mfjBreak(memberFilter){
+      var min=0,mid=0,max=0,debugEmpty=0,debugMin=0,debugMid=0,debugMax=0,debugOther=0;
       E_ROWS.forEach(function(r){
-        if(eGet(r,'member')!==m)return;
-        var cp=ePh(eGet(r,'curPh'));if(cp>=8||cp<1)return;
+        if(memberFilter&&eGet(r,'member')!==memberFilter)return;
         if(eGet(r,'curPh').indexOf('DEAD')>=0)return;
-        var ck=eGetN(r,'ck');if(ck<=0)return;
-        var mfj=eGet(r,'mfj');
-        if(!mfj||mfj==='-'){if(cp>=5)mfj='MIN';else if(cp===4)mfj='MID';else mfj='MAX';}
-        if(mfj==='MIN')min+=ck;
+        var mfj=eGet(r,'mfj').trim().toUpperCase();
+        var ck=eGetN(r,'ck');
+        if(!mfj){debugEmpty++;return;}
+        if(mfj==='MIN'){min+=ck;debugMin++;}
+        else if(mfj==='MID'){debugMid++;}
+        else if(mfj==='MAX'){debugMax++;}
+        else{debugOther++;return;}
         if(mfj==='MIN'||mfj==='MID')mid+=ck;
         if(mfj==='MIN'||mfj==='MID'||mfj==='MAX')max+=ck;
       });
+      if(!memberFilter)console.log('MFJ breakdown (team): MIN案件数='+debugMin+' MID案件数='+debugMid+' MAX案件数='+debugMax+' 未記載='+debugEmpty+' その他='+debugOther+' → MIN='+min+' MID='+mid+' MAX='+max);
       return{min:min,mid:mid,max:max};
     }
     h+='<div class="mbr-sect-hdr" style="background:#dbeafe;color:var(--blue);margin-bottom:8px">💰 CK予算 vs 実績（今月商況）</div>';
@@ -741,19 +747,9 @@ function showMorningBriefing(){
     h+='<tr style="background:#1a1f2e;color:#fff"><th style="color:#fff">名前</th><th style="color:#fff">予算</th><th style="color:#fff">CK実績</th><th style="color:#fff">率</th><th style="color:#fff">MIN</th><th style="color:#fff">率</th><th style="color:#fff">MID</th><th style="color:#fff">率</th><th style="color:#fff">MAX</th><th style="color:#fff">率</th></tr>';
     h+='</thead><tbody>';
     function pct(v,b){if(b<=0)return '-';var p=Math.round(v/b*100);var c=p>=100?'var(--grn)':p>=50?'var(--org)':'var(--red)';return '<span style="color:'+c+';font-weight:600">'+p+'%</span>';}
-    // 合計行（チーム全体のMFJ集計）
-    var teamMin=0,teamMid=0,teamMax=0;
-    E_ROWS.forEach(function(r){
-      var cp=ePh(eGet(r,'curPh'));if(cp>=8||cp<1)return;
-      if(eGet(r,'curPh').indexOf('DEAD')>=0)return;
-      var ck=eGetN(r,'ck');if(ck<=0)return;
-      var mfj=eGet(r,'mfj');
-      if(!mfj||mfj==='-'){if(cp>=5)mfj='MIN';else if(cp===4)mfj='MID';else mfj='MAX';}
-      if(mfj==='MIN')teamMin+=ck;
-      if(mfj==='MIN'||mfj==='MID')teamMid+=ck;
-      if(mfj==='MIN'||mfj==='MID'||mfj==='MAX')teamMax+=ck;
-    });
-    h+='<tr style="background:#eff6ff;font-weight:700"><td>合計</td><td style="font-family:var(--mono)">'+eFmt(yt2.budget)+'</td><td style="font-family:var(--mono);color:'+jCol2+'">'+eFmt(yt2.jisseki)+'</td><td>'+pct(yt2.jisseki,yt2.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMin)+'</td><td>'+pct(teamMin,yt2.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMid)+'</td><td>'+pct(teamMid,yt2.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMax)+'</td><td>'+pct(teamMax,yt2.budget)+'</td></tr>';
+    // 合計行
+    var teamMfj=mfjBreak(null);
+    h+='<tr style="background:#eff6ff;font-weight:700"><td>合計</td><td style="font-family:var(--mono)">'+eFmt(yt2.budget)+'</td><td style="font-family:var(--mono);color:'+jCol2+'">'+eFmt(yt2.jisseki)+'</td><td>'+pct(yt2.jisseki,yt2.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfj.min)+'</td><td>'+pct(teamMfj.min,yt2.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfj.mid)+'</td><td>'+pct(teamMfj.mid,yt2.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfj.max)+'</td><td>'+pct(teamMfj.max,yt2.budget)+'</td></tr>';
     var memNames=Object.keys(yData.byMember).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
     memNames.forEach(function(m){
       var d=yData.byMember[m];
