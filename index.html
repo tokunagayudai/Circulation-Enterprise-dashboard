@@ -541,6 +541,15 @@ function eTeamTotal(stats){
   return t;
 }
 function ePct(a,b){return b>0?Math.round(a/b*100):0;}
+// Helper: extract typed fields from a pn row using auto-detected E_PN_COL
+function pnRow(r){
+  var c=window.E_PN_COL||{};
+  function gf(f){var i=c[f];return(i!==undefined&&i>=0&&i<r.length)?(r[i]||'').toString():'';}
+  var bill=parseInt((gf('bill')||'0').replace(/[,\s¥円]/g,''))||0;
+  var pay=parseInt((gf('pay')||'0').replace(/[,\s¥円]/g,''))||0;
+  return{member:gf('member'),name:gf('name'),oppId:gf('oppId').trim(),phase:gf('phase'),
+    bill:bill,pay:pay,start:gf('startDate').trim(),end:gf('endDate').trim(),cancel:gf('cancel').trim()};
+}
 // PN stats (active projects) - monthly forecast
 function eBuildPN(){
   var rev=0,pay=0,pn=0,seen={};
@@ -580,17 +589,17 @@ function eBuildRevForecast(){
   var months=[];for(var i=0;i<7;i++)months.push(eAddMonth(todayYM,i));
   var base={};months.forEach(function(m){base[m]={rev:0,pk:0,pn:0,ending:0};});
   var seen={};
+  var col=window.E_PN_COL||{};
   E_PN2.forEach(function(r){
-    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
-    var aid=gv(r,9).trim();if(!aid||seen[aid])return;seen[aid]=true; // dedupe by case ID
-    var billing=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;
-    var payment=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;
-    var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
-    if(cancel&&cancel.length>=7){var cd2=new Date(cancel.replace(/\//g,'-'));var ed3=new Date(end.replace(/\//g,'-'));if(!isNaN(cd2)&&!isNaN(ed3)&&cd2<ed3)end=cancel;}
-    if(!start||!end)return;var sYM=start.substring(0,7),eYM2=end.substring(0,7);
-    if(billing<=0&&payment<=0)return;
+    if(col.phase>=0){var ph=gv(r,col.phase);if(!ph||ph.indexOf('08')<0)return;}
+    var p=pnRow(r);
+    if(!p.oppId||seen[p.oppId])return;seen[p.oppId]=true;
+    var end=p.end;
+    if(p.cancel&&p.cancel.length>=7){var cd2=new Date(p.cancel.replace(/\//g,'-'));var ed3=new Date(end.replace(/\//g,'-'));if(!isNaN(cd2)&&!isNaN(ed3)&&cd2<ed3)end=p.cancel;}
+    if(!p.start||!end)return;var sYM=p.start.substring(0,7),eYM2=end.substring(0,7);
+    if(p.bill<=0&&p.pay<=0)return;
     months.forEach(function(m){
-      if(sYM<=m&&eYM2>=m){base[m].rev+=billing;base[m].pk+=(billing-payment);base[m].pn++;}
+      if(sYM<=m&&eYM2>=m){base[m].rev+=p.bill;base[m].pk+=(p.bill-p.pay);base[m].pn++;}
       if(eYM2===m)base[m].ending++;
     });
   });
@@ -1042,16 +1051,17 @@ function renderEntOverview(){
   var todayY=today.getFullYear(),todayMo=today.getMonth();
   var endYMTarget=todayY+'/'+(todayMo+1<10?'0':'')+(todayMo+1);
   var seenPN={};
+  var colPN=window.E_PN_COL||{};
   E_PN2.forEach(function(r){
-    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
-    var aid=gv(r,9).trim();if(!aid||seenPN[aid])return;seenPN[aid]=true;
-    var end=gv(r,13).trim(),cancel=gv(r,22).trim();
-    var endUse=end;
-    if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)endUse=cancel;}
+    if(colPN.phase>=0){var ph=gv(r,colPN.phase);if(!ph||ph.indexOf('08')<0)return;}
+    var p=pnRow(r);
+    if(!p.oppId||seenPN[p.oppId])return;seenPN[p.oppId]=true;
+    var endUse=p.end;
+    if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(p.end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)endUse=p.cancel;}
     if(endUse&&endUse.substring(0,7)===endYMTarget){
-      var mem=gv(r,0);if(E_MF!=='all'&&mem!==E_MF)return;
+      if(E_MF!=='all'&&p.member!==E_MF)return;
       var keizoku=window.E_PN_KEIZOKU_COL>=0?gv(r,window.E_PN_KEIZOKU_COL):'';
-      endingThisMonth++;endingList.push({name:gv(r,2),member:mem,endDate:endUse,oppId:aid,keizoku:keizoku});
+      endingThisMonth++;endingList.push({name:p.name,member:p.member,endDate:endUse,oppId:p.oppId,keizoku:keizoku});
     }
   });
   // Save for drill-down
@@ -1276,16 +1286,16 @@ function renderEntOverview(){
   for(var dm=new Date(startM);dm<=endM;dm.setMonth(dm.getMonth()+1))months.push(ymStr(dm));
   var revData={};months.forEach(function(m){revData[m]={rev:0,pk:0,pn:0,ending:0,mfjAdd:0,mfjCount:0};});
   var seen={};
+  var colPN2=window.E_PN_COL||{};
   E_PN2.forEach(function(r){
-    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
-    var aid=gv(r,9).trim();if(!aid||seen[aid])return;seen[aid]=true;
-    var billing=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;
-    var payment=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;
-    var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
-    if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed2=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed2)&&cd<ed2)end=cancel;}
-    if(!start||!end)return;var sYM=start.substring(0,7),eYM2=end.substring(0,7);
-    if(billing<=0&&payment<=0)return;
-    months.forEach(function(m){if(sYM<=m&&eYM2>=m){revData[m].rev+=billing;revData[m].pk+=(billing-payment);revData[m].pn++;}if(eYM2===m)revData[m].ending++;});
+    if(colPN2.phase>=0){var ph=gv(r,colPN2.phase);if(!ph||ph.indexOf('08')<0)return;}
+    var p=pnRow(r);
+    if(!p.oppId||seen[p.oppId])return;seen[p.oppId]=true;
+    var end=p.end;
+    if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed2=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed2)&&cd<ed2)end=p.cancel;}
+    if(!p.start||!end)return;var sYM=p.start.substring(0,7),eYM2=end.substring(0,7);
+    if(p.bill<=0&&p.pay<=0)return;
+    months.forEach(function(m){if(sYM<=m&&eYM2>=m){revData[m].rev+=p.bill;revData[m].pk+=(p.bill-p.pay);revData[m].pn++;}if(eYM2===m)revData[m].ending++;});
   });
   // MFJ overlay: pipeline cases overlay on chart. Use MFJ if available, else use phase-based probability
   if(E_REV_MFJ!=='none'){
@@ -2011,18 +2021,18 @@ function renderEntBreakdown(){
 function showRevDrill(ym){
   var box=document.getElementById('rev-drill-box');if(!box)return;
   var list=[];var seen={};
+  var colRD=window.E_PN_COL||{};
   E_PN2.forEach(function(r){
-    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
-    var aid=gv(r,9).trim();if(!aid||seen[aid])return;seen[aid]=true;
-    var billing=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;
-    var payment=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;
-    var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
-    if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=cancel;}
-    if(!start||!end)return;var sYM=start.substring(0,7),eYM2=end.substring(0,7);
+    if(colRD.phase>=0){var ph=gv(r,colRD.phase);if(!ph||ph.indexOf('08')<0)return;}
+    var p=pnRow(r);
+    if(!p.oppId||seen[p.oppId])return;seen[p.oppId]=true;
+    var end=p.end;
+    if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=p.cancel;}
+    if(!p.start||!end)return;var sYM=p.start.substring(0,7),eYM2=end.substring(0,7);
     if(sYM<=ym&&eYM2>=ym){
-      var mem=gv(r,0);if(window.E_MF&&window.E_MF!=='all'&&mem!==window.E_MF)return;
+      if(window.E_MF&&window.E_MF!=='all'&&p.member!==window.E_MF)return;
       var kz=window.E_PN_KEIZOKU_COL>=0?gv(r,window.E_PN_KEIZOKU_COL):'';
-      list.push({name:gv(r,2),member:mem,oppId:aid,start:start,end:end,bill:billing,pay:payment,pk:billing-payment,keizoku:kz});
+      list.push({name:p.name,member:p.member,oppId:p.oppId,start:p.start,end:end,bill:p.bill,pay:p.pay,pk:p.bill-p.pay,keizoku:kz});
     }
   });
   var totalBill=list.reduce(function(s,c){return s+c.bill;},0);
@@ -2056,19 +2066,19 @@ function showEntDrill(key){
   // Special: PN list from E_PN2 dedup
   if(key==='pn'){
     list=[];var seen={};var today=new Date();
+    var colED=window.E_PN_COL||{};
     E_PN2.forEach(function(r){
-      var ph=gv(r,3);if(!ph||ph.indexOf('08')<0)return;
-      var aid=gv(r,9).trim();if(!aid||seen[aid])return;seen[aid]=true;
-      var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
-      if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=cancel;}
-      if(!start||!end)return;
-      var sd=new Date(start.replace(/\//g,'-')),ed=new Date(end.replace(/\//g,'-'));
-      if(isNaN(sd)||isNaN(ed))return;
-      if(today>=sd&&today<=ed){
-        var m=gv(r,0);if(window.E_MF&&window.E_MF!=='all'&&m!==window.E_MF)return;
-        var bill=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;
-        var pay=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;
-        list.push({name:gv(r,2),member:m,oppId:aid,startDate:start,endDate:end,bill:bill,pay:pay,pk:bill-pay});
+      if(colED.phase>=0){var ph=gv(r,colED.phase);if(!ph||ph.indexOf('08')<0)return;}
+      var p=pnRow(r);
+      if(!p.oppId||seen[p.oppId])return;seen[p.oppId]=true;
+      var end=p.end;
+      if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=p.cancel;}
+      if(!p.start||!end)return;
+      var sd=new Date(p.start.replace(/\//g,'-')),ed2=new Date(end.replace(/\//g,'-'));
+      if(isNaN(sd)||isNaN(ed2))return;
+      if(today>=sd&&today<=ed2){
+        if(window.E_MF&&window.E_MF!=='all'&&p.member!==window.E_MF)return;
+        list.push({name:p.name,member:p.member,oppId:p.oppId,startDate:p.start,endDate:end,bill:p.bill,pay:p.pay,pk:p.bill-p.pay});
       }
     });
   }
