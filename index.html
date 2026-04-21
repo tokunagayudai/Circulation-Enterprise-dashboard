@@ -760,29 +760,27 @@ function showMorningBriefing(){
     var barW2=target>0?Math.min(100,pct2):0;
     return '<div class="mbr-kpi"><div class="mk-label">'+label+'</div><div class="mk-val" style="color:'+color+'">'+val+'<span class="mk-target">'+(target>0?'/'+target:'')+'</span></div><div class="mk-bar"><div class="mk-bar-fill" style="width:'+barW2+'%;background:'+pctC2+'"></div></div>'+(target>0?'<div class="mk-pct" style="color:'+pctC2+'">'+pct2+'%'+(diff2>0?' (残'+diff2+')':' (+'+Math.abs(diff2)+')')+'</div>':'')+'</div>';
   }
-  // --- MFJ集計関数（MFJ列から直接、未記載はスキップ） ---
-  // MFJ集計ロジック:
-  // MIN = P8受注済CK + MFJ=MINのP1-P7案件CK
-  // MID = P8受注済CK + MFJ=MIN or MIDのP1-P7案件CK
-  // MAX = P8受注済CK + MFJ=MIN or MID or MAXのP1-P7案件CK
-  function mfjBreak(memberFilter){
-    var p8ck=0,mfjMin=0,mfjMid=0,mfjMax=0;
+  // --- MFJ集計関数 ---
+  // MIN = 今月P8受注済CK(yosanから) + MFJ=MINのP1-P7案件CK
+  // MID = 今月P8受注済CK + MFJ=MIN/MIDのP1-P7案件CK
+  // MAX = 今月P8受注済CK + MFJ=MIN/MID/MAXのP1-P7案件CK
+  function mfjBreak(memberFilter,p8ckFromYosan){
+    var mfjMin=0,mfjMid=0,mfjMax=0;
     E_ROWS.forEach(function(r){
       if(memberFilter&&eGet(r,'member')!==memberFilter)return;
       var cpRaw=eGet(r,'curPh');
       if(cpRaw.indexOf('DEAD')>=0)return;
       var cp=ePh(cpRaw);
-      var ck=eGetN(r,'ck');
-      // P8受注済 → 全MINに含む
-      if(cp===8){p8ck+=ck;return;}
-      // P1-P7: MFJで分類
+      if(cp<1||cp>=8)return;// P1-P7のみ対象（P8とDEADは除外）
       var mfj=eGet(r,'mfj').trim().toUpperCase();
-      if(!mfj)return;
+      if(!mfj)return;// 未記載はスキップ
+      var ck=eGetN(r,'ck');
       if(mfj==='MIN')mfjMin+=ck;
       else if(mfj==='MID')mfjMid+=ck;
       else if(mfj==='MAX')mfjMax+=ck;
     });
-    return{min:p8ck+mfjMin, mid:p8ck+mfjMin+mfjMid, max:p8ck+mfjMin+mfjMid+mfjMax, p8ck:p8ck};
+    var p8=p8ckFromYosan||0;
+    return{min:p8+mfjMin, mid:p8+mfjMin+mfjMid, max:p8+mfjMin+mfjMid+mfjMax, p8ck:p8};
   }
   function pctCell(v,b){if(b<=0)return '-';var p=Math.round(v/b*100);var c=p>=100?'var(--grn)':p>=50?'var(--org)':'var(--red)';return '<span style="color:'+c+';font-weight:600">'+p+'%</span>';}
 
@@ -818,8 +816,9 @@ function showMorningBriefing(){
   // SECTION 2: MFJフォーキャスト + メンバー別
   // ============================================
   h+='<div class="mbr-sect-hdr" style="background:#1a1f2e;color:#fff;margin-bottom:8px;font-size:13px">② CKフォーキャスト（今月着地見込み）</div>';
-  // チーム全体MIN/MID/MAX
-  var teamMfj=mfjBreak(null);
+  // チーム全体MIN/MID/MAX（yosanから今月P8受注済CKを取得）
+  var teamP8CK=(yData&&yData.team)?yData.team.jisseki:0;
+  var teamMfj=mfjBreak(null,teamP8CK);
   h+='<div class="mbr-fcst-row" style="margin-bottom:10px">';
   h+='<div class="mbr-fcst-item" style="border:2px solid var(--grn)"><div class="ms-val" style="color:var(--grn);font-size:18px">'+eFmt(teamMfj.min)+'</div><div class="ms-label">MIN</div></div>';
   h+='<div class="mbr-fcst-item" style="border:2px solid var(--org)"><div class="ms-val" style="color:var(--org);font-size:18px">'+eFmt(teamMfj.mid)+'</div><div class="ms-label">MID</div></div>';
@@ -830,13 +829,13 @@ function showMorningBriefing(){
     var yt3=yData.team;
     h+='<div style="overflow-x:auto;margin-bottom:12px"><table class="ent-table" style="font-size:11px;width:100%"><thead>';
     h+='<tr style="background:#1a1f2e;color:#fff"><th style="color:#fff">名前</th><th style="color:#fff">予算</th><th style="color:#fff">CK実績</th><th style="color:#fff">率</th><th style="color:#fff">MIN</th><th style="color:#fff">率</th><th style="color:#fff">MID</th><th style="color:#fff">率</th><th style="color:#fff">MAX</th><th style="color:#fff">率</th></tr></thead><tbody>';
-    var teamMfjData=mfjBreak(null);
+    var teamMfjData=mfjBreak(null,yt3.jisseki);
     var jPctTeam=yt3.budget>0?Math.round(yt3.jisseki/yt3.budget*100):0;
     var jColTeam=jPctTeam>=100?'var(--grn)':jPctTeam>=50?'var(--org)':'var(--red)';
     h+='<tr style="background:#eff6ff;font-weight:700"><td>合計</td><td style="font-family:var(--mono)">'+eFmt(yt3.budget)+'</td><td style="font-family:var(--mono);color:'+jColTeam+'">'+eFmt(yt3.jisseki)+'</td><td>'+pctCell(yt3.jisseki,yt3.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.min)+'</td><td>'+pctCell(teamMfjData.min,yt3.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.mid)+'</td><td>'+pctCell(teamMfjData.mid,yt3.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.max)+'</td><td>'+pctCell(teamMfjData.max,yt3.budget)+'</td></tr>';
     var memNames=Object.keys(yData.byMember).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
     memNames.forEach(function(m){
-      var d=yData.byMember[m];var mfj=mfjBreak(m);
+      var d=yData.byMember[m];var mfj=mfjBreak(m,d.jisseki);
       var mp=d.budget>0?Math.round(d.jisseki/d.budget*100):0;
       var mc=mp>=100?'var(--grn)':mp>=50?'var(--org)':'var(--red)';
       h+='<tr'+(m===E_MGR?' style="opacity:.5"':'')+'><td style="font-weight:600">'+m+'</td><td style="font-family:var(--mono)">'+eFmt(d.budget)+'</td><td style="font-family:var(--mono);color:'+mc+';font-weight:600">'+eFmt(d.jisseki)+'</td><td>'+pctCell(d.jisseki,d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(mfj.min)+'</td><td>'+pctCell(mfj.min,d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(mfj.mid)+'</td><td>'+pctCell(mfj.mid,d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(mfj.max)+'</td><td>'+pctCell(mfj.max,d.budget)+'</td></tr>';
@@ -867,7 +866,7 @@ function showMorningBriefing(){
     Object.keys(yData.byMember).forEach(function(m){
       if(m===E_MGR)return;var d=yData.byMember[m];
       if(d.budget>0&&d.jisseki===0)insights.push({type:'warning',text:m+'：CK実績ゼロ。パイプラインの進捗確認が必要。'});
-      var mm=mfjBreak(m);
+      var mm=mfjBreak(m,d.jisseki);
       if(d.budget>0&&mm.max<d.budget*0.5)insights.push({type:'warning',text:m+'：MAX予測('+eFmt(mm.max)+')が予算('+eFmt(d.budget)+')の50%未満。パイプライン不足。'});
     });
     if(kpiData.p4<E_TARGETS.p4*0.5&&dayOfMonth>15)insights.push({type:'danger',text:'P4面談数が月半ばで目標の50%未達。月内の面談設定を急いでください。'});
@@ -1384,14 +1383,12 @@ function renderEntOverview(){
     // 実績: P8 with closeDate this month
     var clYM=eYM(eGet(r,'closeDate'));var thisYM2=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
     if(cp===8&&clYM===thisYM2)qMembers[m].p8ck+=ck;
-    // ヨミ (MFJ or phase-based)
-    if(cp<8){
-      var mfjVal=mfj||'';
-      var mfjEff=mfjVal;
-      if(!mfjEff||mfjEff==='-'){if(cp>=5)mfjEff='MIN';else if(cp===4)mfjEff='MID';else if(cp>=2)mfjEff='MAX';}
-      if(mfjEff==='MIN')qMembers[m].min+=ck;
-      if(mfjEff==='MIN'||mfjEff==='MID')qMembers[m].mid+=ck;
-      if(mfjEff==='MIN'||mfjEff==='MID'||mfjEff==='MAX')qMembers[m].max+=ck;
+    // ヨミ (MFJ列から直接、未記載はスキップ)
+    if(cp<8&&cp>=1){
+      var mfjVal=(mfj||'').trim().toUpperCase();
+      if(mfjVal==='MIN'){qMembers[m].min+=ck;qMembers[m].mid+=ck;qMembers[m].max+=ck;}
+      else if(mfjVal==='MID'){qMembers[m].mid+=ck;qMembers[m].max+=ck;}
+      else if(mfjVal==='MAX'){qMembers[m].max+=ck;}
     }
   });
   // Team budget allocation (equal for now)
@@ -1408,7 +1405,11 @@ function renderEntOverview(){
     var bg=d.budget>0?d.budget:0;
     function pctStr(v){if(bg<=0)return '-';var p=Math.round(v/bg*100);return '<span style="color:'+(p>=100?'var(--grn)':p>=50?'var(--org)':'var(--red)')+'">'+p+'%</span>';}
     var s=isMgr?' class="ent-mgr"':'';
-    return '<tr'+s+'><td style="font-weight:700">'+label+'</td><td style="font-family:var(--mono)">'+eFmt(bg)+'</td><td style="font-family:var(--mono)">'+eFmt(d.pipeline)+'</td><td>'+pctStr(d.pipeline)+'</td><td style="font-family:var(--mono);color:var(--grn);font-weight:600">'+eFmt(d.p8ck)+'</td><td>'+pctStr(d.p8ck)+'</td><td style="font-family:var(--mono)">'+eFmt(d.min)+'</td><td>'+pctStr(d.min)+'</td><td style="font-family:var(--mono)">'+eFmt(d.mid)+'</td><td>'+pctStr(d.mid)+'</td><td style="font-family:var(--mono)">'+eFmt(d.max)+'</td><td>'+pctStr(d.max)+'</td></tr>';
+    // MFJヨミはP8受注済CKを累積する(MIN=P8+MFJ=MINのP1-P7)
+    var minTotal=d.p8ck+d.min;
+    var midTotal=d.p8ck+d.mid;
+    var maxTotal=d.p8ck+d.max;
+    return '<tr'+s+'><td style="font-weight:700">'+label+'</td><td style="font-family:var(--mono)">'+eFmt(bg)+'</td><td style="font-family:var(--mono)">'+eFmt(d.pipeline)+'</td><td>'+pctStr(d.pipeline)+'</td><td style="font-family:var(--mono);color:var(--grn);font-weight:600">'+eFmt(d.p8ck)+'</td><td>'+pctStr(d.p8ck)+'</td><td style="font-family:var(--mono)">'+eFmt(minTotal)+'</td><td>'+pctStr(minTotal)+'</td><td style="font-family:var(--mono)">'+eFmt(midTotal)+'</td><td>'+pctStr(midTotal)+'</td><td style="font-family:var(--mono)">'+eFmt(maxTotal)+'</td><td>'+pctStr(maxTotal)+'</td></tr>';
   }
   h+=qRow('合計',qTotal,false);
   Object.keys(qMembers).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');}).forEach(function(m){
