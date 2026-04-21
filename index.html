@@ -761,20 +761,28 @@ function showMorningBriefing(){
     return '<div class="mbr-kpi"><div class="mk-label">'+label+'</div><div class="mk-val" style="color:'+color+'">'+val+'<span class="mk-target">'+(target>0?'/'+target:'')+'</span></div><div class="mk-bar"><div class="mk-bar-fill" style="width:'+barW2+'%;background:'+pctC2+'"></div></div>'+(target>0?'<div class="mk-pct" style="color:'+pctC2+'">'+pct2+'%'+(diff2>0?' (残'+diff2+')':' (+'+Math.abs(diff2)+')')+'</div>':'')+'</div>';
   }
   // --- MFJ集計関数（MFJ列から直接、未記載はスキップ） ---
+  // MFJ集計ロジック:
+  // MIN = P8受注済CK + MFJ=MINのP1-P7案件CK
+  // MID = P8受注済CK + MFJ=MIN or MIDのP1-P7案件CK
+  // MAX = P8受注済CK + MFJ=MIN or MID or MAXのP1-P7案件CK
   function mfjBreak(memberFilter){
-    var min=0,mid=0,max=0;
+    var p8ck=0,mfjMin=0,mfjMid=0,mfjMax=0;
     E_ROWS.forEach(function(r){
       if(memberFilter&&eGet(r,'member')!==memberFilter)return;
-      if(eGet(r,'curPh').indexOf('DEAD')>=0)return;
-      var mfj=eGet(r,'mfj').trim().toUpperCase();
+      var cpRaw=eGet(r,'curPh');
+      if(cpRaw.indexOf('DEAD')>=0)return;
+      var cp=ePh(cpRaw);
       var ck=eGetN(r,'ck');
+      // P8受注済 → 全MINに含む
+      if(cp===8){p8ck+=ck;return;}
+      // P1-P7: MFJで分類
+      var mfj=eGet(r,'mfj').trim().toUpperCase();
       if(!mfj)return;
-      if(mfj==='MIN')min+=ck;
-      else if(mfj!=='MID'&&mfj!=='MAX')return;
-      if(mfj==='MIN'||mfj==='MID')mid+=ck;
-      if(mfj==='MIN'||mfj==='MID'||mfj==='MAX')max+=ck;
+      if(mfj==='MIN')mfjMin+=ck;
+      else if(mfj==='MID')mfjMid+=ck;
+      else if(mfj==='MAX')mfjMax+=ck;
     });
-    return{min:min,mid:mid,max:max};
+    return{min:p8ck+mfjMin, mid:p8ck+mfjMin+mfjMid, max:p8ck+mfjMin+mfjMid+mfjMax, p8ck:p8ck};
   }
   function pctCell(v,b){if(b<=0)return '-';var p=Math.round(v/b*100);var c=p>=100?'var(--grn)':p>=50?'var(--org)':'var(--red)';return '<span style="color:'+c+';font-weight:600">'+p+'%</span>';}
 
