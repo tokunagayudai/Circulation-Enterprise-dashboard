@@ -787,10 +787,12 @@ function showMorningBriefing(){
   // チーム全体MIN/MID/MAX（yosanから今月P8受注済CKを取得）
   var teamP8CK=(yData&&yData.team)?yData.team.jisseki:0;
   var teamMfj=mfjBreak(null,teamP8CK);
+  var yBudget=(yData&&yData.team)?yData.team.budget:0;
+  function mfjPct(v){return yBudget>0?(v/yBudget*100).toFixed(1)+'%':'-';}
   h+='<div class="mbr-fcst-row" style="margin-bottom:10px">';
-  h+='<div class="mbr-fcst-item" style="border:2px solid var(--grn)"><div class="ms-val" style="color:var(--grn);font-size:18px">'+eFmt(teamMfj.min)+'</div><div class="ms-label">MIN</div></div>';
-  h+='<div class="mbr-fcst-item" style="border:2px solid var(--org)"><div class="ms-val" style="color:var(--org);font-size:18px">'+eFmt(teamMfj.mid)+'</div><div class="ms-label">MID</div></div>';
-  h+='<div class="mbr-fcst-item" style="border:2px solid var(--red)"><div class="ms-val" style="color:var(--red);font-size:18px">'+eFmt(teamMfj.max)+'</div><div class="ms-label">MAX</div></div>';
+  h+='<div class="mbr-fcst-item" style="border:2px solid var(--grn)"><div class="ms-val" style="color:var(--grn);font-size:18px">'+eFmt(teamMfj.min)+'</div><div class="ms-label">MIN <span style="font-size:12px;font-weight:700;color:var(--grn)">'+mfjPct(teamMfj.min)+'</span></div></div>';
+  h+='<div class="mbr-fcst-item" style="border:2px solid var(--org)"><div class="ms-val" style="color:var(--org);font-size:18px">'+eFmt(teamMfj.mid)+'</div><div class="ms-label">MID <span style="font-size:12px;font-weight:700;color:var(--org)">'+mfjPct(teamMfj.mid)+'</span></div></div>';
+  h+='<div class="mbr-fcst-item" style="border:2px solid var(--red)"><div class="ms-val" style="color:var(--red);font-size:18px">'+eFmt(teamMfj.max)+'</div><div class="ms-label">MAX <span style="font-size:12px;font-weight:700;color:var(--red)">'+mfjPct(teamMfj.max)+'</span></div></div>';
   h+='</div>';
   // メンバー別テーブル
   if(yData&&yData.team.budget>0){
