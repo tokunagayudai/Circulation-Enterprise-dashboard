@@ -377,7 +377,7 @@ function eDetect(h){var m={};var kw={member:['主担当者'],name:['案件名'],
 function eGet(r,k){var i=E_COL[k];return i>=0&&i<r.length?r[i].trim():'';}
 function eGetN(r,k){var v=parseFloat(eGet(r,k).replace(/[,¥\s]/g,''));return isNaN(v)?0:v;}
 function eYM(d){return d?d.substring(0,7):'';}
-function eFmt(v){return v>=100000000?(v/100000000).toFixed(1)+'億':v>=10000?Math.round(v/10000)+'万':'¥'+v;}
+function eFmt(v){if(!v||v===0)return '0';var k=Math.round(v/1000);var neg=k<0;k=Math.abs(k);return (neg?'-':'')+k.toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function eHeat(v,lo,hi){return '<span class="ent-heat '+(v>=hi?'g':v>=lo?'y':'r')+'">'+v+'%</span>';}
 // 解約→再計上の二重計上を防ぐフィルタ
 // ルール: 解約日が過去 かつ 解約承認済 → 再計上案件に置き換わってるので非表示
@@ -747,7 +747,7 @@ function showMorningBriefing(){
   h+=kpiMini('KSF P3提案',kpiData.p3,0,'var(--org)');
   h+=kpiMini('KPI P4面談',kpiData.p4,E_TARGETS.p4,'var(--org)');
   h+=kpiMini('KGI P8受注',kpiData.p8,E_TARGETS.p8,'var(--grn)');
-  h+=kpiMini('受注CK(万)',Math.round(kpiData.ck/10000),Math.round(E_TARGETS.ck/10000),'var(--grn)');
+  h+=kpiMini('受注CK(千円)',Math.round(kpiData.ck/1000),Math.round(E_TARGETS.ck/1000),'var(--grn)');
   h+='</div>';
   // --- Forecast ---
   h+='<div class="mbr-sect-hdr" style="background:#fef3c7;color:var(--org);margin-top:12px;margin-bottom:8px">🎯 パイプラインCK見込（フォーキャスト）</div>';
@@ -983,9 +983,9 @@ function renderEntOverview(){
     if(inRange(clStr)&&cp===8)window._entDrillData.p8.push(info);
   });
   h+='<div class="ent-kpi-row">';
-  h+=kpiCard('月次売上',Math.round(pnNow.rev/10000)+'万',0,'var(--blue)','稼働中PN請求額','','pn');
-  h+=kpiCard('月次粗利(PK)',Math.round(pnNow.pk/10000)+'万',0,'var(--grn)','稼働中PN粗利','','pn');
-  h+=kpiCard('受注CK',Math.round(kpi.ck/10000)+'万',Math.round(E_TARGETS.ck/10000),'var(--grn)','単位:万円','ck','p8');
+  h+=kpiCard('月次売上',eFmt(pnNow.rev),0,'var(--blue)','稼働中PN請求額(千円)','','pn');
+  h+=kpiCard('月次粗利(PK)',eFmt(pnNow.pk),0,'var(--grn)','稼働中PN粗利(千円)','','pn');
+  h+=kpiCard('受注CK',eFmt(kpi.ck),Math.round(E_TARGETS.ck/1000),'var(--grn)','単位:千円','ck','p8');
   h+=kpiCard('稼働中案件数 (PN)',pnNow.pn,0,'var(--blue)','現在稼働中','','pn');
   // 継続意向内訳
   var kzStat={};endingList.forEach(function(e){var k=e.keizoku||'未設定';if(!kzStat[k])kzStat[k]=0;kzStat[k]++;});
