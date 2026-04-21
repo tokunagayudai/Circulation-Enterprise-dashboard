@@ -409,37 +409,45 @@ function fetchEntData(){
 function eParseYosan(){
   if(!E_YOSAN||E_YOSAN.length===0||!E_YOSAN_H)return null;
   var h=E_YOSAN_H;
-  var col={budget:-1,jisseki:-1,tasseiYosoku:-1,saizenYosoku:-1,pipeline:-1,kitaiShuueki:-1,name:-1,member:-1,phase:-1};
+  var col={budget:-1,jisseki:-1,tasseiYosoku:-1,saizenYosoku:-1,pipeline:-1,kitaiShuueki:-1,name:-1,member:-1,phase:-1,mfj:-1};
   for(var i=0;i<h.length;i++){
     var hv=(h[i]||'').toString().trim();
-    if(hv==='予算')col.budget=i;
-    else if(hv.match(/受注済.*CK|受注済CK/))col.jisseki=i;
-    else if(hv.match(/最善.*達成.*予測|最善達成予測/))col.saizenYosoku=i;
-    else if(hv.match(/達成予測.*CK|達成予測CK/))col.tasseiYosoku=i;
-    else if(hv.match(/パイプライン.*CK|パイプラインCK/))col.pipeline=i;
+    if(hv==='予算'||hv==='CK予算')col.budget=i;
+    else if(hv.match(/受注済/))col.jisseki=i;
+    else if(hv.match(/最善/))col.saizenYosoku=i;
+    else if(hv.match(/達成予測/))col.tasseiYosoku=i;
+    else if(hv.match(/パイプライン/))col.pipeline=i;
     else if(hv.match(/期待収益/))col.kitaiShuueki=i;
-    else if(hv.match(/^案件名$/))col.name=i;
+    else if(hv==='案件名')col.name=i;
     else if(hv.match(/担当者|主担当/))col.member=i;
     else if(hv==='フェーズ')col.phase=i;
+    else if(hv.match(/Manager Forecast|MFJ|解約リスク/))col.mfj=i;
   }
-  console.log('Yosan col detected:',JSON.stringify(col));
+  console.log('=== Yosan Parser Debug ===');
+  console.log('Headers (idx:val):',h.map(function(hv,i){return i+':'+hv;}).join(' | '));
+  console.log('Col map:',JSON.stringify(col));
   if(col.member<0||col.phase<0){console.warn('Yosan: 担当者 or フェーズ not found');return null;}
   function num(r,c){return c>=0?parseFloat(((r[c]||'0').toString()).replace(/[,¥\s円]/g,''))||0:0;}
   var byMember={};var team={budget:0,jisseki:0,tasseiYosoku:0,saizenYosoku:0,pipeline:0,kitaiShuueki:0};
-  function init(m){if(!byMember[m])byMember[m]={budget:0,jisseki:0,tasseiYosoku:0,saizenYosoku:0,pipeline:0,kitaiShuueki:0};}
-  E_YOSAN.forEach(function(r){
+  function init(m){if(!byMember[m])byMember[m]={budget:0,jisseki:0,tasseiYosoku:0,saizenYosoku:0,pipeline:0,kitaiShuueki:0,deals:[]};}
+  var rowCount=0,budgetRows=0,dealRows=0;
+  E_YOSAN.forEach(function(r,idx){
+    rowCount++;
     var mem=(r[col.member]||'').toString().trim();
     var ph=(r[col.phase]||'').toString().trim();
     if(!mem)return;
     if(ph==='予算'||ph.toLowerCase()==='budget'){
-      init(mem);byMember[mem].budget+=num(r,col.budget);team.budget+=num(r,col.budget);return;
+      init(mem);byMember[mem].budget+=num(r,col.budget);team.budget+=num(r,col.budget);budgetRows++;return;
     }
     init(mem);
-    byMember[mem].jisseki+=num(r,col.jisseki);
+    var j=num(r,col.jisseki);
+    byMember[mem].jisseki+=j;
     byMember[mem].tasseiYosoku+=num(r,col.tasseiYosoku);
     byMember[mem].saizenYosoku+=num(r,col.saizenYosoku);
     byMember[mem].pipeline+=num(r,col.pipeline);
     byMember[mem].kitaiShuueki+=num(r,col.kitaiShuueki);
+    if(j>0)byMember[mem].deals.push({row:idx+2,ck:j,phase:ph});
+    dealRows++;
   });
   for(var m in byMember){
     team.jisseki+=byMember[m].jisseki;
@@ -448,7 +456,13 @@ function eParseYosan(){
     team.pipeline+=byMember[m].pipeline;
     team.kitaiShuueki+=byMember[m].kitaiShuueki;
   }
-  console.log('Yosan parsed: budget='+team.budget+' jisseki='+team.jisseki+' pipeline='+team.pipeline+' members='+Object.keys(byMember).join(','));
+  console.log('Row counts: total='+rowCount+' budget='+budgetRows+' deal='+dealRows);
+  console.log('Team totals (千円単位):',{budget:team.budget/1000,jisseki:team.jisseki/1000,pipeline:team.pipeline/1000,tasseiYosoku:team.tasseiYosoku/1000,saizenYosoku:team.saizenYosoku/1000});
+  Object.keys(byMember).forEach(function(m){
+    var d=byMember[m];
+    console.log(m+': 予算='+d.budget/1000+'k 受注済='+d.jisseki/1000+'k パイプ='+d.pipeline/1000+'k 受注案件数='+d.deals.length);
+    if(d.deals.length>0)console.log('  受注済案件(行/CK/フェーズ):',d.deals.map(function(de){return 'R'+de.row+':'+de.ck/1000+'k['+de.phase+']';}).join(', '));
+  });
   return{byMember:byMember,team:team};
 }
 
