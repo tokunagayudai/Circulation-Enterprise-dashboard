@@ -380,14 +380,14 @@ function eYM(d){return d?d.substring(0,7):'';}
 function eFmt(v){if(!v||v===0)return '0';var k=Math.round(v/1000);var neg=k<0;k=Math.abs(k);return (neg?'-':'')+k.toString().replace(/\B(?=(\d{3})+(?!\d))/g,',');}
 function eHeat(v,lo,hi){return '<span class="ent-heat '+(v>=hi?'g':v>=lo?'y':'r')+'">'+v+'%</span>';}
 // 解約→再計上の二重計上を防ぐフィルタ
-// ルール: 解約日が過去 かつ 解約承認済 → 再計上案件に置き換わってるので非表示
-//       （再計上案件側は コピー元案件解約チェック="あり" で生き残る）
+// ルール: 解約日が過去 かつ 解約承認ステータス=「承認済」のみ → 再計上案件に置き換わってるので非表示
+//       （「マネージャ承認待」「承認前」は解約申請中だが確定していないので残す）
 function eIsActiveCase(r){
   var cancelDate=eGet(r,'cancel');
   if(!cancelDate)return true;// 解約日なし=生きてる
   var cs=eGet(r,'cancelStatus');
   // 解約承認済 AND 解約日が今日以前 → 非表示（再計上側でカウント済み）
-  if(cs&&cs.indexOf('承認')>=0){
+  if(cs&&cs.indexOf('承認済')>=0){
     var cd=new Date(cancelDate.replace(/\//g,'-'));
     var today=new Date();today.setHours(0,0,0,0);
     if(!isNaN(cd)&&cd<=today)return false;
@@ -761,9 +761,11 @@ function showMorningBriefing(){
     return '<div class="mbr-kpi"><div class="mk-label">'+label+'</div><div class="mk-val" style="color:'+color+'">'+val+'<span class="mk-target">'+(target>0?'/'+target:'')+'</span></div><div class="mk-bar"><div class="mk-bar-fill" style="width:'+barW2+'%;background:'+pctC2+'"></div></div>'+(target>0?'<div class="mk-pct" style="color:'+pctC2+'">'+pct2+'%'+(diff2>0?' (残'+diff2+')':' (+'+Math.abs(diff2)+')')+'</div>':'')+'</div>';
   }
   // --- MFJ集計関数 ---
+  // Quipと同条件: 受注予定日=今月 AND フェーズ=P1-P7 AND MFJ=MIN/MID/MAX
   // MIN = 今月P8受注済CK(yosanから) + MFJ=MINのP1-P7案件CK
   // MID = 今月P8受注済CK + MFJ=MIN/MIDのP1-P7案件CK
   // MAX = 今月P8受注済CK + MFJ=MIN/MID/MAXのP1-P7案件CK
+  var thisYMMFJ=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
   function mfjBreak(memberFilter,p8ckFromYosan){
     var mfjMin=0,mfjMid=0,mfjMax=0;
     E_ROWS.forEach(function(r){
@@ -772,6 +774,9 @@ function showMorningBriefing(){
       if(cpRaw.indexOf('DEAD')>=0)return;
       var cp=ePh(cpRaw);
       if(cp<1||cp>=8)return;// P1-P7のみ対象（P8とDEADは除外）
+      // 受注予定日=今月 フィルタ（Quipと同条件）
+      var clYM=eYM(eGet(r,'closeDate'));
+      if(clYM!==thisYMMFJ)return;
       var mfj=eGet(r,'mfj').trim().toUpperCase();
       if(!mfj)return;// 未記載はスキップ
       var ck=eGetN(r,'ck');
@@ -1383,8 +1388,8 @@ function renderEntOverview(){
     // 実績: P8 with closeDate this month
     var clYM=eYM(eGet(r,'closeDate'));var thisYM2=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
     if(cp===8&&clYM===thisYM2)qMembers[m].p8ck+=ck;
-    // ヨミ (MFJ列から直接、未記載はスキップ)
-    if(cp<8&&cp>=1){
+    // ヨミ (MFJ列から直接、未記載はスキップ、受注予定日=今月のみ)
+    if(cp<8&&cp>=1&&clYM===thisYM2){
       var mfjVal=(mfj||'').trim().toUpperCase();
       if(mfjVal==='MIN'){qMembers[m].min+=ck;qMembers[m].mid+=ck;qMembers[m].max+=ck;}
       else if(mfjVal==='MID'){qMembers[m].mid+=ck;qMembers[m].max+=ck;}
