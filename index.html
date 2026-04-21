@@ -372,7 +372,7 @@ function ePh(s){if(!s)return 0;if(s.indexOf('08')>=0)return 8;if(s.indexOf('07')
 function eDetect(h){var m={};var kw={member:['^主担当者$'],name:['^案件名$'],lastPh:['^最終到達'],apDate:['^初回アポ'],mendanDate:['^面談日$'],closeDate:['^受注予定日'],dealType:['^新規[/／]継続'],channel:['^施策区分'],ck:['^#?\\s*CK$','^CK$','^#\\s*CK$'],deadReason:['^DEAD理由$'],startDate:['^契約開始'],endDate:['^契約終了'],billM:['月額.*顧客請求','月額.*請求'],payM:['月額.*専門家','月額.*支払'],cancel:['^解約日$'],oppId:['^案件\\s?ID$','Opportunity ID'],mfj:['^Manager Forecast Judge$','^Manager Forecast'],recycle:['^リサイクル選択'],proposalDate:['人選結果メール初回送付日','人選結果メール','提案実施日','提案日'],jinsen:['^人選$','^人選ステータス'],nextAct:['^ネクストアクション$'],nextDate:['^ネクストアクション実施日'],mutual:['Mutual Close'],copyCancel:['^コピー元案件解約チェック','コピー元.*解約'],cancelStatus:['^解約承認ステータス'],cancelMinusCK:['^解約時.*CK','解約時マイナス'],focus:['^注力案件$'],contractClass:['^契約クラス$'],proposalClass:['^提案クラス$']};for(var k in kw){m[k]=-1;for(var w=0;w<kw[k].length;w++){for(var i=0;i<h.length;i++){var hvs=(h[i]||'').toString().trim();if(hvs.match(new RegExp(kw[k][w]))){m[k]=i;break;}}if(m[k]>=0)break;}}
   // curPh: 「フェーズ」単体（「最終到達フェーズ」は除外）
   m.curPh=-1;for(var i=0;i<h.length;i++){var hv=h[i].trim();if(hv==='フェーズ'||(hv.indexOf('フェーズ')>=0&&hv.indexOf('最終')<0&&hv.indexOf('到達')<0)){m.curPh=i;break;}}
-  console.log('COL_MAP detected:',m);console.log('Headers:',h);
+  console.log('COL_MAP:',JSON.stringify({ck:m.ck,mfj:m.mfj,curPh:m.curPh,cancel:m.cancel,cancelStatus:m.cancelStatus}));
   return m;}
 function eGet(r,k){var i=E_COL[k];return i>=0&&i<r.length?r[i].trim():'';}
 function eGetN(r,k){var v=parseFloat(eGet(r,k).replace(/[,¥\s]/g,''));return isNaN(v)?0:v;}
@@ -418,36 +418,9 @@ function fetchEntData(){
     });
     E_ROWS=filtered;
     console.log('Main data source: '+dataSrc+' ('+allRaw.length+' rows → '+E_ROWS.length+' active, '+removed+' cancelled+replaced)');
-    // === 全カラムマップとサンプル値の出力 ===
-    console.log('Full COL_MAP (JSON):',JSON.stringify(E_COL));
-    console.log('All headers (idx:val):');
-    f.h.forEach(function(hv,i){console.log('  ['+i+'] "'+hv+'"');});
-    if(E_ROWS.length>0){
-      console.log('Sample row 1 key values:');
-      ['member','name','ck','mfj','curPh','lastPh','apDate','closeDate','dealType'].forEach(function(k){
-        console.log('  '+k+' (col '+E_COL[k]+'): "'+eGet(E_ROWS[0],k)+'"');
-      });
-    }
-    // === MFJ検出確認 ===
-    console.log('COL_MAP mfj col idx:',E_COL.mfj,' ck col idx:',E_COL.ck);
-    if(E_COL.mfj>=0){
-      var mfjCounts={};var mfjCKSum={};
-      E_ROWS.forEach(function(r){
-        var v=(r[E_COL.mfj]||'').toString().trim().toUpperCase()||'(空)';
-        mfjCounts[v]=(mfjCounts[v]||0)+1;
-        var ck=eGetN(r,'ck');
-        mfjCKSum[v]=(mfjCKSum[v]||0)+ck;
-      });
-      console.log('MFJ values found in E_ROWS:');
-      Object.keys(mfjCounts).forEach(function(k){console.log('  '+k+': '+mfjCounts[k]+'件, CK合計='+Math.round(mfjCKSum[k]/1000)+'k');});
-    }else{
-      console.warn('⚠️ MFJ列が検出できていません！ ヘッダー確認:',f.h);
-    }
+    // === 簡潔なデータロードログ ===
     var j=res[1]&&res[1].length>50?pCSV(res[1]):{r:[],h:[]};E_JUCHU=j.r;
     var p=pCSV(res[2]);E_PN2=p.r;window.E_PN_H=p.h;
-    console.log('=== PN sheet ('+p.r.length+' rows) ===');
-    console.log('PN header:',JSON.stringify(p.h));
-    if(p.r.length>0)console.log('PN row 1 sample:',JSON.stringify(p.r[0]));
     // PN列の自動検出
     window.E_PN_COL={member:-1,name:-1,phase:-1,oppId:-1,bill:-1,pay:-1,startDate:-1,endDate:-1,cancel:-1,keizoku:-1};
     if(p.h){
@@ -465,10 +438,9 @@ function fetchEntData(){
         else if(hv.indexOf('継続意向')>=0)window.E_PN_COL.keizoku=pi;
       }
     }
-    console.log('PN COL_MAP:',JSON.stringify(window.E_PN_COL));
     // Detect 継続意向 column in pn header (後方互換)
     window.E_PN_KEIZOKU_COL=window.E_PN_COL.keizoku;
-    if(res[3]&&res[3].length>20){var y=pCSV(res[3]);E_YOSAN=y.r;E_YOSAN_H=y.h;console.log('Yosan header (JSON):',JSON.stringify(y.h));}
+    if(res[3]&&res[3].length>20){var y=pCSV(res[3]);E_YOSAN=y.r;E_YOSAN_H=y.h;}
     E_LOADED=true;
     console.log('Enterprise data loaded: '+dataSrc+'='+E_ROWS.length+' juchu='+E_JUCHU.length+' pn='+E_PN2.length+' yosan='+E_YOSAN.length);
   }).catch(function(err){console.warn('Enterprise fetch error:',err);});
@@ -494,9 +466,6 @@ function eParseYosan(){
     else if(hv==='フェーズ')col.phase=i;
     else if(hv.match(/Manager Forecast|MFJ|解約リスク/))col.mfj=i;
   }
-  console.log('=== Yosan Parser Debug ===');
-  console.log('Headers (idx:val):',h.map(function(hv,i){return i+':'+hv;}).join(' | '));
-  console.log('Col map:',JSON.stringify(col));
   if(col.member<0||col.phase<0){console.warn('Yosan: 担当者 or フェーズ not found');return null;}
   function num(r,c){return c>=0?parseFloat(((r[c]||'0').toString()).replace(/[,¥\s円]/g,''))||0:0;}
   var byMember={};var team={budget:0,jisseki:0,tasseiYosoku:0,saizenYosoku:0,pipeline:0,kitaiShuueki:0};
@@ -527,13 +496,7 @@ function eParseYosan(){
     team.pipeline+=byMember[m].pipeline;
     team.kitaiShuueki+=byMember[m].kitaiShuueki;
   }
-  console.log('Row counts: total='+rowCount+' budget='+budgetRows+' deal='+dealRows);
-  console.log('Team totals (千円単位):',{budget:team.budget/1000,jisseki:team.jisseki/1000,pipeline:team.pipeline/1000,tasseiYosoku:team.tasseiYosoku/1000,saizenYosoku:team.saizenYosoku/1000});
-  Object.keys(byMember).forEach(function(m){
-    var d=byMember[m];
-    console.log(m+': 予算='+d.budget/1000+'k 受注済='+d.jisseki/1000+'k パイプ='+d.pipeline/1000+'k 受注案件数='+d.deals.length);
-    if(d.deals.length>0)console.log('  受注済案件(行/CK/フェーズ):',d.deals.map(function(de){return 'R'+de.row+':'+de.ck/1000+'k['+de.phase+']';}).join(', '));
-  });
+  console.log('Yosan: budget='+Math.round(team.budget/1000)+'k jisseki='+Math.round(team.jisseki/1000)+'k members='+Object.keys(byMember).length);
   return{byMember:byMember,team:team};
 }
 
