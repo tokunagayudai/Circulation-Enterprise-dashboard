@@ -418,16 +418,49 @@ function fetchEntData(){
     });
     E_ROWS=filtered;
     console.log('Main data source: '+dataSrc+' ('+allRaw.length+' rows → '+E_ROWS.length+' active, '+removed+' cancelled+replaced)');
+    // === MFJ検出確認 ===
+    console.log('COL_MAP mfj col idx:',E_COL.mfj);
+    if(E_COL.mfj>=0){
+      var mfjCounts={};var mfjCKSum={};
+      E_ROWS.forEach(function(r){
+        var v=(r[E_COL.mfj]||'').toString().trim().toUpperCase()||'(空)';
+        mfjCounts[v]=(mfjCounts[v]||0)+1;
+        var ck=eGetN(r,'ck');
+        mfjCKSum[v]=(mfjCKSum[v]||0)+ck;
+      });
+      console.log('MFJ values found in E_ROWS:');
+      Object.keys(mfjCounts).forEach(function(k){console.log('  '+k+': '+mfjCounts[k]+'件, CK合計='+Math.round(mfjCKSum[k]/1000)+'k');});
+    }else{
+      console.warn('⚠️ MFJ列が検出できていません！ ヘッダー確認:',f.h);
+    }
     var j=res[1]&&res[1].length>50?pCSV(res[1]):{r:[],h:[]};E_JUCHU=j.r;
     var p=pCSV(res[2]);E_PN2=p.r;window.E_PN_H=p.h;
-    console.log('PN sheet header:',JSON.stringify(p.h));
+    console.log('=== PN sheet ('+p.r.length+' rows) ===');
+    console.log('PN header:',JSON.stringify(p.h));
+    if(p.r.length>0)console.log('PN row 1 sample:',JSON.stringify(p.r[0]));
+    // PN列の自動検出
+    window.E_PN_COL={member:-1,name:-1,phase:-1,oppId:-1,bill:-1,pay:-1,startDate:-1,endDate:-1,cancel:-1,keizoku:-1};
+    if(p.h){
+      for(var pi=0;pi<p.h.length;pi++){
+        var hv=(p.h[pi]||'').toString().trim();
+        if(hv==='主担当者')window.E_PN_COL.member=pi;
+        else if(hv==='案件名')window.E_PN_COL.name=pi;
+        else if(hv==='フェーズ')window.E_PN_COL.phase=pi;
+        else if(hv.match(/案件.?ID|Opportunity ID/))window.E_PN_COL.oppId=pi;
+        else if(hv.match(/月額.*顧客請求|月額.*請求額/))window.E_PN_COL.bill=pi;
+        else if(hv.match(/月額.*専門家|月額.*支払/))window.E_PN_COL.pay=pi;
+        else if(hv==='契約開始日')window.E_PN_COL.startDate=pi;
+        else if(hv==='契約終了日')window.E_PN_COL.endDate=pi;
+        else if(hv==='解約日')window.E_PN_COL.cancel=pi;
+        else if(hv.indexOf('継続意向')>=0)window.E_PN_COL.keizoku=pi;
+      }
+    }
+    console.log('PN COL_MAP:',JSON.stringify(window.E_PN_COL));
+    // Detect 継続意向 column in pn header (後方互換)
+    window.E_PN_KEIZOKU_COL=window.E_PN_COL.keizoku;
     if(res[3]&&res[3].length>20){var y=pCSV(res[3]);E_YOSAN=y.r;E_YOSAN_H=y.h;console.log('Yosan header (JSON):',JSON.stringify(y.h));}
-    // Detect 継続意向 column in pn header
-    window.E_PN_KEIZOKU_COL=-1;
-    if(p.h)for(var pi=0;pi<p.h.length;pi++){if(p.h[pi].indexOf('継続意向')>=0){window.E_PN_KEIZOKU_COL=pi;break;}}
     E_LOADED=true;
     console.log('Enterprise data loaded: '+dataSrc+'='+E_ROWS.length+' juchu='+E_JUCHU.length+' pn='+E_PN2.length+' yosan='+E_YOSAN.length);
-    console.log('PN 継続意向 col:',window.E_PN_KEIZOKU_COL);
   }).catch(function(err){console.warn('Enterprise fetch error:',err);});
 }
 
@@ -539,20 +572,32 @@ function ePct(a,b){return b>0?Math.round(a/b*100):0;}
 function eBuildPN(){
   var rev=0,pay=0,pn=0,seen={};
   var d1=0,d2=0,d3=0,d4=0;
+  var col=window.E_PN_COL||{};
+  var today=new Date();
   E_PN2.forEach(function(r){
     d1++;
-    var ph=gv(r,3);if(!ph||ph.indexOf('08')<0){return;}
+    // フェーズ列があれば08フィルタ、なければ全件（pnシートは既に08のみフィルタ済みの前提）
+    if(col.phase>=0){var ph=(r[col.phase]||'').toString();if(!ph||ph.indexOf('08')<0)return;}
     d2++;
-    var aid=gv(r,9).trim();if(!aid||seen[aid])return;seen[aid]=true; // dedupe by case ID
+    // 案件IDで重複排除
+    var aid=col.oppId>=0?(r[col.oppId]||'').toString().trim():'';
+    if(aid){if(seen[aid])return;seen[aid]=true;}
     d3++;
-    var start=gv(r,12).trim(),end=gv(r,13).trim(),cancel=gv(r,22).trim();
+    var start=col.startDate>=0?(r[col.startDate]||'').toString().trim():'';
+    var end=col.endDate>=0?(r[col.endDate]||'').toString().trim():'';
+    var cancel=col.cancel>=0?(r[col.cancel]||'').toString().trim():'';
     if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed2=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed2)&&cd<ed2)end=cancel;}
     if(!start||!end)return;
     d4++;
-    var sd=new Date(start.replace(/\//g,'-')),ed=new Date(end.replace(/\//g,'-')),today=new Date();
-    if(today>=sd&&today<=ed){pn++;rev+=parseInt((gv(r,10)||'0').replace(/[,\s]/g,''))||0;pay+=parseInt((gv(r,11)||'0').replace(/[,\s]/g,''))||0;}
+    var sd=new Date(start.replace(/\//g,'-')),ed=new Date(end.replace(/\//g,'-'));
+    if(today>=sd&&today<=ed){
+      pn++;
+      var billV=col.bill>=0?parseInt(((r[col.bill]||'0').toString()).replace(/[,¥\s円]/g,''))||0:0;
+      var payV=col.pay>=0?parseInt(((r[col.pay]||'0').toString()).replace(/[,¥\s円]/g,''))||0:0;
+      rev+=billV;pay+=payV;
+    }
   });
-  console.log('eBuildPN debug: total='+d1+' phase08='+d2+' afterDedupe='+d3+' withDates='+d4+' activeToday='+pn);
+  console.log('eBuildPN debug: total='+d1+' phase08='+d2+' afterDedupe='+d3+' withDates='+d4+' activeToday='+pn+' rev='+Math.round(rev/1000)+'k pk='+Math.round((rev-pay)/1000)+'k');
   return{pn:pn,rev:rev,pk:rev-pay};
 }
 // Revenue forecast per month (next 6 months)
