@@ -707,39 +707,69 @@ function showMorningBriefing(){
   }
   // --- CK予算 vs 実績 (yosanシート=SF商況管理シート連動) ---
   var yData=eParseYosan();
+  // --- パイプラインCK見込（フォーキャスト）最上部 ---
+  h+='<div class="mbr-sect-hdr" style="background:#fef3c7;color:var(--org);margin-bottom:8px">🎯 パイプラインCK見込（フォーキャスト）</div>';
+  h+='<div class="mbr-fcst-row" style="margin-bottom:12px">';
+  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--grn);font-size:18px">'+eFmt(fcstMin)+'</div><div class="ms-label">MIN</div></div>';
+  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--org);font-size:18px">'+eFmt(fcstMid)+'</div><div class="ms-label">MID</div></div>';
+  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--red);font-size:18px">'+eFmt(fcstMax)+'</div><div class="ms-label">MAX</div></div>';
+  h+='</div>';
+  // --- CK予算 vs 実績（Quip風：予算/CK実績/ヨミMIN/MID/MAX） ---
   if(yData&&yData.team.budget>0){
     var yt2=yData.team;
     var jPct2=yt2.budget>0?Math.round(yt2.jisseki/yt2.budget*100):0;
     var jCol2=jPct2>=100?'var(--grn)':jPct2>=50?'var(--org)':'var(--red)';
-    h+='<div class="mbr-sect-hdr" style="background:#dbeafe;color:var(--blue);margin-bottom:8px">💰 CK予算 vs 実績</div>';
-    h+='<div style="background:var(--bg);border-radius:8px;padding:14px 18px;margin-bottom:12px">';
-    // Summary cards
-    h+='<div class="mbr-fcst-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">';
-    h+='<div class="mbr-fcst-item"><div style="font-size:9px;color:var(--ink3)">予算</div><div style="font-size:16px;font-weight:700;font-family:var(--mono)">'+eFmt(yt2.budget)+'</div></div>';
-    h+='<div class="mbr-fcst-item" style="border:2px solid '+jCol2+'"><div style="font-size:9px;color:var(--ink3)">受注済CK</div><div style="font-size:16px;font-weight:700;font-family:var(--mono);color:'+jCol2+'">'+eFmt(yt2.jisseki)+'</div><div style="font-size:10px;color:'+jCol2+'">'+jPct2+'%</div></div>';
-    h+='<div class="mbr-fcst-item"><div style="font-size:9px;color:var(--ink3)">パイプライン</div><div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--blue)">'+eFmt(yt2.pipeline)+'</div></div>';
-    h+='<div class="mbr-fcst-item"><div style="font-size:9px;color:var(--ink3)">達成予測</div><div style="font-size:16px;font-weight:700;font-family:var(--mono);color:var(--org)">'+eFmt(yt2.tasseiYosoku)+'</div></div>';
-    h+='</div>';
-    // Progress bar
-    h+='<div style="height:10px;background:rgba(0,0,0,.08);border-radius:5px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,jPct2)+'%;background:'+jCol2+';border-radius:5px"></div></div>';
-    h+='<div style="font-size:10px;color:var(--ink3);margin-top:4px">残り: '+eFmt(Math.max(0,yt2.budget-yt2.jisseki))+(yt2.jisseki>=yt2.budget?' 🎉達成':'')+'</div>';
-    // 担当者別カード
+    // Per-member MFJ breakdown
+    function mfjBreak(m){
+      var min=0,mid=0,max=0;
+      E_ROWS.forEach(function(r){
+        if(eGet(r,'member')!==m)return;
+        var cp=ePh(eGet(r,'curPh'));if(cp>=8||cp<1)return;
+        if(eGet(r,'curPh').indexOf('DEAD')>=0)return;
+        var ck=eGetN(r,'ck');if(ck<=0)return;
+        var mfj=eGet(r,'mfj');
+        if(!mfj||mfj==='-'){if(cp>=5)mfj='MIN';else if(cp===4)mfj='MID';else mfj='MAX';}
+        if(mfj==='MIN')min+=ck;
+        if(mfj==='MIN'||mfj==='MID')mid+=ck;
+        if(mfj==='MIN'||mfj==='MID'||mfj==='MAX')max+=ck;
+      });
+      return{min:min,mid:mid,max:max};
+    }
+    h+='<div class="mbr-sect-hdr" style="background:#dbeafe;color:var(--blue);margin-bottom:8px">💰 CK予算 vs 実績（今月商況）</div>';
+    h+='<div style="background:var(--bg);border-radius:8px;padding:12px;margin-bottom:12px;overflow-x:auto">';
+    h+='<table class="ent-table" style="font-size:11px;width:100%"><thead>';
+    h+='<tr style="background:#1a1f2e;color:#fff"><th style="color:#fff">名前</th><th style="color:#fff">予算</th><th style="color:#fff">CK実績</th><th style="color:#fff">率</th><th style="color:#fff">MIN</th><th style="color:#fff">率</th><th style="color:#fff">MID</th><th style="color:#fff">率</th><th style="color:#fff">MAX</th><th style="color:#fff">率</th></tr>';
+    h+='</thead><tbody>';
+    function pct(v,b){if(b<=0)return '-';var p=Math.round(v/b*100);var c=p>=100?'var(--grn)':p>=50?'var(--org)':'var(--red)';return '<span style="color:'+c+';font-weight:600">'+p+'%</span>';}
+    // 合計行（チーム全体のMFJ集計）
+    var teamMin=0,teamMid=0,teamMax=0;
+    E_ROWS.forEach(function(r){
+      var cp=ePh(eGet(r,'curPh'));if(cp>=8||cp<1)return;
+      if(eGet(r,'curPh').indexOf('DEAD')>=0)return;
+      var ck=eGetN(r,'ck');if(ck<=0)return;
+      var mfj=eGet(r,'mfj');
+      if(!mfj||mfj==='-'){if(cp>=5)mfj='MIN';else if(cp===4)mfj='MID';else mfj='MAX';}
+      if(mfj==='MIN')teamMin+=ck;
+      if(mfj==='MIN'||mfj==='MID')teamMid+=ck;
+      if(mfj==='MIN'||mfj==='MID'||mfj==='MAX')teamMax+=ck;
+    });
+    h+='<tr style="background:#eff6ff;font-weight:700"><td>合計</td><td style="font-family:var(--mono)">'+eFmt(yt2.budget)+'</td><td style="font-family:var(--mono);color:'+jCol2+'">'+eFmt(yt2.jisseki)+'</td><td>'+pct(yt2.jisseki,yt2.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMin)+'</td><td>'+pct(teamMin,yt2.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMid)+'</td><td>'+pct(teamMid,yt2.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMax)+'</td><td>'+pct(teamMax,yt2.budget)+'</td></tr>';
     var memNames=Object.keys(yData.byMember).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
-    h+='<div style="margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px">';
     memNames.forEach(function(m){
       var d=yData.byMember[m];
+      var mfj=mfjBreak(m);
       var mp=d.budget>0?Math.round(d.jisseki/d.budget*100):0;
       var mc=mp>=100?'var(--grn)':mp>=50?'var(--org)':'var(--red)';
-      h+='<div style="padding:8px 10px;background:#fff;border-radius:6px;border:1px solid var(--bd)">';
-      h+='<div style="font-size:10px;font-weight:600">'+m+'</div>';
-      h+='<div style="display:flex;justify-content:space-between;margin-top:3px">';
-      h+='<span style="font-size:9px;color:var(--ink3)">予:'+eFmt(d.budget)+'</span>';
-      h+='<span style="font-family:var(--mono);font-size:12px;font-weight:700;color:'+mc+'">'+eFmt(d.jisseki)+' ('+mp+'%)</span>';
-      h+='</div>';
-      h+='<div style="height:5px;background:rgba(0,0,0,.06);border-radius:3px;overflow:hidden;margin-top:3px"><div style="height:100%;width:'+Math.min(100,mp)+'%;background:'+mc+'"></div></div>';
-      h+='</div>';
+      var isMgr=m===E_MGR;
+      h+='<tr'+(isMgr?' style="opacity:.5"':'')+'><td style="font-weight:600">'+m+'</td>';
+      h+='<td style="font-family:var(--mono)">'+eFmt(d.budget)+'</td>';
+      h+='<td style="font-family:var(--mono);color:'+mc+';font-weight:600">'+eFmt(d.jisseki)+'</td>';
+      h+='<td>'+pct(d.jisseki,d.budget)+'</td>';
+      h+='<td style="font-family:var(--mono)">'+eFmt(mfj.min)+'</td><td>'+pct(mfj.min,d.budget)+'</td>';
+      h+='<td style="font-family:var(--mono)">'+eFmt(mfj.mid)+'</td><td>'+pct(mfj.mid,d.budget)+'</td>';
+      h+='<td style="font-family:var(--mono)">'+eFmt(mfj.max)+'</td><td>'+pct(mfj.max,d.budget)+'</td></tr>';
     });
-    h+='</div></div>';
+    h+='</tbody></table></div>';
   }
   h+='<div class="mbr-sect-hdr" style="background:#dbeafe;color:var(--blue);margin-bottom:10px">📊 今月の目標達成状況</div>';
   h+='<div class="mbr-kpi-row">';
@@ -748,13 +778,6 @@ function showMorningBriefing(){
   h+=kpiMini('KPI P4面談',kpiData.p4,E_TARGETS.p4,'var(--org)');
   h+=kpiMini('KGI P8受注',kpiData.p8,E_TARGETS.p8,'var(--grn)');
   h+=kpiMini('受注CK(千円)',Math.round(kpiData.ck/1000),Math.round(E_TARGETS.ck/1000),'var(--grn)');
-  h+='</div>';
-  // --- Forecast ---
-  h+='<div class="mbr-sect-hdr" style="background:#fef3c7;color:var(--org);margin-top:12px;margin-bottom:8px">🎯 パイプラインCK見込（フォーキャスト）</div>';
-  h+='<div class="mbr-fcst-row">';
-  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--grn);font-size:16px">'+eFmt(fcstMin)+'</div><div class="ms-label">MIN（確度高のみ）</div></div>';
-  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--org);font-size:16px">'+eFmt(fcstMid)+'</div><div class="ms-label">MID（MIN+五分五分）</div></div>';
-  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--red);font-size:16px">'+eFmt(fcstMax)+'</div><div class="ms-label">MAX（全パイプライン）</div></div>';
   h+='</div>';
   // --- Stats summary ---
   h+='<div class="mbr-stat" style="margin-top:12px">';
@@ -1169,9 +1192,9 @@ function renderEntOverview(){
   h+='<div class="es-title" style="margin:0">月別売上推移（2025/08〜）</div>';
   h+='<select class="fl" onchange="window.E_REV_MFJ=this.value;renderEnt()" style="margin-left:auto">';
   h+='<option value="none"'+(E_REV_MFJ==='none'?' selected':'')+'>確定売上のみ</option>';
-  h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN（確度高のみ）</option>';
-  h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MID（MIN+五分五分）</option>';
-  h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+MAX（全パイプライン）</option>';
+  h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN</option>';
+  h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MID</option>';
+  h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+MAX</option>';
   h+='<option value="ALL"'+(E_REV_MFJ==='ALL'?' selected':'')+'>+全MFJ付き案件</option>';
   h+='</select></div>';
   // Build monthly revenue from acplan_pn dedup, from 2025/08 to 6 months future
