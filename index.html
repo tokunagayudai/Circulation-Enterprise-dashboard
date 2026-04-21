@@ -710,9 +710,9 @@ function showMorningBriefing(){
   // --- Forecast ---
   h+='<div class="mbr-sect-hdr" style="background:#fef3c7;color:var(--org);margin-top:12px;margin-bottom:8px">🎯 パイプラインCK見込（フォーキャスト）</div>';
   h+='<div class="mbr-fcst-row">';
-  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--red);font-size:16px">'+eFmt(fcstMin)+'</div><div class="ms-label">MIN（P5-6/MFJ=MIN）</div></div>';
-  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--org);font-size:16px">'+eFmt(fcstMid)+'</div><div class="ms-label">MID（+P4/MFJ=MID）</div></div>';
-  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--grn);font-size:16px">'+eFmt(fcstMax)+'</div><div class="ms-label">MAX（全P1-7）</div></div>';
+  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--grn);font-size:16px">'+eFmt(fcstMin)+'</div><div class="ms-label">MIN（確度高のみ）</div></div>';
+  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--org);font-size:16px">'+eFmt(fcstMid)+'</div><div class="ms-label">MID（MIN+五分五分）</div></div>';
+  h+='<div class="mbr-fcst-item"><div class="ms-val" style="color:var(--red);font-size:16px">'+eFmt(fcstMax)+'</div><div class="ms-label">MAX（全パイプライン）</div></div>';
   h+='</div>';
   // --- Stats summary ---
   h+='<div class="mbr-stat" style="margin-top:12px">';
@@ -1121,9 +1121,9 @@ function renderEntOverview(){
   h+='<div class="es-title" style="margin:0">月別売上推移（2025/08〜）</div>';
   h+='<select class="fl" onchange="window.E_REV_MFJ=this.value;renderEnt()" style="margin-left:auto">';
   h+='<option value="none"'+(E_REV_MFJ==='none'?' selected':'')+'>確定売上のみ</option>';
-  h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN案件(MFJ=MIN)</option>';
-  h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MID案件(MFJ=MID)</option>';
-  h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+MAX案件(MFJ=MAX)</option>';
+  h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN（確度高のみ）</option>';
+  h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MID（MIN+五分五分）</option>';
+  h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+MAX（全パイプライン）</option>';
   h+='<option value="ALL"'+(E_REV_MFJ==='ALL'?' selected':'')+'>+全MFJ付き案件</option>';
   h+='</select></div>';
   // Build monthly revenue from acplan_pn dedup, from 2025/08 to 6 months future
@@ -1211,9 +1211,11 @@ function renderEntOverview(){
     // ヨミ (MFJ or phase-based)
     if(cp<8){
       var mfjVal=mfj||'';
-      if(mfjVal==='MIN'||cp>=5)qMembers[m].min+=ck;
-      if(mfjVal==='MID'||cp>=4)qMembers[m].mid+=ck;
-      if(mfjVal==='MAX'||cp>=2)qMembers[m].max+=ck;
+      var mfjEff=mfjVal;
+      if(!mfjEff||mfjEff==='-'){if(cp>=5)mfjEff='MIN';else if(cp===4)mfjEff='MID';else if(cp>=2)mfjEff='MAX';}
+      if(mfjEff==='MIN')qMembers[m].min+=ck;
+      if(mfjEff==='MIN'||mfjEff==='MID')qMembers[m].mid+=ck;
+      if(mfjEff==='MIN'||mfjEff==='MID'||mfjEff==='MAX')qMembers[m].max+=ck;
     }
   });
   // Team budget allocation (equal for now)
@@ -1266,7 +1268,7 @@ function renderEntOverview(){
     items.forEach(function(s){
       var url=s.oppId&&s.oppId.length>=15?SFO+s.oppId+'/view':'#';
       var dayC=s.days>=30?'color:var(--red);font-weight:700':s.days>=21?'color:var(--org);font-weight:700':'color:var(--org)';
-      var mfjC=s.mfj==='MAX'?'background:var(--grn-bg);color:var(--grn)':s.mfj==='MID'?'background:#fff8c5;color:var(--org)':s.mfj==='MIN'?'background:#ffebe9;color:var(--red)':'';
+      var mfjC=s.mfj==='MIN'?'background:var(--grn-bg);color:var(--grn)':s.mfj==='MID'?'background:#fff8c5;color:var(--org)':s.mfj==='MAX'?'background:#ffebe9;color:var(--red)':'';
       var act=entGetAction(s.oppId);
       var naDate=act.date||'';var done=act.done?'checked':'';
       var rowStyle=act.done?'opacity:.55':'';
@@ -1448,7 +1450,7 @@ function renderEntPipeline(){
   h+='<div style="overflow-x:auto;max-height:70vh;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg);z-index:1"><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>初回アポ日</th><th>面談日</th><th>ア→面(日数)</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
   filtered.forEach(function(c){
     var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
-    var mfjC=c.mfj==='MAX'?'background:var(--grn-bg);color:var(--grn)':c.mfj==='MID'?'background:#fff8c5;color:var(--org)':c.mfj==='MIN'?'background:#ffebe9;color:var(--red)':'';
+    var mfjC=c.mfj==='MIN'?'background:var(--grn-bg);color:var(--grn)':c.mfj==='MID'?'background:#fff8c5;color:var(--org)':c.mfj==='MAX'?'background:#ffebe9;color:var(--red)':'';
     var phC=E_PH_COLORS[c.ph]||'var(--ink)';
     // Lead time alert
     var leadC='';
