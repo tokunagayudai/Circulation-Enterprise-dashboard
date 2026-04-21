@@ -392,7 +392,7 @@ function fetchEntData(){
     var f=pCSV(res[0]);E_COL=eDetect(f.h);E_ROWS=f.r;
     var j=pCSV(res[1]);E_JUCHU=j.r;
     var p=pCSV(res[2]);E_PN2=p.r;window.E_PN_H=p.h;
-    if(res[3]&&res[3].length>20){var y=pCSV(res[3]);E_YOSAN=y.r;E_YOSAN_H=y.h;console.log('Yosan header:',y.h);console.log('Yosan sample:',y.r&&y.r[0]);}
+    if(res[3]&&res[3].length>20){var y=pCSV(res[3]);E_YOSAN=y.r;E_YOSAN_H=y.h;console.log('Yosan header (JSON):',JSON.stringify(y.h));console.log('Yosan sample row 1 (JSON):',JSON.stringify(y.r&&y.r[0]));console.log('Yosan sample row 2 (JSON):',JSON.stringify(y.r&&y.r[1]));}
     // Detect 継続意向 column in pn header
     window.E_PN_KEIZOKU_COL=-1;
     if(p.h)for(var pi=0;pi<p.h.length;pi++){if(p.h[pi].indexOf('継続意向')>=0){window.E_PN_KEIZOKU_COL=pi;break;}}
@@ -419,7 +419,7 @@ function eParseYosan(){
   }
   // If no "月" column, maybe it's a wide-format with month columns
   var isWide=col.month===undefined;
-  console.log('Yosan col detected:',col,'wide:',isWide,'headers:',h);
+  console.log('Yosan col detected:',JSON.stringify(col),'wide:',isWide,'headers:',JSON.stringify(h));
   // Parse out: { byMember:{ '徳永 雄大':{budget:..., actual:..., monthly:{YYYY/MM:{b:, a:}} } }, team:{...} }
   var byMember={};var team={budget:0,actual:0,monthly:{}};
   if(isWide){
