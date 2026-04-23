@@ -1190,101 +1190,110 @@ function renderEntOverview(){
       h+='<div style="font-size:9px;font-weight:600;color:var(--ink2)">'+k.l+'</div><div style="font-size:8px;color:var(--ink3)">'+p+'% ('+k.v+'/'+k.t+')</div></div>';
     });
     h+='</div></div></div>';
-    // === 売上推移チャート(過去実績+将来予測 2025/08〜2026/12) ===
+    // === 売上推移チャート(統合版: pn_new精緻+MFJフォーキャスト+ドリルダウン) ===
     var _revHist={};var _pnNewM=ePnNewMonthly();
-    if(_pnNewM){
-      for(var _k in _pnNewM){_revHist[_k]={rev:_pnNewM[_k].rev,pk:_pnNewM[_k].pk,pn:_pnNewM[_k].pn};}
-    }else{
-      var _pnSeen2={};var _col2=window.E_PN_COL||{};
-      E_PN2.forEach(function(r){if(_col2.phase>=0){var ph=gv(r,_col2.phase);if(!ph||ph.indexOf('08')<0)return;}var p=pnRow(r);if(!p.oppId||_pnSeen2[p.oppId])return;_pnSeen2[p.oppId]=true;
-        var end=p.end;if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=p.cancel;}
-        if(!p.start||!end||p.bill<=0)return;var sYM=p.start.substring(0,7),eYM2=end.substring(0,7);
-        for(var ym='2025/08';ym<='2026/12';ym=eAddMonth(ym,1)){if(sYM<=ym&&eYM2>=ym){if(!_revHist[ym])_revHist[ym]={rev:0,pk:0};_revHist[ym].rev+=p.bill;_revHist[ym].pk+=(p.bill-p.pay);}}
-      });
+    if(_pnNewM){for(var _k in _pnNewM){_revHist[_k]={rev:_pnNewM[_k].rev,pk:_pnNewM[_k].pk,pn:_pnNewM[_k].pn};}}
+    else{var _pnSeen2={};var _col2=window.E_PN_COL||{};
+      E_PN2.forEach(function(r){if(_col2.phase>=0){var ph=gv(r,_col2.phase);if(!ph||ph.indexOf('08')<0)return;}var p=pnRow(r);if(!p.oppId||_pnSeen2[p.oppId])return;_pnSeen2[p.oppId]=true;var end=p.end;if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=p.cancel;}if(!p.start||!end||p.bill<=0)return;var sYM=p.start.substring(0,7),eYM2=end.substring(0,7);for(var ym='2025/08';ym<='2026/12';ym=eAddMonth(ym,1)){if(sYM<=ym&&eYM2>=ym){if(!_revHist[ym])_revHist[ym]={rev:0,pk:0};_revHist[ym].rev+=p.bill;_revHist[ym].pk+=(p.bill-p.pay);}}});
     }
     var _todayYM2=new Date();_todayYM2=_todayYM2.getFullYear()+'/'+(_todayYM2.getMonth()+1<10?'0':'')+(_todayYM2.getMonth()+1);
     var _allMs=[];for(var _rm='2025/08';_rm<='2026/12';_rm=eAddMonth(_rm,1))_allMs.push(_rm);
+    // MFJセレクト
+    var E_REV_MFJ=window.E_REV_MFJ||'none';
+    // MFJオーバーレイ計算
+    var _mfjOverlay={};
+    if(E_REV_MFJ!=='none'){
+      E_ROWS.forEach(function(r){
+        var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
+        var cp=ePh(cpRaw);if(cp<1||cp>=8)return;
+        var mfj=eGet(r,'mfj');
+        if(!mfj||mfj==='-'){if(cp>=5)mfj='MIN';else if(cp===4)mfj='MID';else if(cp>=2)mfj='MAX';else return;}
+        if(E_REV_MFJ==='MIN'&&mfj!=='MIN')return;
+        if(E_REV_MFJ==='MID'&&mfj!=='MIN'&&mfj!=='MID')return;
+        if(E_REV_MFJ==='MAX'&&mfj!=='MIN'&&mfj!=='MID'&&mfj!=='MAX')return;
+        var ck=eGetN(r,'ck');if(ck<=0)return;
+        var clStr=eGet(r,'closeDate');var startStr=eGet(r,'startDate');
+        var sDt=startStr?new Date(startStr.replace(/\//g,'-')):(clStr?new Date(clStr.replace(/\//g,'-')):new Date(today.getFullYear(),today.getMonth()+1,1));
+        if(isNaN(sDt))sDt=new Date(today.getFullYear(),today.getMonth()+1,1);
+        var mRev=ck/6/0.4;
+        for(var i=0;i<6;i++){var dm2=new Date(sDt.getFullYear(),sDt.getMonth()+i,1);var mk=ymStr(dm2);if(!_mfjOverlay[mk])_mfjOverlay[mk]={add:0,cnt:0};_mfjOverlay[mk].add+=mRev;_mfjOverlay[mk].cnt++;}
+      });
+    }
+    // max計算
     var _revMax=1;var _pnMax=1;
-    _allMs.forEach(function(m){var d=_revHist[m]||{rev:0,pk:0,pn:0};if(d.rev>_revMax)_revMax=d.rev;if((d.pn||0)>_pnMax)_pnMax=d.pn;});
-    // チャートサイズ大きく
-    var _svgW=Math.max(900,_allMs.length*56);var _svgH=320;var _barW=36;var _gap=(_svgW-80)/_allMs.length;
-    var _chartPad=50;
+    _allMs.forEach(function(m){var d=_revHist[m]||{rev:0,pk:0,pn:0};var mfjA=(_mfjOverlay[m]||{add:0}).add;var tot=d.rev+mfjA;if(tot>_revMax)_revMax=tot;if((d.pn||0)>_pnMax)_pnMax=d.pn;});
+    var _svgW=Math.max(900,_allMs.length*56);var _svgH=320;var _barW=36;var _gap=(_svgW-80)/_allMs.length;var _chartPad=50;
     h+='<div style="padding:0 24px 16px"><div style="background:var(--bg2);border-radius:12px;padding:20px;border:1px solid rgba(0,0,0,.04)">';
-    var _revSrc=_pnNewM?'📊 pn_new (精緻)':'⚠ pn (概算)';
     h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">';
-    h+='<div style="font-size:13px;font-weight:700">月別売上推移（2025/08〜2026/12）</div>';
-    h+='<span style="font-size:9px;color:var(--ink3)">'+_revSrc+'</span></div>';
-    // 今月ハイライトカード
-    var _curD=_revHist[_todayYM2]||{rev:0,pk:0,pn:0};
-    var _curAvg=_curD.pn>0?Math.round(_curD.rev/_curD.pn):0;
-    h+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">';
-    h+='<div style="background:#eff6ff;border-radius:8px;padding:10px;border-left:3px solid #0079C0"><div style="font-size:9px;color:var(--ink3)">今月売上</div><div style="font-family:var(--mono);font-size:20px;font-weight:700;color:#0079C0">'+eFmt(_curD.rev)+'</div></div>';
-    h+='<div style="background:#f0fdf4;border-radius:8px;padding:10px;border-left:3px solid #1a7f37"><div style="font-size:9px;color:var(--ink3)">粗利(PK)</div><div style="font-family:var(--mono);font-size:20px;font-weight:700;color:#1a7f37">'+eFmt(_curD.pk)+'</div></div>';
-    h+='<div style="background:#fef3c7;border-radius:8px;padding:10px;border-left:3px solid #bf8700"><div style="font-size:9px;color:var(--ink3)">稼働PN</div><div style="font-family:var(--mono);font-size:20px;font-weight:700;color:#bf8700">'+(_curD.pn||0)+'<span style="font-size:11px;font-weight:400">件</span></div></div>';
-    h+='<div style="background:#f5f3ff;border-radius:8px;padding:10px;border-left:3px solid #7c3aed"><div style="font-size:9px;color:var(--ink3)">平均単価/PN</div><div style="font-family:var(--mono);font-size:20px;font-weight:700;color:#7c3aed">'+eFmt(_curAvg)+'</div></div>';
+    h+='<div style="font-size:13px;font-weight:700">月別売上推移（2025/08〜）</div>';
+    h+='<span style="font-size:9px;color:var(--ink3)">'+(_pnNewM?'📊 pn_new':'⚠ pn')+'</span>';
+    h+='<span style="font-size:9px;color:var(--ink3)">※月クリック→案件一覧</span>';
+    h+='<select class="fl" onchange="window.E_REV_MFJ=this.value;renderEnt()" style="margin-left:auto">';
+    h+='<option value="none"'+(E_REV_MFJ==='none'?' selected':'')+'>確定売上のみ</option>';
+    h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN案件</option>';
+    h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MIN+MID案件</option>';
+    h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+全MFJ案件</option>';
+    h+='</select></div>';
+    // 今月カード
+    var _curD=_revHist[_todayYM2]||{rev:0,pk:0,pn:0};var _curAvg=(_curD.pn||0)>0?Math.round(_curD.rev/(_curD.pn||1)):0;
+    var _curMgn=_curD.rev>0?Math.round(_curD.pk/_curD.rev*100):0;
+    h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">';
+    h+='<div style="background:#eff6ff;border-radius:8px;padding:10px;border-left:3px solid #0079C0"><div style="font-size:9px;color:var(--ink3)">今月売上</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#0079C0">'+eFmt(_curD.rev)+'</div></div>';
+    h+='<div style="background:#f0fdf4;border-radius:8px;padding:10px;border-left:3px solid #1a7f37"><div style="font-size:9px;color:var(--ink3)">粗利(PK)</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#1a7f37">'+eFmt(_curD.pk)+'</div></div>';
+    h+='<div style="background:#fff8e1;border-radius:8px;padding:10px;border-left:3px solid #bf8700"><div style="font-size:9px;color:var(--ink3)">粗利率</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#bf8700">'+_curMgn+'%</div></div>';
+    h+='<div style="background:#fef3c7;border-radius:8px;padding:10px;border-left:3px solid #ea580c"><div style="font-size:9px;color:var(--ink3)">稼働PN</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#ea580c">'+(_curD.pn||0)+'<span style="font-size:10px">件</span></div></div>';
+    h+='<div style="background:#f5f3ff;border-radius:8px;padding:10px;border-left:3px solid #7c3aed"><div style="font-size:9px;color:var(--ink3)">平均単価/PN</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#7c3aed">'+eFmt(_curAvg)+'</div></div>';
     h+='</div>';
-    // SVGチャート
-    var _totalH=_svgH+70;
+    // SVG
+    var _totalH=_svgH+65;
     h+='<div style="overflow-x:auto"><svg width="'+_svgW+'" height="'+_totalH+'" viewBox="0 0 '+_svgW+' '+_totalH+'">';
-    // Y軸グリッド(左: 売上)
     for(var _gi=0;_gi<=5;_gi++){var _gy=_svgH-(_svgH*(_gi/5));h+='<line x1="'+_chartPad+'" y1="'+_gy+'" x2="'+(_svgW-40)+'" y2="'+_gy+'" stroke="rgba(0,0,0,.05)"/><text x="'+(_chartPad-4)+'" y="'+(_gy+3)+'" text-anchor="end" font-size="9" fill="#8b949e" font-family="var(--mono)">'+eFmt(Math.round(_revMax/5*_gi))+'</text>';}
-    // Y軸ラベル(右: PN数)
-    for(var _pi=0;_pi<=4;_pi++){var _py=_svgH-(_svgH*(_pi/4));h+='<text x="'+(_svgW-4)+'" y="'+(_py+3)+'" text-anchor="end" font-size="8" fill="#bf8700" font-family="var(--mono)">'+Math.round(_pnMax/4*_pi)+'</text>';}
-    h+='<text x="'+(_svgW-4)+'" y="-4" text-anchor="end" font-size="8" fill="#bf8700">PN数</text>';
-    // 棒グラフ + 金額ラベル + PN折れ線
+    for(var _pi=0;_pi<=4;_pi++){var _py=_svgH-(_svgH*(_pi/4));h+='<text x="'+(_svgW-4)+'" y="'+(_py+3)+'" text-anchor="end" font-size="8" fill="#ea580c" font-family="var(--mono)">'+Math.round(_pnMax/4*_pi)+'</text>';}
     var _pnPts=[];
     _allMs.forEach(function(m,i){
-      var x=_chartPad+20+i*_gap;var d=_revHist[m]||{rev:0,pk:0,pn:0};var isPast=m<=_todayYM2;var isCur=m===_todayYM2;
+      var x=_chartPad+20+i*_gap;var d=_revHist[m]||{rev:0,pk:0,pn:0};var mfjA=(_mfjOverlay[m]||{add:0,cnt:0});
+      var isPast=m<=_todayYM2;var isCur=m===_todayYM2;
       var bH=_revMax>0?d.rev/_revMax*_svgH:0;var pkH=_revMax>0?d.pk/_revMax*_svgH:0;
-      // 今月ハイライト背景
+      var mfjH=_revMax>0?mfjA.add/_revMax*_svgH:0;
       if(isCur)h+='<rect x="'+(x-_barW/2-4)+'" y="0" width="'+(_barW+8)+'" height="'+_svgH+'" rx="4" fill="rgba(0,121,192,.06)"/>';
+      // クリック領域
+      h+='<rect x="'+(x-_gap/2)+'" y="0" width="'+_gap+'" height="'+_svgH+'" fill="transparent" style="cursor:pointer" onclick="showRevDrill(\''+m+'\')"/>';
+      // MFJオーバーレイ
+      if(mfjH>0)h+='<rect x="'+(x-_barW/2)+'" y="'+(_svgH-bH-mfjH)+'" width="'+(_barW/2-1)+'" height="'+mfjH+'" rx="2" fill="rgba(234,88,12,.25)" stroke="var(--org)" stroke-width="0.5" stroke-dasharray="2 1"/>';
       // 売上棒
       h+='<rect x="'+(x-_barW/2)+'" y="'+(_svgH-bH)+'" width="'+(_barW/2-1)+'" height="'+bH+'" rx="2" fill="'+(isPast?'#0079C0':'rgba(0,121,192,.2)')+'" />';
       // 粗利棒
       h+='<rect x="'+x+'" y="'+(_svgH-pkH)+'" width="'+(_barW/2-1)+'" height="'+pkH+'" rx="2" fill="'+(isPast?'#1a7f37':'rgba(26,127,55,.2)')+'" />';
-      // 金額ラベル(売上)
-      if(d.rev>0){
-        var _lbl=d.rev>=10000000?Math.round(d.rev/10000)+'万':d.rev>=1000?Math.round(d.rev/1000)+'k':d.rev;
-        h+='<text x="'+(x-_barW/4)+'" y="'+Math.max(12,_svgH-bH-4)+'" text-anchor="middle" font-size="'+(isCur?'10':'8')+'" font-weight="'+(isCur?'700':'400')+'" fill="'+(isCur?'#0079C0':'#656d76')+'" font-family="var(--mono)">'+_lbl+'</text>';
-      }
-      // PN折れ線用ポイント
-      var _pnH=_pnMax>0?(d.pn||0)/_pnMax*_svgH:0;
-      _pnPts.push(x+','+(_svgH-_pnH));
-      // PN数ラベル
-      if((d.pn||0)>0){
-        h+='<text x="'+x+'" y="'+Math.max(10,_svgH-_pnH-6)+'" text-anchor="middle" font-size="8" fill="#bf8700" font-weight="600" font-family="var(--mono)">'+(d.pn||0)+'</text>';
-      }
+      // 金額ラベル
+      if(d.rev>0||mfjA.add>0){var _tot=d.rev+mfjA.add;var _lbl=_tot>=10000000?Math.round(_tot/10000)+'万':_tot>=1000?Math.round(_tot/1000)+'k':_tot;
+        h+='<text x="'+(x-_barW/4)+'" y="'+Math.max(12,_svgH-bH-mfjH-4)+'" text-anchor="middle" font-size="'+(isCur?'10':'8')+'" font-weight="'+(isCur?'700':'400')+'" fill="'+(isCur?'#0079C0':'#656d76')+'" font-family="var(--mono)">'+_lbl+'</text>';}
+      // 粗利率
+      var _mgn=d.rev>0?Math.round(d.pk/d.rev*100):0;
+      if(d.rev>0)h+='<text x="'+(x+_barW/4)+'" y="'+Math.max(12,_svgH-pkH-4)+'" text-anchor="middle" font-size="7" fill="#1a7f37" font-weight="600" font-family="var(--mono)">'+_mgn+'%</text>';
+      // PN折れ線
+      var _pnH=_pnMax>0?(d.pn||0)/_pnMax*_svgH:0;_pnPts.push(x+','+(_svgH-_pnH));
+      if((d.pn||0)>0)h+='<text x="'+x+'" y="'+Math.max(10,_svgH-_pnH-6)+'" text-anchor="middle" font-size="8" fill="#ea580c" font-weight="600" font-family="var(--mono)">'+(d.pn||0)+'</text>';
       // 月ラベル
       var mL=m.split('/')[1];var yL=mL==='08'?m.split('/')[0].substring(2)+'/':'';
       h+='<text x="'+x+'" y="'+(_svgH+16)+'" text-anchor="middle" font-size="'+(isCur?'11':'9')+'" fill="'+(isCur?'#0079C0':'#8b949e')+'" font-weight="'+(isCur?'800':'400')+'" font-family="var(--mono)">'+yL+mL+'</text>';
       if(isCur)h+='<text x="'+x+'" y="'+(_svgH+28)+'" text-anchor="middle" font-size="8" fill="#0079C0" font-weight="700">▲今月</text>';
       else if(!isPast)h+='<text x="'+x+'" y="'+(_svgH+28)+'" text-anchor="middle" font-size="7" fill="var(--org)">予測</text>';
-      // 平均単価(棒の下)
+      // 平均単価
       var _avg=(d.pn||0)>0?Math.round(d.rev/(d.pn||1)):0;
-      if(_avg>0){
-        var _avgLbl=_avg>=10000?Math.round(_avg/10000)+'万':_avg>=1000?Math.round(_avg/1000)+'k':_avg;
-        h+='<text x="'+x+'" y="'+(_svgH+42)+'" text-anchor="middle" font-size="7" fill="#7c3aed" font-family="var(--mono)">'+_avgLbl+'</text>';
-      }
+      if(_avg>0){var _aL=_avg>=10000?Math.round(_avg/10000)+'万':_avg>=1000?Math.round(_avg/1000)+'k':_avg;h+='<text x="'+x+'" y="'+(_svgH+42)+'" text-anchor="middle" font-size="7" fill="#7c3aed" font-family="var(--mono)">'+_aL+'</text>';}
     });
-    // PN折れ線
-    if(_pnPts.length>1)h+='<polyline points="'+_pnPts.join(' ')+'" fill="none" stroke="#bf8700" stroke-width="2" stroke-dasharray="6 3" opacity=".7"/>';
-    // PNドット
-    _allMs.forEach(function(m,i){
-      var x=_chartPad+20+i*_gap;var d=_revHist[m]||{rev:0,pk:0,pn:0};
-      if((d.pn||0)>0){var _pH=_pnMax>0?(d.pn||0)/_pnMax*_svgH:0;h+='<circle cx="'+x+'" cy="'+(_svgH-_pH)+'" r="3" fill="#bf8700" opacity=".8"/>';}
-    });
-    // 今月縦線
-    var _todayIdx=_allMs.indexOf(_todayYM2);
-    if(_todayIdx>=0){var _tx=_chartPad+20+_todayIdx*_gap;h+='<line x1="'+_tx+'" y1="0" x2="'+_tx+'" y2="'+_svgH+'" stroke="#0079C0" stroke-width="1.5" stroke-dasharray="4 2" opacity=".3"/>';}
+    if(_pnPts.length>1)h+='<polyline points="'+_pnPts.join(' ')+'" fill="none" stroke="#ea580c" stroke-width="2" stroke-dasharray="6 3" opacity=".7"/>';
+    _allMs.forEach(function(m,i){var x=_chartPad+20+i*_gap;var d=_revHist[m]||{pn:0};if((d.pn||0)>0){var _pH=_pnMax>0?(d.pn||0)/_pnMax*_svgH:0;h+='<circle cx="'+x+'" cy="'+(_svgH-_pH)+'" r="3" fill="#ea580c" opacity=".8"/>';}});
+    var _todayIdx=_allMs.indexOf(_todayYM2);if(_todayIdx>=0){var _tx=_chartPad+20+_todayIdx*_gap;h+='<line x1="'+_tx+'" y1="0" x2="'+_tx+'" y2="'+_svgH+'" stroke="#0079C0" stroke-width="1.5" stroke-dasharray="4 2" opacity=".3"/>';}
     h+='</svg></div>';
-    // 凡例
-    h+='<div style="display:flex;gap:16px;margin-top:8px;font-size:10px;color:var(--ink3);flex-wrap:wrap">';
+    h+='<div style="display:flex;gap:14px;margin-top:8px;font-size:10px;color:var(--ink3);flex-wrap:wrap">';
     h+='<span><span style="display:inline-block;width:10px;height:10px;background:#0079C0;border-radius:2px;vertical-align:middle"></span> 売上</span>';
-    h+='<span><span style="display:inline-block;width:10px;height:10px;background:#1a7f37;border-radius:2px;vertical-align:middle"></span> 粗利(PK)</span>';
-    h+='<span><span style="display:inline-block;width:16px;height:0;border-top:2px dashed #bf8700;vertical-align:middle"></span> PN数</span>';
-    h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(0,121,192,.2);border-radius:2px;vertical-align:middle"></span> 予測</span>';
-    h+='<span style="color:#7c3aed">■ 平均単価/PN</span>';
-    h+='</div></div></div>';
+    h+='<span><span style="display:inline-block;width:10px;height:10px;background:#1a7f37;border-radius:2px;vertical-align:middle"></span> 粗利(PK) <span style="color:#1a7f37">%=粗利率</span></span>';
+    h+='<span><span style="display:inline-block;width:16px;height:0;border-top:2px dashed #ea580c;vertical-align:middle"></span> PN数</span>';
+    if(E_REV_MFJ!=='none')h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(234,88,12,.25);border:1px dashed var(--org);border-radius:2px;vertical-align:middle"></span> '+E_REV_MFJ+'ヨミ</span>';
+    h+='<span style="color:#7c3aed">■ 平均単価/PN</span></div>';
+    h+='<div id="rev-drill-box" style="margin:0"></div>';
+    h+='</div></div>';
   }
   // Row 1: 先行指標 P1商談(IS/FS) → KSF P3提案 → KPI P4面談 → KGI P8受注
   h+='<div class="ent-kpi-row">';
@@ -1544,82 +1553,6 @@ function renderEntOverview(){
     });
     h+='</tbody></table></div></div>';
   }
-  // Revenue chart (2025/08 onwards) with MFJ overlay (select MIN/MID/MAX)
-  var E_REV_MFJ=window.E_REV_MFJ||'none';
-  h+='<div class="ent-section"><div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">';
-  h+='<div class="es-title" style="margin:0">月別売上推移（2025/08〜）</div>';
-  h+='<select class="fl" onchange="window.E_REV_MFJ=this.value;renderEnt()" style="margin-left:auto">';
-  h+='<option value="none"'+(E_REV_MFJ==='none'?' selected':'')+'>確定売上のみ</option>';
-  h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN</option>';
-  h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MID</option>';
-  h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+MAX</option>';
-  h+='<option value="ALL"'+(E_REV_MFJ==='ALL'?' selected':'')+'>+全MFJ付き案件</option>';
-  h+='</select></div>';
-  // Build monthly revenue from acplan_pn dedup, from 2025/08 to 6 months future
-  var months=[];var startM=new Date(2025,7,1);var endM=new Date(today.getFullYear(),today.getMonth()+6,1);
-  for(var dm=new Date(startM);dm<=endM;dm.setMonth(dm.getMonth()+1))months.push(ymStr(dm));
-  var revData={};months.forEach(function(m){revData[m]={rev:0,pk:0,pn:0,ending:0,mfjAdd:0,mfjCount:0};});
-  var seen={};
-  var colPN2=window.E_PN_COL||{};
-  E_PN2.forEach(function(r){
-    if(colPN2.phase>=0){var ph=gv(r,colPN2.phase);if(!ph||ph.indexOf('08')<0)return;}
-    var p=pnRow(r);
-    if(!p.oppId||seen[p.oppId])return;seen[p.oppId]=true;
-    var end=p.end;
-    if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed2=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed2)&&cd<ed2)end=p.cancel;}
-    if(!p.start||!end)return;var sYM=p.start.substring(0,7),eYM2=end.substring(0,7);
-    if(p.bill<=0&&p.pay<=0)return;
-    months.forEach(function(m){if(sYM<=m&&eYM2>=m){revData[m].rev+=p.bill;revData[m].pk+=(p.bill-p.pay);revData[m].pn++;}if(eYM2===m)revData[m].ending++;});
-  });
-  // MFJ overlay: pipeline cases overlay on chart. Use MFJ if available, else use phase-based probability
-  if(E_REV_MFJ!=='none'){
-    E_ROWS.forEach(function(r){
-      var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
-      var cp=ePh(cpRaw);if(cp<1||cp>=8)return;
-      var mfj=eGet(r,'mfj');
-      // If MFJ not available in data, use phase-based classification
-      if(!mfj||mfj==='-'){
-        if(cp>=5)mfj='MIN';else if(cp===4)mfj='MID';else if(cp>=2)mfj='MAX';else return;
-      }
-      // Filter by selected MFJ level (cumulative: MIN includes MIN only, MID includes MIN+MID, MAX includes all)
-      if(E_REV_MFJ==='MIN'&&mfj!=='MIN')return;
-      if(E_REV_MFJ==='MID'&&mfj!=='MIN'&&mfj!=='MID')return;
-      if(E_REV_MFJ==='MAX'&&mfj!=='MIN'&&mfj!=='MID'&&mfj!=='MAX')return;
-      var ck=eGetN(r,'ck');if(ck<=0)return;
-      var clStr=eGet(r,'closeDate');var startStr=eGet(r,'startDate');
-      var sDt=startStr?new Date(startStr.replace(/\//g,'-')):(clStr?new Date(clStr.replace(/\//g,'-')):new Date(today.getFullYear(),today.getMonth()+1,1));
-      if(isNaN(sDt))sDt=new Date(today.getFullYear(),today.getMonth()+1,1);
-      var monthlyPK=ck/6;var monthlyRev=monthlyPK/0.4;
-      for(var i=0;i<6;i++){
-        var dm2=new Date(sDt.getFullYear(),sDt.getMonth()+i,1);
-        var mk=ymStr(dm2);
-        if(revData[mk]){revData[mk].mfjAdd+=monthlyRev;revData[mk].mfjCount++;}
-      }
-    });
-  }
-  var maxRev=1;months.forEach(function(m){var tot=revData[m].rev+revData[m].mfjAdd;if(tot>maxRev)maxRev=tot;});
-  h+='<div style="display:flex;align-items:flex-end;gap:3px;height:160px;padding:0 4px;overflow-x:auto">';
-  months.forEach(function(m){
-    var d=revData[m];var rh=Math.max(2,d.rev/maxRev*130);var mh=d.mfjAdd>0?Math.max(2,d.mfjAdd/maxRev*130):0;
-    var mgn=d.rev>0?Math.round(d.pk/d.rev*100):0;var ml=m.replace('20','').replace('/','-');
-    var isCur=m===ymStr(today);
-    h+='<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;min-width:55px;cursor:pointer" onclick="showRevDrill(\''+m+'\')">';
-    h+='<div style="font-size:7px;font-family:var(--mono);color:var(--ink2)">'+eFmt(d.rev+d.mfjAdd)+'</div>';
-    h+='<div style="font-size:7px;color:var(--org);font-weight:600">'+mgn+'%</div>';
-    h+='<div style="display:flex;flex-direction:column-reverse;width:100%;align-items:stretch">';
-    h+='<div style="height:'+rh+'px;background:var(--blue);border-radius:2px 2px 0 0;min-height:2px"></div>';
-    if(mh>0)h+='<div style="height:'+mh+'px;background:rgba(234,88,12,.28);border-top:1px dashed var(--org)"></div>';
-    h+='</div>';
-    h+='<div style="font-size:7px;color:'+(isCur?'var(--blue);font-weight:700':'var(--ink3)')+'">'+ml+'</div>';
-    h+='<div style="font-size:7px;color:var(--ink3)">'+d.pn+'名</div>';
-    if(d.mfjCount>0)h+='<div style="font-size:6px;color:var(--org)">+'+d.mfjCount+'</div>';
-    h+='</div>';
-  });
-  h+='</div>';
-  h+='<div style="display:flex;gap:12px;margin-top:6px;font-size:9px;color:var(--ink2)"><span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:var(--blue);border-radius:2px"></span>確定売上(既存契約)</span>';
-  if(E_REV_MFJ!=='none')h+='<span style="display:flex;align-items:center;gap:3px"><span style="width:8px;height:8px;background:rgba(234,88,12,.28);border:1px dashed var(--org)"></span>'+E_REV_MFJ+'パイプライン見込</span>';
-  h+='<span style="color:var(--org)">%=粗利率</span></div>';
-  h+='<div id="rev-drill-box" style="margin:0"></div>';
   h+='</div>';
   // === Quip風 商況サマリーテーブル（予算/パイプライン/実績/ヨミ） ===
   var qBudget=E_TARGETS.ck;
@@ -2299,39 +2232,66 @@ function renderEntBreakdown(){
 // Drill-down for revenue chart bar click (show PN cases for that month)
 function showRevDrill(ym){
   var box=document.getElementById('rev-drill-box');if(!box)return;
-  var list=[];var seen={};
-  var colRD=window.E_PN_COL||{};
-  E_PN2.forEach(function(r){
-    if(colRD.phase>=0){var ph=gv(r,colRD.phase);if(!ph||ph.indexOf('08')<0)return;}
-    var p=pnRow(r);
-    if(!p.oppId||seen[p.oppId])return;seen[p.oppId]=true;
-    var end=p.end;
-    if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=p.cancel;}
-    if(!p.start||!end)return;var sYM=p.start.substring(0,7),eYM2=end.substring(0,7);
-    if(sYM<=ym&&eYM2>=ym){
-      if(window.E_MF&&window.E_MF!=='all'&&p.member!==window.E_MF)return;
-      var kz=window.E_PN_KEIZOKU_COL>=0?gv(r,window.E_PN_KEIZOKU_COL):'';
-      list.push({name:p.name,member:p.member,oppId:p.oppId,start:p.start,end:end,bill:p.bill,pay:p.pay,pk:p.bill-p.pay,keizoku:kz});
-    }
-  });
+  var list=[];
+  // pn_newがあればそちらを使用
+  var pnNew=window.E_PN_NEW;var pnCol=window.E_PN_NEW_COL;
+  if(pnNew&&pnCol&&pnCol.ym>=0){
+    var TEAM_N=['徳永','栫','中村','岡部','福本','飯田'];
+    pnNew.forEach(function(r){
+      var member=(pnCol.member>=0?(r[pnCol.member]||''):'').toString().trim();
+      var isTeam=false;TEAM_N.forEach(function(t){if(member.indexOf(t)>=0)isTeam=true;});
+      if(!isTeam)return;
+      var rym=(pnCol.ym>=0?(r[pnCol.ym]||''):'').toString().trim();
+      rym=rym.replace(/-/g,'/');if(rym.length===6)rym=rym.substring(0,4)+'/'+rym.substring(4);
+      if(rym!==ym)return;
+      if(window.E_MF&&window.E_MF!=='all'&&member!==window.E_MF)return;
+      var bill=parseInt(((pnCol.bill>=0?(r[pnCol.bill]||'0'):'0').toString()).replace(/[,\s¥円]/g,''))||0;
+      var pay=parseInt(((pnCol.pay>=0?(r[pnCol.pay]||'0'):'0').toString()).replace(/[,\s¥円]/g,''))||0;
+      var pk=parseInt(((pnCol.pk>=0?(r[pnCol.pk]||'0'):'0').toString()).replace(/[,\s¥円]/g,''))||0;
+      if(pk===0&&bill>0)pk=bill-pay;
+      var expert=(pnCol.expert>=0?(r[pnCol.expert]||''):'').toString().trim();
+      var name=(pnCol.name>=0?(r[pnCol.name]||''):'').toString();
+      var oppId=(pnCol.oppId>=0?(r[pnCol.oppId]||''):'').toString().trim();
+      list.push({name:name,member:member,oppId:oppId,bill:bill,pay:pay,pk:pk,expert:expert});
+    });
+  }else{
+    var seen={};var colRD=window.E_PN_COL||{};
+    E_PN2.forEach(function(r){
+      if(colRD.phase>=0){var ph=gv(r,colRD.phase);if(!ph||ph.indexOf('08')<0)return;}
+      var p=pnRow(r);if(!p.oppId||seen[p.oppId])return;seen[p.oppId]=true;
+      var end=p.end;if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=p.cancel;}
+      if(!p.start||!end)return;var sYM=p.start.substring(0,7),eYM2=end.substring(0,7);
+      if(sYM<=ym&&eYM2>=ym){if(window.E_MF&&window.E_MF!=='all'&&p.member!==window.E_MF)return;list.push({name:p.name,member:p.member,oppId:p.oppId,bill:p.bill,pay:p.pay,pk:p.bill-p.pay,expert:''});}
+    });
+  }
   var totalBill=list.reduce(function(s,c){return s+c.bill;},0);
   var totalPK=list.reduce(function(s,c){return s+c.pk;},0);
-  var h='<div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--bd)"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-size:12px;font-weight:700">'+ym+' 稼働案件 ('+list.length+'件) / 売上 '+eFmt(totalBill)+' / PK '+eFmt(totalPK)+'</div><button onclick="document.getElementById(\'rev-drill-box\').innerHTML=\'\'" style="font-size:10px;padding:4px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--bg2);cursor:pointer">閉じる ✕</button></div>';
-  h+='<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg);z-index:1"><tr><th>担当</th><th>案件名</th><th>契約開始</th><th>契約終了</th><th>月額請求</th><th>月額支払</th><th>月額PK</th><th>粗利率</th><th>継続意向</th></tr></thead><tbody>';
+  var totalPay=list.reduce(function(s,c){return s+c.pay;},0);
+  var avgMgn=totalBill>0?Math.round(totalPK/totalBill*100):0;
+  var h='<div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--blue)">';
+  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">';
+  h+='<div style="font-size:13px;font-weight:700;color:var(--blue)">'+ym+' 稼働案件</div>';
+  h+='<div style="display:flex;gap:12px;font-size:10px;color:var(--ink2)">';
+  h+='<span>案件数: <strong>'+list.length+'</strong></span>';
+  h+='<span>売上: <strong style="color:var(--blue)">'+eFmt(totalBill)+'</strong></span>';
+  h+='<span>支払: <strong>'+eFmt(totalPay)+'</strong></span>';
+  h+='<span>PK: <strong style="color:var(--grn)">'+eFmt(totalPK)+'</strong></span>';
+  h+='<span>粗利率: <strong style="color:var(--org)">'+avgMgn+'%</strong></span>';
+  h+='</div>';
+  h+='<button onclick="document.getElementById(\'rev-drill-box\').innerHTML=\'\'" style="font-size:10px;padding:4px 12px;border:1px solid var(--bd);border-radius:6px;background:var(--bg2);cursor:pointer">✕ 閉じる</button></div>';
+  h+='<div style="overflow-x:auto;max-height:500px;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg2);z-index:1"><tr><td style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:10px;font-weight:600;border:none">担当</td><td style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:10px;font-weight:600;border:none">案件名</td><td style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:10px;font-weight:600;border:none">稼働プロ</td><td style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:10px;font-weight:600;border:none">月請求</td><td style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:10px;font-weight:600;border:none">月支払</td><td style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:10px;font-weight:600;border:none">月粗利</td><td style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:10px;font-weight:600;border:none">粗利率</td></tr></thead><tbody>';
   list.sort(function(a,b){return b.bill-a.bill;});
   list.forEach(function(c){
     var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'#';
-    var kzC=c.keizoku==='継続'?'color:var(--grn)':c.keizoku==='満了'?'color:var(--red)':c.keizoku==='確認中'?'color:var(--org)':'';
     var mgn=c.bill>0?Math.round(c.pk/c.bill*100):0;
-    h+='<tr><td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
-    h+='<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
-    h+='<td style="font-size:9px;color:var(--ink3)">'+c.start+'</td>';
-    h+='<td style="font-size:9px;color:var(--ink3)">'+c.end+'</td>';
-    h+='<td style="font-family:var(--mono)">'+eFmt(c.bill)+'</td>';
-    h+='<td style="font-family:var(--mono);color:var(--ink2)">'+eFmt(c.pay)+'</td>';
-    h+='<td style="font-family:var(--mono);color:var(--grn)">'+eFmt(c.pk)+'</td>';
-    h+='<td style="font-family:var(--mono);color:var(--org)">'+mgn+'%</td>';
-    h+='<td style="font-size:9px;'+kzC+'">'+(c.keizoku||'-')+'</td></tr>';
+    var mgnC=mgn>=50?'var(--grn)':mgn>=30?'var(--org)':'var(--red)';
+    h+='<tr><td style="font-weight:600;white-space:nowrap;font-size:10px">'+c.member+'</td>';
+    h+='<td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue);font-size:10px" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
+    h+='<td style="font-size:10px;color:var(--ink2)">'+c.expert+'</td>';
+    h+='<td style="font-family:var(--mono);font-weight:600">'+eFmt(c.bill)+'</td>';
+    h+='<td style="font-family:var(--mono);color:var(--ink3)">'+eFmt(c.pay)+'</td>';
+    h+='<td style="font-family:var(--mono);color:var(--grn);font-weight:600">'+eFmt(c.pk)+'</td>';
+    h+='<td style="font-family:var(--mono);color:'+mgnC+';font-weight:600">'+mgn+'%</td></tr>';
   });
   h+='</tbody></table></div></div>';
   box.innerHTML=h;box.scrollIntoView({behavior:'smooth',block:'nearest'});
