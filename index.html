@@ -186,7 +186,7 @@
 .ent-section{margin:8px 24px;background:var(--bg2);border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,.04)}
 .ent-section .es-title{font-size:12px;font-weight:700;margin-bottom:10px}
 .ent-table{width:100%;border-collapse:collapse;font-size:11px}
-.ent-table th{text-align:left;padding:6px 8px;color:var(--ink3);font-size:9px;font-weight:600;border-bottom:1px solid var(--bd);background:var(--bg)}
+.ent-table th{text-align:left;padding:6px 8px;color:var(--ink3);font-size:9px;font-weight:600;border-bottom:1px solid var(--bd)}
 .ent-table td{padding:6px 8px;border-bottom:1px solid rgba(0,0,0,.03)}.ent-table tr:hover{background:rgba(0,121,192,.03)}
 .ent-heat{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;font-family:var(--mono);min-width:36px;text-align:center}
 .ent-heat.g{background:var(--grn-bg);color:var(--grn)}.ent-heat.y{background:#fff8c5;color:var(--org)}.ent-heat.r{background:#ffebe9;color:var(--red)}.ent-heat.x{background:var(--bg);color:var(--ink3)}
@@ -364,7 +364,7 @@ var E_ROWS=[],E_JUCHU=[],E_PN2=[],E_YOSAN=[],E_YOSAN_H=[],E_LOADED=false,E_TAB='
 var E_PHASE={'01':1,'02':2,'03':3,'04':4,'05':5,'06':6,'07':7,'08':8};
 var E_PH_LABELS={1:'P1 商談',2:'P2 案件化',3:'P3 提案',4:'P4 面談',5:'P5-6 合意',7:'P7 契約前',8:'P8 受注'};
 var E_PH_COLORS={1:'var(--blue)',2:'#6366f1',3:'var(--org)',4:'#ea580c',5:'#0d9488',7:'#7c3aed',8:'var(--grn)'};
-var E_TARGETS={p8:12,p4:24,p1:65,ck:20000000};
+var E_TARGETS={p8:18,p4:48,p1:75,p3:64,is:45,fs:30,ck:20000000};
 var E_MGR='徳永 雄大';
 // Phase parser
 function ePh(s){if(!s)return 0;if(s.indexOf('08')>=0)return 8;if(s.indexOf('07')>=0)return 7;if(s.indexOf('06')>=0)return 5;if(s.indexOf('05')>=0)return 5;if(s.indexOf('04')>=0)return 4;if(s.indexOf('03')>=0)return 3;if(s.indexOf('02')>=0)return 2;if(s.indexOf('01')>=0)return 1;if(s.indexOf('DEAD')>=0)return -1;return 0;}
@@ -828,9 +828,9 @@ function showMorningBriefing(){
   h+='<div class="mbr-sect-hdr" style="background:#1a1f2e;color:#fff;margin-bottom:8px;font-size:13px">③ 今月KPI達成状況</div>';
   h+='<div class="mbr-kpi-row" style="margin-bottom:8px">';
   h+=kpiMini('P1商談',kpiData.p1,E_TARGETS.p1,'var(--ink)');
-  h+=kpiMini('P3提案',kpiData.p3,0,'var(--org)');
+  h+=kpiMini('P3提案',kpiData.p3,E_TARGETS.p3,'var(--org)');
   h+=kpiMini('P4面談',kpiData.p4,E_TARGETS.p4,'var(--org)');
-  h+=kpiMini('P8受注',kpiData.p8,E_TARGETS.p8,'var(--grn)');
+  h+=kpiMini('P8計上',kpiData.p8,E_TARGETS.p8,'var(--grn)');
   h+=kpiMini('受注CK',Math.round(kpiData.ck/1000),Math.round(E_TARGETS.ck/1000),'var(--grn)');
   h+='</div>';
 
@@ -1017,11 +1017,11 @@ function renderEntOverview(){
   // Row 1: 先行指標 P1商談(IS/FS) → KSF P3提案 → KPI P4面談 → KGI P8受注
   h+='<div class="ent-kpi-row">';
   h+=kpiCard('先行指標: P1商談合計',kpi.p1,E_TARGETS.p1,'var(--ink)','アポ日='+monthLabel,'p1','p1');
-  h+=kpiCard('└ IS経由 商談',kpi.is,0,'var(--blue)','アポ取得月','is','is');
-  h+=kpiCard('└ FS経由 商談',kpi.fs,0,'#6366f1','アポ取得月','fs','fs');
-  h+=kpiCard('KSF 提案実施 (P3)',kpi.p3,0,'var(--org)','提案日='+monthLabel,'p3','p3');
+  h+=kpiCard('└ IS経由 商談',kpi.is,E_TARGETS.is,'var(--blue)','アポ取得月','is','is');
+  h+=kpiCard('└ FS経由 商談',kpi.fs,E_TARGETS.fs,'#6366f1','アポ取得月','fs','fs');
+  h+=kpiCard('KSF 提案実施 (P3)',kpi.p3,E_TARGETS.p3,'var(--org)','提案日='+monthLabel,'p3','p3');
   h+=kpiCard('KPI 面談実施 (P4)',kpi.p4,E_TARGETS.p4,'var(--org)','面談日='+monthLabel,'p4','p4');
-  h+=kpiCard('KGI 新規受注 (P8)',kpi.p8,E_TARGETS.p8,'var(--grn)','受注予定日='+monthLabel,'p8','p8');
+  h+=kpiCard('KGI 新規計上 (P8)',kpi.p8,E_TARGETS.p8,'var(--grn)','受注予定日='+monthLabel,'p8','p8');
   h+='</div>';
   // 担当者別 IS/FS × P1/P3/P4/P8 ミニグラフ
   if(E_MF==='all'){
@@ -1130,8 +1130,8 @@ function renderEntOverview(){
   var h1Stat=teamStat(new Date(2025,7,1),new Date(2026,0,31,23,59,59));
   var h2Stat=teamStat(new Date(2026,1,1),new Date(2026,6,31,23,59,59));
   var fyStat=teamStat(new Date(2025,7,1),new Date(2026,6,31,23,59,59));
-  // アソシエイト目標（チーム全体、半期）— 下期は目標 P1=390件 (65×6)、P4=144件 (24×6)、P8=72件 (12×6)
-  var assocTargets={p1:E_TARGETS.p1*6,p4:E_TARGETS.p4*6,p8:E_TARGETS.p8*6};
+  // アソシエイト目標（チーム全体、半期）
+  var assocTargets={p1:E_TARGETS.p1*6,p3:E_TARGETS.p3*6,p4:E_TARGETS.p4*6,p8:E_TARGETS.p8*6};
   function cell(v,tgt){
     if(!tgt)return '<td style="font-family:var(--mono);font-weight:600">'+v+'</td>';
     var pct=Math.round(v/tgt*100);
@@ -1201,12 +1201,12 @@ function renderEntOverview(){
   }
   h+='<div class="ent-section"><div class="es-title" style="color:var(--blue)">👥 チーム全体サマリー（アソシエイト含む・継続案件を除くP1/P3/P4）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">目標は半期累計</span></div>';
   h+='<div style="overflow-x:auto"><table class="ent-table" style="font-size:11px">';
-  h+='<thead><tr><th>期間</th><th>P1商談<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>KSF P3提案</th><th>KPI P4面談<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>KGI P8受注<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>└新規P8</th><th>└既顧客P8</th><th>└継続P8</th><th>総CK</th></tr></thead><tbody>';
+  h+='<thead><tr><th>期間</th><th>P1商談<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>KSF P3提案<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>KPI P4面談<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>KGI P8受注<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>└新規P8</th><th>└既顧客P8</th><th>└継続P8</th><th>総CK</th></tr></thead><tbody>';
   function statRow(label,s,showTgt){
     var tgt=showTgt?assocTargets:{};
     return '<tr><td style="font-weight:700">'+label+'</td>'+
       cell(s.p1,tgt.p1||0)+
-      '<td style="font-family:var(--mono);font-weight:600">'+s.p3+'</td>'+
+      cell(s.p3,tgt.p3||0)+
       cell(s.p4,tgt.p4||0)+
       cell(s.p8,tgt.p8||0)+
       '<td style="font-family:var(--mono);color:var(--blue)">'+s.newP8+'<br><span style="font-size:9px;color:var(--ink3)">'+eFmt(s.newCK)+'</span></td>'+
