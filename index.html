@@ -1148,9 +1148,8 @@ function renderEntOverview(){
   h+=kpiCard('今月満了予定 ▼',endingThisMonth,0,'var(--red)',monthLabel+'終了 '+kzText,'','ending');
   h+=kpiCard('今月DEAD ▼',kpi.deadM,0,'var(--red)','失注件数','deadM','deadM');
   h+='</div>';
-  h+='<div class="ent-kpi-row" style="grid-template-columns:repeat(3,1fr)">';
+  h+='<div class="ent-kpi-row" style="grid-template-columns:repeat(2,1fr)">';
   h+=kpiCard('粗利率',_pnMgn+'%',0,'#bf8700','売上に対する粗利比率','','');
-  h+=kpiCard('稼働PN',pnNow.pn+'件',0,'#ea580c','現在稼働中プロ数','','');
   h+=kpiCard('平均単価/PN',eFmt(_pnAvg),0,'#7c3aed','月額請求÷PN数','','');
   h+='</div>';
   h+='<div id="ent-drill-box" style="margin:0 24px"></div>';
