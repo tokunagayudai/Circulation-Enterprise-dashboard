@@ -808,15 +808,14 @@ function showMorningBriefing(){
   if(yData&&yData.team.budget>0){
     var yt3=yData.team;
     var _hL='style="background:#1a1f2e;color:#fff;padding:8px 10px;font-size:10px;font-weight:700;text-align:left;border:none"';
-    var _hR='style="background:#1a3a5c;color:#fff;padding:8px 10px;font-size:10px;font-weight:700;text-align:left;border:none"';
-    var _sep='style="width:3px;background:#0079C0;padding:0;border:none"';
+    var _hR='style="background:#0079C0;color:#fff;padding:8px 10px;font-size:10px;font-weight:700;text-align:left;border:none"';
     h+='<div style="overflow-x:auto;margin-bottom:12px"><table class="ent-table" style="font-size:11px;width:100%"><thead>';
-    h+='<tr><td '+_hL+'>名前</td><td '+_hL+'>予算</td><td '+_hL+'>CK実績</td><td '+_hL+'>率</td><td '+_sep+'></td><td '+_hR+'>MIN</td><td '+_hR+'>率</td><td '+_hR+'>MID</td><td '+_hR+'>率</td><td '+_hR+'>MAX</td><td '+_hR+'>率</td></tr></thead><tbody>';
+    h+='<tr><td '+_hL+'>名前</td><td '+_hL+'>予算</td><td '+_hL+'>CK実績</td><td '+_hL+'>率</td><td '+_hR+'>MIN</td><td '+_hR+'>率</td><td '+_hR+'>MID</td><td '+_hR+'>率</td><td '+_hR+'>MAX</td><td '+_hR+'>率</td></tr></thead><tbody>';
     var teamMfjData=mfjBreak(null,yt3.jisseki);
     var jPctTeam=yt3.budget>0?Math.round(yt3.jisseki/yt3.budget*100):0;
     var jColTeam=jPctTeam>=100?'var(--grn)':jPctTeam>=50?'var(--org)':'var(--red)';
-    var _bdr='border-left:3px solid #0079C0';
-    h+='<tr style="background:#eff6ff;font-weight:700"><td>合計</td><td style="font-family:var(--mono)">'+eFmt(yt3.budget)+'</td><td style="font-family:var(--mono);color:'+jColTeam+'">'+eFmt(yt3.jisseki)+'</td><td>'+pctCell(yt3.jisseki,yt3.budget)+'</td><td style="'+_bdr+';padding:0;background:#0079C0;width:3px"></td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.min)+'</td><td>'+pctCell(teamMfjData.min,yt3.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.mid)+'</td><td>'+pctCell(teamMfjData.mid,yt3.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.max)+'</td><td>'+pctCell(teamMfjData.max,yt3.budget)+'</td></tr>';
+    var _fcBg='background:#f0f7ff';
+    h+='<tr style="background:#eff6ff;font-weight:700"><td>合計</td><td style="font-family:var(--mono)">'+eFmt(yt3.budget)+'</td><td style="font-family:var(--mono);color:'+jColTeam+'">'+eFmt(yt3.jisseki)+'</td><td>'+pctCell(yt3.jisseki,yt3.budget)+'</td><td style="font-family:var(--mono);'+_fcBg+'">'+eFmt(teamMfjData.min)+'</td><td style="'+_fcBg+'">'+pctCell(teamMfjData.min,yt3.budget)+'</td><td style="font-family:var(--mono);'+_fcBg+'">'+eFmt(teamMfjData.mid)+'</td><td style="'+_fcBg+'">'+pctCell(teamMfjData.mid,yt3.budget)+'</td><td style="font-family:var(--mono);'+_fcBg+'">'+eFmt(teamMfjData.max)+'</td><td style="'+_fcBg+'">'+pctCell(teamMfjData.max,yt3.budget)+'</td></tr>';
     var memOrder=E_MEMBER_ORDER.slice();
     Object.keys(yData.byMember).forEach(function(m){if(memOrder.indexOf(m)<0)memOrder.push(m);});
     memOrder.forEach(function(m){
@@ -824,7 +823,7 @@ function showMorningBriefing(){
       var mfj=mfjBreak(m,d.jisseki);
       var mp=d.budget>0?Math.round(d.jisseki/d.budget*100):0;
       var mc=mp>=100?'var(--grn)':mp>=50?'var(--org)':'var(--red)';
-      h+='<tr'+(m===E_MGR?' style="opacity:.5"':'')+'><td style="font-weight:600">'+m+'</td><td style="font-family:var(--mono)">'+eFmt(d.budget)+'</td><td style="font-family:var(--mono);color:'+mc+';font-weight:600">'+eFmt(d.jisseki)+'</td><td>'+pctCell(d.jisseki,d.budget)+'</td><td style="background:#0079C0;padding:0;width:3px"></td><td style="font-family:var(--mono)">'+eFmt(mfj.min)+'</td><td>'+pctCell(mfj.min,d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(mfj.mid)+'</td><td>'+pctCell(mfj.mid,d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(mfj.max)+'</td><td>'+pctCell(mfj.max,d.budget)+'</td></tr>';
+      h+='<tr'+(m===E_MGR?' style="opacity:.5"':'')+'><td style="font-weight:600">'+m+'</td><td style="font-family:var(--mono)">'+eFmt(d.budget)+'</td><td style="font-family:var(--mono);color:'+mc+';font-weight:600">'+eFmt(d.jisseki)+'</td><td>'+pctCell(d.jisseki,d.budget)+'</td><td style="font-family:var(--mono);'+_fcBg+'">'+eFmt(mfj.min)+'</td><td style="'+_fcBg+'">'+pctCell(mfj.min,d.budget)+'</td><td style="font-family:var(--mono);'+_fcBg+'">'+eFmt(mfj.mid)+'</td><td style="'+_fcBg+'">'+pctCell(mfj.mid,d.budget)+'</td><td style="font-family:var(--mono);'+_fcBg+'">'+eFmt(mfj.max)+'</td><td style="'+_fcBg+'">'+pctCell(mfj.max,d.budget)+'</td></tr>';
     });
     h+='</tbody></table></div>';
   }
