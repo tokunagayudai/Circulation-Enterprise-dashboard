@@ -1218,21 +1218,27 @@ function renderEntOverview(){
       // 手入力予測: 今月に一括加算
       if(_manFcst.total>0){var _curYM=_todayYM2;if(!_mfjOverlay[_curYM])_mfjOverlay[_curYM]={add:0,cnt:0};_mfjOverlay[_curYM].add+=_manFcst.total;_mfjOverlay[_curYM].cnt+=_manFcst.items.length;}
     }
+    var _mfjCnt={MIN:0,MID:0,MAX:0};var _mfjCaseCnt=0;
+    E_ROWS.forEach(function(r){
+      var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
+      var cp=ePh(cpRaw);if(cp<1||cp>=8)return;
+      var mfj=eGet(r,'mfj');
+      if(!mfj||mfj==='-'){if(cp>=5)mfj='MIN';else if(cp===4)mfj='MID';else if(cp>=2)mfj='MAX';else return;}
+      if(mfj==='MIN')_mfjCnt.MIN++;else if(mfj==='MID')_mfjCnt.MID++;else if(mfj==='MAX')_mfjCnt.MAX++;
+    });
     if(E_REV_MFJ!=='none'&&E_REV_MFJ!=='manual'){
-      E_ROWS.forEach(function(r){
-        var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
-        var cp=ePh(cpRaw);if(cp<1||cp>=8)return;
-        var mfj=eGet(r,'mfj');
-        if(!mfj||mfj==='-'){if(cp>=5)mfj='MIN';else if(cp===4)mfj='MID';else if(cp>=2)mfj='MAX';else return;}
-        if(E_REV_MFJ==='MIN'&&mfj!=='MIN')return;
-        if(E_REV_MFJ==='MID'&&mfj!=='MIN'&&mfj!=='MID')return;
-        if(E_REV_MFJ==='MAX'&&mfj!=='MIN'&&mfj!=='MID'&&mfj!=='MAX')return;
-        var ck=eGetN(r,'ck');if(ck<=0)return;
-        var clStr=eGet(r,'closeDate');var startStr=eGet(r,'startDate');
-        var sDt=startStr?new Date(startStr.replace(/\//g,'-')):(clStr?new Date(clStr.replace(/\//g,'-')):new Date(today.getFullYear(),today.getMonth()+1,1));
-        if(isNaN(sDt))sDt=new Date(today.getFullYear(),today.getMonth()+1,1);
-        var mRev=ck/6/0.4;
-        for(var i=0;i<6;i++){var dm2=new Date(sDt.getFullYear(),sDt.getMonth()+i,1);var mk=ymStr(dm2);if(!_mfjOverlay[mk])_mfjOverlay[mk]={add:0,cnt:0};_mfjOverlay[mk].add+=mRev;_mfjOverlay[mk].cnt++;}
+      if(E_REV_MFJ==='MIN')_mfjCaseCnt=_mfjCnt.MIN;
+      else if(E_REV_MFJ==='MID')_mfjCaseCnt=_mfjCnt.MIN+_mfjCnt.MID;
+      else if(E_REV_MFJ==='MAX')_mfjCaseCnt=_mfjCnt.MIN+_mfjCnt.MID+_mfjCnt.MAX;
+      var _latestAvg=0;
+      _allMs.forEach(function(m){
+        var d=_revHist[m]||{rev:0,pk:0,pn:0};
+        var avg=(d.pn||0)>0?Math.round(d.rev/(d.pn||1)):0;
+        if(avg>0)_latestAvg=avg;
+        if(m>=_todayYM2){
+          var mAvg=avg>0?avg:_latestAvg;
+          if(mAvg>0&&_mfjCaseCnt>0){if(!_mfjOverlay[m])_mfjOverlay[m]={add:0,cnt:0};_mfjOverlay[m].add=mAvg*_mfjCaseCnt;_mfjOverlay[m].cnt=_mfjCaseCnt;}
+        }
       });
     }
     // max計算
@@ -1248,9 +1254,9 @@ function renderEntOverview(){
     var _manFcst=eGetManualFcst();
     h+='<option value="none"'+(E_REV_MFJ==='none'?' selected':'')+'>確定売上のみ</option>';
     h+='<option value="manual"'+(E_REV_MFJ==='manual'?' selected':'')+'>+手入力予測 ('+eFmt(_manFcst.total)+')</option>';
-    h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN案件</option>';
-    h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MIN+MID案件</option>';
-    h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+全MFJ案件</option>';
+    h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN案件 ('+_mfjCnt.MIN+'件×平均単価)</option>';
+    h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MIN+MID ('+(_mfjCnt.MIN+_mfjCnt.MID)+'件×平均単価)</option>';
+    h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+全MFJ ('+(_mfjCnt.MIN+_mfjCnt.MID+_mfjCnt.MAX)+'件×平均単価)</option>';
     h+='</select></div>';
     // 今月カード
     var _curD=_revHist[_todayYM2]||{rev:0,pk:0,pn:0};var _curAvg=(_curD.pn||0)>0?Math.round(_curD.rev/(_curD.pn||1)):0;
@@ -1308,7 +1314,8 @@ function renderEntOverview(){
     h+='<span><span style="display:inline-block;width:10px;height:10px;background:#0079C0;border-radius:2px;vertical-align:middle"></span> 売上</span>';
     h+='<span><span style="display:inline-block;width:10px;height:10px;background:#1a7f37;border-radius:2px;vertical-align:middle"></span> 粗利(PK) <span style="color:#1a7f37">%=粗利率</span></span>';
     h+='<span><span style="display:inline-block;width:16px;height:0;border-top:2px dashed #ea580c;vertical-align:middle"></span> PN数</span>';
-    if(E_REV_MFJ!=='none')h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(234,88,12,.25);border:1px dashed var(--org);border-radius:2px;vertical-align:middle"></span> '+E_REV_MFJ+'ヨミ</span>';
+    if(E_REV_MFJ!=='none'&&E_REV_MFJ!=='manual')h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(234,88,12,.25);border:1px dashed var(--org);border-radius:2px;vertical-align:middle"></span> '+E_REV_MFJ+' '+_mfjCaseCnt+'件×月平均単価</span>';
+    if(E_REV_MFJ==='manual')h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(234,88,12,.25);border:1px dashed var(--org);border-radius:2px;vertical-align:middle"></span> 手入力予測</span>';
     h+='<span style="color:#7c3aed">■ 平均単価/PN</span></div>';
     h+='<div id="rev-drill-box" style="margin:0"></div>';
     h+='</div></div>';
