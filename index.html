@@ -1143,7 +1143,6 @@ function renderEntOverview(){
   h+='<div class="ent-kpi-row">';
   h+=kpiCard('月次売上 ▼',eFmt(pnNow.rev),0,'var(--blue)','稼働中PN請求額(千円)','','pn');
   h+=kpiCard('月次粗利(PK) ▼',eFmt(pnNow.pk),0,'var(--grn)','稼働中PN粗利(千円)','','pn');
-  h+=kpiCard('受注CK ▼',eFmt(kpi.ck),Math.round(E_TARGETS.ck/1000),'var(--grn)','単位:千円','ck','p8');
   h+=kpiCard('稼働中案件数 (PN)',pnNow.pn,0,'var(--blue)','現在稼働中','','pn');
   h+=kpiCard('今月満了予定 ▼',endingThisMonth,0,'var(--red)',monthLabel+'終了 '+kzText,'','ending');
   h+=kpiCard('今月DEAD ▼',kpi.deadM,0,'var(--red)','失注件数','deadM','deadM');
