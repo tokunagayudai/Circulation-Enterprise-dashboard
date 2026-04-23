@@ -1140,15 +1140,11 @@ function renderEntOverview(){
   var _pnAvg=pnNow.pn>0?Math.round(pnNow.rev/pnNow.pn):0;
   var kzStat={};endingList.forEach(function(e){var k=e.keizoku||'未設定';if(!kzStat[k])kzStat[k]=0;kzStat[k]++;});
   var kzText=Object.keys(kzStat).map(function(k){var col=k==='継続'?'var(--grn)':k==='満了'?'var(--red)':'var(--org)';return '<span style="color:'+col+'">'+k+':'+kzStat[k]+'</span>';}).join(' ');
-  h+='<div class="ent-kpi-row">';
+  h+='<div class="ent-kpi-row" style="grid-template-columns:repeat(5,1fr)">';
   h+=kpiCard('月次売上 ▼',eFmt(pnNow.rev),0,'var(--blue)','稼働中PN請求額(千円)','','pn');
   h+=kpiCard('月次粗利(PK) ▼',eFmt(pnNow.pk),0,'var(--grn)','稼働中PN粗利(千円)','','pn');
-  h+=kpiCard('稼働中案件数 (PN)',pnNow.pn,0,'var(--blue)','現在稼働中','','pn');
-  h+=kpiCard('今月満了予定 ▼',endingThisMonth,0,'var(--red)',monthLabel+'終了 '+kzText,'','ending');
-  h+=kpiCard('今月DEAD ▼',kpi.deadM,0,'var(--red)','失注件数','deadM','deadM');
-  h+='</div>';
-  h+='<div class="ent-kpi-row" style="grid-template-columns:repeat(2,1fr)">';
   h+=kpiCard('粗利率',_pnMgn+'%',0,'#bf8700','売上に対する粗利比率','','');
+  h+=kpiCard('稼働中案件数 (PN)',pnNow.pn,0,'var(--blue)','現在稼働中','','pn');
   h+=kpiCard('平均単価/PN',eFmt(_pnAvg),0,'#7c3aed','月額請求÷PN数','','');
   h+='</div>';
   h+='<div id="ent-drill-box" style="margin:0 24px"></div>';
@@ -1270,14 +1266,14 @@ function renderEntOverview(){
     h+='<div id="rev-drill-box" style="margin:0"></div>';
     h+='</div></div>';
     // --- 上段: ドーナツ + ヨミゲージ ---
-    h+='<div style="display:grid;grid-template-columns:280px 1fr;gap:16px;padding:8px 24px">';
+    h+='<div style="display:grid;grid-template-columns:220px 1fr 180px;gap:12px;padding:8px 24px">';
     // (A) CK達成率ドーナツ（大）
     var _dA=Math.min(100,_achPct)*2.51327;var _dR=251.327-_dA;
     var _ckAchieved=_achPct>=100;
     h+='<div id="ck-donut-wrap" style="position:relative;background:'+(_ckAchieved?'linear-gradient(135deg,#f0fdf4,#dcfce7)':'var(--bg2)')+';border-radius:12px;padding:20px;border:'+(_ckAchieved?'2px solid #1a7f37':'1px solid rgba(0,0,0,.04)')+';text-align:center;overflow:hidden">';
     if(_ckAchieved)h+='<div style="font-size:10px;color:#1a7f37;font-weight:700;margin-bottom:2px">🎉 予算達成！</div>';
     h+='<div style="font-size:12px;font-weight:700;margin-bottom:6px">CK予算達成率</div>';
-    h+='<svg width="180" height="180" viewBox="0 0 100 100" style="display:block;margin:0 auto">';
+    h+='<svg width="150" height="150" viewBox="0 0 100 100" style="display:block;margin:0 auto">';
     h+='<circle cx="50" cy="50" r="40" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="8"/>';
     h+='<circle cx="50" cy="50" r="40" fill="none" stroke="'+_achC+'" stroke-width="8" stroke-dasharray="'+_dA+' '+_dR+'" stroke-linecap="round" transform="rotate(-90 50 50)"'+(_ckAchieved?' class="ck-ring-anim"':'')+'/>';
     h+='<text x="50" y="36" text-anchor="middle" font-size="14" font-weight="800" fill="'+_achC+'" font-family="var(--mono)">'+_achPct+'%</text>';
@@ -1309,6 +1305,19 @@ function renderEntOverview(){
     h+='<div></div><div style="position:relative;height:16px">';
     h+='<div style="position:absolute;left:'+_bLinePos+'%;transform:translateX(-50%);font-size:9px;font-weight:700;color:#1f2328;white-space:nowrap">▼ 予算 '+eFmt(_yB)+'</div>';
     h+='</div><div></div></div>';
+    h+='</div>';
+    // (C) 満了予定 + DEAD ミニカード
+    h+='<div style="display:flex;flex-direction:column;gap:10px">';
+    var _endC=endingThisMonth>0?'var(--red)':'var(--ink3)';
+    h+='<div style="background:var(--bg2);border-radius:10px;padding:14px;border:1px solid rgba(0,0,0,.04);cursor:pointer;flex:1" onclick="showEntDrill(\'ending\')">';
+    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500;margin-bottom:4px">今月満了予定 ▼</div>';
+    h+='<div style="font-family:var(--mono);font-size:24px;font-weight:700;color:'+_endC+';line-height:1.1">'+endingThisMonth+'</div>';
+    h+='<div style="font-size:9px;color:var(--ink3);margin-top:4px">'+monthLabel+'終了 '+kzText+'</div></div>';
+    var _deadC=kpi.deadM>0?'var(--red)':'var(--ink3)';
+    h+='<div style="background:var(--bg2);border-radius:10px;padding:14px;border:1px solid rgba(0,0,0,.04);cursor:pointer;flex:1" onclick="showEntDrill(\'deadM\')">';
+    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500;margin-bottom:4px">今月DEAD ▼</div>';
+    h+='<div style="font-family:var(--mono);font-size:24px;font-weight:700;color:'+_deadC+';line-height:1.1">'+kpi.deadM+'</div>';
+    h+='<div style="font-size:9px;color:var(--ink3);margin-top:4px">失注件数'+memBrkdwn('deadM')+'</div></div>';
     h+='</div></div>';
     // --- フォーキャストテーブル ---
     var _g1='style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:11px;font-weight:700;text-align:center;border:1px solid #444"';
