@@ -1256,7 +1256,7 @@ function renderEntOverview(){
     h+='<option value="manual"'+(E_REV_MFJ==='manual'?' selected':'')+'>+手入力予測 ('+eFmt(_manFcst.total)+')</option>';
     h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN案件 ('+_mfjCnt.MIN+'件×平均単価)</option>';
     h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MIN+MID ('+(_mfjCnt.MIN+_mfjCnt.MID)+'件×平均単価)</option>';
-    h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+全MFJ ('+(_mfjCnt.MIN+_mfjCnt.MID+_mfjCnt.MAX)+'件×平均単価)</option>';
+    h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+MIN+MID+MAX ('+(_mfjCnt.MIN+_mfjCnt.MID+_mfjCnt.MAX)+'件×平均単価)</option>';
     h+='</select></div>';
     // 今月カード
     var _curD=_revHist[_todayYM2]||{rev:0,pk:0,pn:0};var _curAvg=(_curD.pn||0)>0?Math.round(_curD.rev/(_curD.pn||1)):0;
