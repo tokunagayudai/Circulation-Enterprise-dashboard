@@ -366,6 +366,7 @@ var E_PH_LABELS={1:'P1 商談',2:'P2 案件化',3:'P3 提案',4:'P4 面談',5:'P
 var E_PH_COLORS={1:'var(--blue)',2:'#6366f1',3:'var(--org)',4:'#ea580c',5:'#0d9488',7:'#7c3aed',8:'var(--grn)'};
 var E_TARGETS={p8:18,p4:48,p1:75,p3:64,is:45,fs:30,ck:20000000};
 var E_MGR='徳永 雄大';
+var E_MEMBER_ORDER=['栫 英輝','中村 春香','岡部 瑛美','福本 悠太','飯田 知美','徳永 雄大'];
 // Phase parser
 function ePh(s){if(!s)return 0;if(s.indexOf('08')>=0)return 8;if(s.indexOf('07')>=0)return 7;if(s.indexOf('06')>=0)return 5;if(s.indexOf('05')>=0)return 5;if(s.indexOf('04')>=0)return 4;if(s.indexOf('03')>=0)return 3;if(s.indexOf('02')>=0)return 2;if(s.indexOf('01')>=0)return 1;if(s.indexOf('DEAD')>=0)return -1;return 0;}
 // Column finder for enterprise CSV
@@ -806,19 +807,24 @@ function showMorningBriefing(){
   // メンバー別テーブル
   if(yData&&yData.team.budget>0){
     var yt3=yData.team;
+    var _hL='style="background:#1a1f2e;color:#fff;padding:8px 10px;font-size:10px;font-weight:700;text-align:left;border:none"';
+    var _hR='style="background:#1a3a5c;color:#fff;padding:8px 10px;font-size:10px;font-weight:700;text-align:left;border:none"';
+    var _sep='style="width:3px;background:#0079C0;padding:0;border:none"';
     h+='<div style="overflow-x:auto;margin-bottom:12px"><table class="ent-table" style="font-size:11px;width:100%"><thead>';
-    var _dkS='style="background:#1a1f2e;color:#fff;padding:8px;font-size:10px;font-weight:700;text-align:left;border:none"';
-    h+='<tr><td '+_dkS+'>名前</td><td '+_dkS+'>予算</td><td '+_dkS+'>CK実績</td><td '+_dkS+'>率</td><td '+_dkS+'>MIN</td><td '+_dkS+'>率</td><td '+_dkS+'>MID</td><td '+_dkS+'>率</td><td '+_dkS+'>MAX</td><td '+_dkS+'>率</td></tr></thead><tbody>';
+    h+='<tr><td '+_hL+'>名前</td><td '+_hL+'>予算</td><td '+_hL+'>CK実績</td><td '+_hL+'>率</td><td '+_sep+'></td><td '+_hR+'>MIN</td><td '+_hR+'>率</td><td '+_hR+'>MID</td><td '+_hR+'>率</td><td '+_hR+'>MAX</td><td '+_hR+'>率</td></tr></thead><tbody>';
     var teamMfjData=mfjBreak(null,yt3.jisseki);
     var jPctTeam=yt3.budget>0?Math.round(yt3.jisseki/yt3.budget*100):0;
     var jColTeam=jPctTeam>=100?'var(--grn)':jPctTeam>=50?'var(--org)':'var(--red)';
-    h+='<tr style="background:#eff6ff;font-weight:700"><td>合計</td><td style="font-family:var(--mono)">'+eFmt(yt3.budget)+'</td><td style="font-family:var(--mono);color:'+jColTeam+'">'+eFmt(yt3.jisseki)+'</td><td>'+pctCell(yt3.jisseki,yt3.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.min)+'</td><td>'+pctCell(teamMfjData.min,yt3.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.mid)+'</td><td>'+pctCell(teamMfjData.mid,yt3.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.max)+'</td><td>'+pctCell(teamMfjData.max,yt3.budget)+'</td></tr>';
-    var memNames=Object.keys(yData.byMember).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
-    memNames.forEach(function(m){
-      var d=yData.byMember[m];var mfj=mfjBreak(m,d.jisseki);
+    var _bdr='border-left:3px solid #0079C0';
+    h+='<tr style="background:#eff6ff;font-weight:700"><td>合計</td><td style="font-family:var(--mono)">'+eFmt(yt3.budget)+'</td><td style="font-family:var(--mono);color:'+jColTeam+'">'+eFmt(yt3.jisseki)+'</td><td>'+pctCell(yt3.jisseki,yt3.budget)+'</td><td style="'+_bdr+';padding:0;background:#0079C0;width:3px"></td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.min)+'</td><td>'+pctCell(teamMfjData.min,yt3.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.mid)+'</td><td>'+pctCell(teamMfjData.mid,yt3.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(teamMfjData.max)+'</td><td>'+pctCell(teamMfjData.max,yt3.budget)+'</td></tr>';
+    var memOrder=E_MEMBER_ORDER.slice();
+    Object.keys(yData.byMember).forEach(function(m){if(memOrder.indexOf(m)<0)memOrder.push(m);});
+    memOrder.forEach(function(m){
+      var d=yData.byMember[m];if(!d)d={budget:0,jisseki:0,pipeline:0,tasseiYosoku:0,saizenYosoku:0};
+      var mfj=mfjBreak(m,d.jisseki);
       var mp=d.budget>0?Math.round(d.jisseki/d.budget*100):0;
       var mc=mp>=100?'var(--grn)':mp>=50?'var(--org)':'var(--red)';
-      h+='<tr'+(m===E_MGR?' style="opacity:.5"':'')+'><td style="font-weight:600">'+m+'</td><td style="font-family:var(--mono)">'+eFmt(d.budget)+'</td><td style="font-family:var(--mono);color:'+mc+';font-weight:600">'+eFmt(d.jisseki)+'</td><td>'+pctCell(d.jisseki,d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(mfj.min)+'</td><td>'+pctCell(mfj.min,d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(mfj.mid)+'</td><td>'+pctCell(mfj.mid,d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(mfj.max)+'</td><td>'+pctCell(mfj.max,d.budget)+'</td></tr>';
+      h+='<tr'+(m===E_MGR?' style="opacity:.5"':'')+'><td style="font-weight:600">'+m+'</td><td style="font-family:var(--mono)">'+eFmt(d.budget)+'</td><td style="font-family:var(--mono);color:'+mc+';font-weight:600">'+eFmt(d.jisseki)+'</td><td>'+pctCell(d.jisseki,d.budget)+'</td><td style="background:#0079C0;padding:0;width:3px"></td><td style="font-family:var(--mono)">'+eFmt(mfj.min)+'</td><td>'+pctCell(mfj.min,d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(mfj.mid)+'</td><td>'+pctCell(mfj.mid,d.budget)+'</td><td style="font-family:var(--mono)">'+eFmt(mfj.max)+'</td><td>'+pctCell(mfj.max,d.budget)+'</td></tr>';
     });
     h+='</tbody></table></div>';
   }
@@ -1186,10 +1192,11 @@ function renderEntOverview(){
     h+='</div>';
     h+='<div style="font-size:10px;color:var(--ink3)">残り予算 '+eFmt(Math.max(0,yt.budget-yt.jisseki))+(yt.jisseki>=yt.budget?' 🎉達成':'')+'</div>';
     // 担当者別テーブル
-    var yMemNames=Object.keys(yosanData.byMember).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
+    var yMemOrder=E_MEMBER_ORDER.slice();
+    Object.keys(yosanData.byMember).forEach(function(m){if(yMemOrder.indexOf(m)<0)yMemOrder.push(m);});
     h+='<div style="margin-top:14px;overflow-x:auto"><table class="ent-table" style="font-size:11px">';
-    var _dk2='style="background:#1a1f2e;color:#fff;padding:8px;font-size:10px;font-weight:700;text-align:left;border:none"';
-    h+='<thead><tr><td '+_dk2+'>担当</td><td '+_dk2+'>予算</td><td '+_dk2+' colspan="2">パイプラインCK</td><td '+_dk2+' colspan="2">受注済CK</td><td '+_dk2+' colspan="2">達成予測CK</td><td '+_dk2+' colspan="2">最善予測CK</td></tr></thead><tbody>';
+    var _yL='style="background:#1a1f2e;color:#fff;padding:8px 10px;font-size:10px;font-weight:700;text-align:left;border:none"';
+    h+='<thead><tr><td '+_yL+'>担当</td><td '+_yL+'>予算</td><td '+_yL+' colspan="2">パイプラインCK</td><td '+_yL+' colspan="2">受注済CK</td><td '+_yL+' colspan="2">達成予測CK</td><td '+_yL+' colspan="2">最善予測CK</td></tr></thead><tbody>';
     // Total row
     function yRow(label,d,isMgr){
       var b=d.budget;
@@ -1197,7 +1204,7 @@ function renderEntOverview(){
       return '<tr'+(isMgr?' class="ent-mgr"':'')+'><td style="font-weight:700">'+label+'</td><td style="font-family:var(--mono)">'+eFmt(b)+'</td><td style="font-family:var(--mono)">'+eFmt(d.pipeline)+'</td><td>'+pv(d.pipeline)+'</td><td style="font-family:var(--mono);font-weight:700;color:'+(b>0&&d.jisseki>=b?'var(--grn)':'var(--ink)')+'">'+eFmt(d.jisseki)+'</td><td>'+pv(d.jisseki)+'</td><td style="font-family:var(--mono)">'+eFmt(d.tasseiYosoku)+'</td><td>'+pv(d.tasseiYosoku)+'</td><td style="font-family:var(--mono)">'+eFmt(d.saizenYosoku)+'</td><td>'+pv(d.saizenYosoku)+'</td></tr>';
     }
     h+=yRow('合計',yt,false);
-    yMemNames.forEach(function(m){h+=yRow(m,yosanData.byMember[m],m===E_MGR);});
+    yMemOrder.forEach(function(m){var d=yosanData.byMember[m];if(!d)d={budget:0,jisseki:0,pipeline:0,tasseiYosoku:0,saizenYosoku:0};h+=yRow(m,d,m===E_MGR);});
     h+='</tbody></table></div>';
     h+='</div>';
   }
@@ -1396,8 +1403,11 @@ function renderEntOverview(){
     return '<tr'+s+'><td style="font-weight:700">'+label+'</td><td style="font-family:var(--mono)">'+eFmt(bg)+'</td><td style="font-family:var(--mono)">'+eFmt(d.pipeline)+'</td><td>'+pctStr(d.pipeline)+'</td><td style="font-family:var(--mono);color:var(--grn);font-weight:600">'+eFmt(d.p8ck)+'</td><td>'+pctStr(d.p8ck)+'</td><td style="font-family:var(--mono)">'+eFmt(minTotal)+'</td><td>'+pctStr(minTotal)+'</td><td style="font-family:var(--mono)">'+eFmt(midTotal)+'</td><td>'+pctStr(midTotal)+'</td><td style="font-family:var(--mono)">'+eFmt(maxTotal)+'</td><td>'+pctStr(maxTotal)+'</td></tr>';
   }
   h+=qRow('合計',qTotal,false);
-  Object.keys(qMembers).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');}).forEach(function(m){
-    h+=qRow(m,qMembers[m],m===E_MGR);
+  var qMemOrder=E_MEMBER_ORDER.slice();
+  Object.keys(qMembers).forEach(function(m){if(qMemOrder.indexOf(m)<0)qMemOrder.push(m);});
+  qMemOrder.forEach(function(m){
+    var qd=qMembers[m];if(!qd)qd={budget:0,pipeline:0,p8ck:0,min:0,mid:0,max:0};
+    h+=qRow(m,qd,m===E_MGR);
   });
   h+='</tbody></table></div></div>';
   // Stalled sections grouped by phase (P2/P3/P4/P5)
@@ -2736,7 +2746,7 @@ function processGAS(casesT,contactsT,pnT){
   var cs=pCSV(casesT),ct=pCSV(contactsT),pn=pCSV(pnT);
   // Cases columns: 0:主担当者 1:取引先名 2:案件名 3:顧客担当者氏名 4:CK 5:フェーズ 10:新規/継続 12:作成日 13:案件ID
   // Contacts columns: 0:取引先名 1:所属部署 2:名 3:姓 4:役職 7:取引先所有者 9:作成日 10:取引先ID 15:最終活動日 16:ターゲット 17:専門家ID 18:取引先責任者ID
-  var TEAM=['徳永','栫','中村','岡部','福本'];
+  var TEAM=['徳永','栫','中村','岡部','福本','飯田'];
   // PN columns: 0:主担当者 1:取引先名 2:案件名 3:フェーズ 5:CK 10:月額顧客請求額 11:月額専門家支払額 12:契約開始日 13:契約終了日 22:解約日
 
   function isTeam(n){if(!n)return false;for(var i=0;i<TEAM.length;i++)if(n.indexOf(TEAM[i])>=0)return true;return false;}
