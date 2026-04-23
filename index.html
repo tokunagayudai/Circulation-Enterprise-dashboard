@@ -1058,9 +1058,10 @@ function renderEntOverview(){
     h+='<svg width="140" height="140" viewBox="0 0 100 100" style="display:block;margin:0 auto">';
     h+='<circle cx="50" cy="50" r="40" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="10"/>';
     h+='<circle cx="50" cy="50" r="40" fill="none" stroke="'+_achC+'" stroke-width="10" stroke-dasharray="'+_dA+' '+_dR+'" stroke-linecap="round" transform="rotate(-90 50 50)"/>';
-    h+='<text x="50" y="44" text-anchor="middle" font-size="20" font-weight="800" fill="'+_achC+'" font-family="var(--mono)">'+_achPct+'%</text>';
-    h+='<text x="50" y="56" text-anchor="middle" font-size="7" fill="#656d76">'+eFmt(_yt.jisseki)+' / '+eFmt(_yB)+'</text>';
-    h+='<text x="50" y="65" text-anchor="middle" font-size="6" fill="#8b949e">残 '+eFmt(Math.max(0,_yB-_yt.jisseki))+'</text>';
+    h+='<text x="50" y="38" text-anchor="middle" font-size="12" font-weight="700" fill="'+_achC+'" font-family="var(--mono)">'+_achPct+'%</text>';
+    h+='<text x="50" y="54" text-anchor="middle" font-size="11" font-weight="800" fill="'+_achC+'" font-family="var(--mono)">'+eFmt(_yt.jisseki)+'</text>';
+    h+='<text x="50" y="65" text-anchor="middle" font-size="6" fill="#656d76">予算 '+eFmt(_yB)+'</text>';
+    h+='<text x="50" y="74" text-anchor="middle" font-size="6" fill="#8b949e">残 '+eFmt(Math.max(0,_yB-_yt.jisseki))+'</text>';
     h+='</svg></div>';
     // (B) ヨミゲージ
     function _mfjPct(v){return _yB>0?(v/_yB*100).toFixed(1)+'%':'-';}
@@ -1071,14 +1072,17 @@ function renderEntOverview(){
       var w=Math.max(2,m.v/_mfjMax*100);var p=_yB>0?(m.v/_yB*100).toFixed(1)+'%':'-';
       h+='<div style="display:grid;grid-template-columns:40px 1fr 100px;align-items:center;gap:8px;margin-bottom:8px">';
       h+='<div style="font-size:11px;font-weight:700;color:'+m.c+'">'+m.l+'</div>';
-      h+='<div style="position:relative;height:24px;background:rgba(0,0,0,.05);border-radius:4px;overflow:hidden">';
-      h+='<div style="height:100%;width:'+w+'%;background:'+m.c+';border-radius:4px;opacity:.85"></div>';
       var _budgetLine=_yB/_mfjMax*100;
-      h+='<div style="position:absolute;top:0;left:'+_budgetLine+'%;width:2px;height:100%;background:#1f2328;opacity:.3" title="予算"></div>';
+      h+='<div style="position:relative;height:24px;background:rgba(0,0,0,.05);border-radius:4px;overflow:visible">';
+      h+='<div style="height:100%;width:'+Math.min(100,w)+'%;background:'+m.c+';border-radius:4px;opacity:.85;overflow:hidden"></div>';
+      h+='<div style="position:absolute;top:0;left:'+_budgetLine+'%;width:2px;height:100%;background:#1f2328;opacity:.4"></div>';
       h+='</div>';
       h+='<div style="font-family:var(--mono);font-size:13px;font-weight:700;color:'+m.c+';text-align:right">'+eFmt(m.v)+' <span style="font-size:9px;color:var(--ink3);font-weight:400">'+p+'</span></div></div>';
     });
-    h+='<div style="font-size:9px;color:var(--ink3);margin-top:4px">┃= 予算ライン ('+eFmt(_yB)+')</div>';
+    var _bLinePos=_yB/(Math.max(_tmfj.max,_yB)*1.1||1)*100;
+    h+='<div style="position:relative;height:16px;margin-top:-4px">';
+    h+='<div style="position:absolute;left:calc(40px + '+_bLinePos+'% * 0.72);transform:translateX(-50%);font-size:9px;font-weight:700;color:#1f2328;white-space:nowrap">▼ 予算 '+eFmt(_yB)+'</div>';
+    h+='</div>';
     h+='</div></div>';
     // --- フォーキャストテーブル ---
     var _g1='style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:11px;font-weight:700;text-align:center;border:1px solid #444"';
