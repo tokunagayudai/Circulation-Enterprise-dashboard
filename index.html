@@ -403,7 +403,8 @@ function fetchEntData(){
     fetch(GAS_URL+'?sheet=juchu').then(function(r){return r.text();}).catch(function(){return '';}),
     fetch(GAS_URL+'?sheet=pn').then(function(r){return r.text();}),
     fetch(GAS_URL+'?sheet=yosan').then(function(r){return r.text();}).catch(function(){return '';}),
-    fetch(GAS_URL+'?sheet=funnel').then(function(r){return r.text();}).catch(function(){return '';})
+    fetch(GAS_URL+'?sheet=funnel').then(function(r){return r.text();}).catch(function(){return '';}),
+    fetch(GAS_URL+'?sheet=pn_new').then(function(r){return r.text();}).catch(function(){return '';})
   ]).then(function(res){
     // res[0]=all_cases, res[1]=juchu, res[2]=pn, res[3]=yosan, res[4]=funnel(fallback)
     // all_casesがあればそれを優先、なければfunnelにフォールバック
@@ -442,8 +443,33 @@ function fetchEntData(){
     // Detect 継続意向 column in pn header (後方互換)
     window.E_PN_KEIZOKU_COL=window.E_PN_COL.keizoku;
     if(res[3]&&res[3].length>20){var y=pCSV(res[3]);E_YOSAN=y.r;E_YOSAN_H=y.h;}
+    // pn_new: 月×案件の精緻な売上データ
+    if(res[5]&&res[5].length>50){
+      var pn=pCSV(res[5]);window.E_PN_NEW=pn.r;window.E_PN_NEW_H=pn.h;
+      // 列自動検出
+      var nc={member:-1,sub:-1,account:-1,name:-1,type:-1,ym:-1,bill:-1,pay:-1,pk:-1,start:-1,end:-1,expert:-1,bill2:-1,pay2:-1,status:-1,oppId:-1};
+      if(pn.h)for(var ni=0;ni<pn.h.length;ni++){
+        var nv=(pn.h[ni]||'').toString().trim();
+        if(nv.indexOf('主担当者')>=0)nc.member=ni;
+        else if(nv.indexOf('副担当者')>=0)nc.sub=ni;
+        else if(nv==='取引先名')nc.account=ni;
+        else if(nv==='案件名')nc.name=ni;
+        else if(nv==='新規/継続')nc.type=ni;
+        else if(nv==='対象年月')nc.ym=ni;
+        else if(nv.indexOf('①顧客請求')>=0)nc.bill=ni;
+        else if(nv.indexOf('①専門家支払')>=0)nc.pay=ni;
+        else if(nv==='PK')nc.pk=ni;
+        else if(nv==='契約開始日')nc.start=ni;
+        else if(nv==='契約終了日')nc.end=ni;
+        else if(nv.indexOf('専門家氏名')>=0)nc.expert=ni;
+        else if(nv==='契約ステータス')nc.status=ni;
+        else if(nv.match(/案件.?ID/))nc.oppId=ni;
+      }
+      window.E_PN_NEW_COL=nc;
+      console.log('pn_new loaded: '+pn.r.length+' rows, ym='+nc.ym+' bill='+nc.bill);
+    }
     E_LOADED=true;
-    console.log('Enterprise data loaded: '+dataSrc+'='+E_ROWS.length+' juchu='+E_JUCHU.length+' pn='+E_PN2.length+' yosan='+E_YOSAN.length);
+    console.log('Enterprise data loaded: '+dataSrc+'='+E_ROWS.length+' juchu='+E_JUCHU.length+' pn='+E_PN2.length+' yosan='+E_YOSAN.length+(window.E_PN_NEW?' pn_new='+window.E_PN_NEW.length:''));
   }).catch(function(err){console.warn('Enterprise fetch error:',err);});
 }
 
@@ -551,37 +577,62 @@ function pnRow(r){
   return{member:gf('member'),name:gf('name'),oppId:gf('oppId').trim(),phase:gf('phase'),
     bill:bill,pay:pay,start:gf('startDate').trim(),end:gf('endDate').trim(),cancel:gf('cancel').trim()};
 }
+// pn_new月別集計: 精緻な売上データから月別rev/pk/pnを生成
+function ePnNewMonthly(){
+  var data=window.E_PN_NEW;var col=window.E_PN_NEW_COL;
+  if(!data||!col||col.ym<0)return null;
+  var TEAM_NAMES=['徳永','栫','中村','岡部','福本','飯田'];
+  var byMonth={};var seen={};
+  data.forEach(function(r){
+    var member=(col.member>=0?(r[col.member]||''):'').toString().trim();
+    var isTeam=false;TEAM_NAMES.forEach(function(t){if(member.indexOf(t)>=0)isTeam=true;});
+    if(!isTeam)return;
+    var ym=(col.ym>=0?(r[col.ym]||''):'').toString().trim();
+    if(!ym||ym.length<6)return;
+    // 対象年月を YYYY/MM形式に正規化
+    ym=ym.replace(/-/g,'/');if(ym.length===7)ym=ym;else if(ym.length===6)ym=ym.substring(0,4)+'/'+ym.substring(4);
+    var bill=parseInt(((col.bill>=0?(r[col.bill]||'0'):'0').toString()).replace(/[,\s¥円]/g,''))||0;
+    var payV=parseInt(((col.pay>=0?(r[col.pay]||'0'):'0').toString()).replace(/[,\s¥円]/g,''))||0;
+    var pk=parseInt(((col.pk>=0?(r[col.pk]||'0'):'0').toString()).replace(/[,\s¥円]/g,''))||0;
+    if(pk===0&&bill>0)pk=bill-payV;
+    var oppId=(col.oppId>=0?(r[col.oppId]||''):'').toString().trim();
+    if(!byMonth[ym])byMonth[ym]={rev:0,pk:0,pn:0,cases:[]};
+    byMonth[ym].rev+=bill;
+    byMonth[ym].pk+=pk;
+    // PN数: 同月同案件は1回だけカウント
+    var pnKey=ym+'_'+oppId;
+    if(oppId&&!seen[pnKey]){seen[pnKey]=true;byMonth[ym].pn++;}
+    else if(!oppId)byMonth[ym].pn++;
+    byMonth[ym].cases.push({member:member,account:(col.account>=0?(r[col.account]||''):'').toString(),name:(col.name>=0?(r[col.name]||''):'').toString(),bill:bill,pk:pk});
+  });
+  return byMonth;
+}
 // PN stats (active projects) - monthly forecast
 function eBuildPN(){
+  // pn_newがあれば精緻データを優先
+  var pnNew=ePnNewMonthly();
+  if(pnNew){
+    var today=new Date();var ym=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
+    var d=pnNew[ym]||{rev:0,pk:0,pn:0};
+    console.log('eBuildPN: pn_new使用 '+ym+' rev='+Math.round(d.rev/1000)+'k pk='+Math.round(d.pk/1000)+'k pn='+d.pn);
+    return{pn:d.pn,rev:d.rev,pk:d.pk,source:'pn_new'};
+  }
+  // フォールバック: 従来のpnシートから計算
   var rev=0,pay=0,pn=0,seen={};
-  var d1=0,d2=0,d3=0,d4=0;
-  var col=window.E_PN_COL||{};
-  var today=new Date();
+  var col=window.E_PN_COL||{};var today=new Date();
   E_PN2.forEach(function(r){
-    d1++;
-    // フェーズ列があれば08フィルタ、なければ全件（pnシートは既に08のみフィルタ済みの前提）
     if(col.phase>=0){var ph=(r[col.phase]||'').toString();if(!ph||ph.indexOf('08')<0)return;}
-    d2++;
-    // 案件IDで重複排除
     var aid=col.oppId>=0?(r[col.oppId]||'').toString().trim():'';
     if(aid){if(seen[aid])return;seen[aid]=true;}
-    d3++;
     var start=col.startDate>=0?(r[col.startDate]||'').toString().trim():'';
     var end=col.endDate>=0?(r[col.endDate]||'').toString().trim():'';
     var cancel=col.cancel>=0?(r[col.cancel]||'').toString().trim():'';
     if(cancel&&cancel.length>=7){var cd=new Date(cancel.replace(/\//g,'-'));var ed2=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed2)&&cd<ed2)end=cancel;}
     if(!start||!end)return;
-    d4++;
     var sd=new Date(start.replace(/\//g,'-')),ed=new Date(end.replace(/\//g,'-'));
-    if(today>=sd&&today<=ed){
-      pn++;
-      var billV=col.bill>=0?parseInt(((r[col.bill]||'0').toString()).replace(/[,¥\s円]/g,''))||0:0;
-      var payV=col.pay>=0?parseInt(((r[col.pay]||'0').toString()).replace(/[,¥\s円]/g,''))||0:0;
-      rev+=billV;pay+=payV;
-    }
+    if(today>=sd&&today<=ed){pn++;var billV=col.bill>=0?parseInt(((r[col.bill]||'0').toString()).replace(/[,¥\s円]/g,''))||0:0;var payV=col.pay>=0?parseInt(((r[col.pay]||'0').toString()).replace(/[,¥\s円]/g,''))||0:0;rev+=billV;pay+=payV;}
   });
-  console.log('eBuildPN debug: total='+d1+' phase08='+d2+' afterDedupe='+d3+' withDates='+d4+' activeToday='+pn+' rev='+Math.round(rev/1000)+'k pk='+Math.round((rev-pay)/1000)+'k');
-  return{pn:pn,rev:rev,pk:rev-pay};
+  return{pn:pn,rev:rev,pk:rev-pay,source:'pn'};
 }
 // Revenue forecast per month (next 6 months)
 function eAddMonth(ym,n){var p=ym.split('/');var d=new Date(parseInt(p[0]),parseInt(p[1])-1+n,1);return d.getFullYear()+'/'+(d.getMonth()+1<10?'0':'')+(d.getMonth()+1);}
@@ -1140,18 +1191,26 @@ function renderEntOverview(){
     });
     h+='</div></div></div>';
     // === 売上推移チャート(過去実績+将来予測 2025/08〜2026/12) ===
-    var _pnSeen2={};var _col2=window.E_PN_COL||{};var _revHist={};
-    E_PN2.forEach(function(r){if(_col2.phase>=0){var ph=gv(r,_col2.phase);if(!ph||ph.indexOf('08')<0)return;}var p=pnRow(r);if(!p.oppId||_pnSeen2[p.oppId])return;_pnSeen2[p.oppId]=true;
-      var end=p.end;if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=p.cancel;}
-      if(!p.start||!end||p.bill<=0)return;var sYM=p.start.substring(0,7),eYM2=end.substring(0,7);
-      for(var ym='2025/08';ym<='2026/12';ym=eAddMonth(ym,1)){if(sYM<=ym&&eYM2>=ym){if(!_revHist[ym])_revHist[ym]={rev:0,pk:0};_revHist[ym].rev+=p.bill;_revHist[ym].pk+=(p.bill-p.pay);}}
-    });
+    var _revHist={};var _pnNewM=ePnNewMonthly();
+    if(_pnNewM){
+      // pn_newの精緻データを使用
+      for(var _k in _pnNewM){_revHist[_k]={rev:_pnNewM[_k].rev,pk:_pnNewM[_k].pk,pn:_pnNewM[_k].pn};}
+    }else{
+      // フォールバック: 従来のpnシートから月割り
+      var _pnSeen2={};var _col2=window.E_PN_COL||{};
+      E_PN2.forEach(function(r){if(_col2.phase>=0){var ph=gv(r,_col2.phase);if(!ph||ph.indexOf('08')<0)return;}var p=pnRow(r);if(!p.oppId||_pnSeen2[p.oppId])return;_pnSeen2[p.oppId]=true;
+        var end=p.end;if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)end=p.cancel;}
+        if(!p.start||!end||p.bill<=0)return;var sYM=p.start.substring(0,7),eYM2=end.substring(0,7);
+        for(var ym='2025/08';ym<='2026/12';ym=eAddMonth(ym,1)){if(sYM<=ym&&eYM2>=ym){if(!_revHist[ym])_revHist[ym]={rev:0,pk:0};_revHist[ym].rev+=p.bill;_revHist[ym].pk+=(p.bill-p.pay);}}
+      });
+    }
     var _todayYM2=new Date();_todayYM2=_todayYM2.getFullYear()+'/'+(_todayYM2.getMonth()+1<10?'0':'')+(_todayYM2.getMonth()+1);
     var _allMs=[];for(var _rm='2025/08';_rm<='2026/12';_rm=eAddMonth(_rm,1))_allMs.push(_rm);
     var _revMax=1;_allMs.forEach(function(m){var d=_revHist[m];if(d&&d.rev>_revMax)_revMax=d.rev;});
     var _svgW=Math.max(600,_allMs.length*46);var _svgH=180;var _barW=28;var _gap=(_svgW-60)/_allMs.length;
     h+='<div style="padding:0 24px 12px"><div style="background:var(--bg2);border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,.04)">';
-    h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700">月別売上推移 + 予測（2025/08〜2026/12）</div>';
+    var _revSrc=_pnNewM?'📊 pn_new (精緻)':'⚠ pn (概算)';
+    h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px"><div style="font-size:11px;font-weight:700">月別売上推移（2025/08〜2026/12）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:6px">'+_revSrc+'</span></div>';
     h+='<div style="font-size:9px;color:var(--ink3)">今月売上: <strong style="color:var(--blue)">'+eFmt(_pnNow.rev)+'</strong> / 粗利(PK): <strong style="color:var(--grn)">'+eFmt(_pnNow.pk)+'</strong> / 稼働PN: <strong>'+_pnNow.pn+'件</strong></div></div>';
     h+='<div style="overflow-x:auto"><svg width="'+_svgW+'" height="'+(_svgH+30)+'" viewBox="0 0 '+_svgW+' '+(_svgH+30)+'">';
     for(var _gi=0;_gi<=4;_gi++){var _gy=_svgH-(_svgH*(_gi/4));h+='<line x1="40" y1="'+_gy+'" x2="'+_svgW+'" y2="'+_gy+'" stroke="rgba(0,0,0,.06)"/><text x="36" y="'+(_gy+3)+'" text-anchor="end" font-size="8" fill="#8b949e" font-family="var(--mono)">'+eFmt(Math.round(_revMax/4*_gi))+'</text>';}
