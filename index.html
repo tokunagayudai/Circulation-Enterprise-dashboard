@@ -1105,6 +1105,55 @@ function renderEntOverview(){
     var click=drillKey?' style="cursor:pointer" onclick="showEntDrill(\''+drillKey+'\')"':'';
     return '<div class="ent-kpi"'+click+'><div class="ek-label">'+label+(drillKey?' <span style="font-size:9px;color:var(--ink3)">▼</span>':'')+'</div><div class="ek-val" style="color:'+color+'">'+val+'</div><div class="ek-sub">'+sub+(target>0?' / 目標'+target:'')+'</div>'+(target>0?'<div class="ek-rate" style="color:'+pctC+'">達成率 '+pct+'% '+diffTxt+'</div>':'')+(brkdwnKey?memBrkdwn(brkdwnKey):'')+'</div>';
   }
+  // === トップKPIカード ===
+  var pnNow=eBuildPN();
+  var endingThisMonth=0;var endingList=[];
+  var todayY=today.getFullYear(),todayMo=today.getMonth();
+  var endYMTarget=todayY+'/'+(todayMo+1<10?'0':'')+(todayMo+1);
+  var seenPN={};var colPN=window.E_PN_COL||{};
+  E_PN2.forEach(function(r){
+    if(colPN.phase>=0){var ph=gv(r,colPN.phase);if(!ph||ph.indexOf('08')<0)return;}
+    var p=pnRow(r);if(!p.oppId||seenPN[p.oppId])return;seenPN[p.oppId]=true;
+    var endUse=p.end;
+    if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(p.end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)endUse=p.cancel;}
+    if(endUse&&endUse.substring(0,7)===endYMTarget){
+      if(E_MF!=='all'&&p.member!==E_MF)return;
+      var keizoku=window.E_PN_KEIZOKU_COL>=0?gv(r,window.E_PN_KEIZOKU_COL):'';
+      endingThisMonth++;endingList.push({name:p.name,member:p.member,endDate:endUse,oppId:p.oppId,keizoku:keizoku});
+    }
+  });
+  window._entDrillData={p1:[],is:[],fs:[],p3:[],p4:[],p8:[],ending:endingList,deadM:[]};
+  E_ROWS.forEach(function(r){
+    var m=eGet(r,'member');if(E_MF!=='all'&&m!==E_MF)return;
+    var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
+    var apStr=eGet(r,'apDate'),mdStr=eGet(r,'mendanDate'),clStr=eGet(r,'closeDate');
+    var prStr=eGet(r,'proposalDate');
+    var lp=ePh(eGet(r,'lastPh'));var cpRaw=eGet(r,'curPh');var cp=ePh(cpRaw);
+    var ch=eGet(r,'channel');var ck=eGetN(r,'ck');var oppId=eGet(r,'oppId');var name=eGet(r,'name');
+    var info={name:name,member:m,oppId:oppId,ck:ck,apDate:apStr,mendanDate:mdStr,closeDate:clStr,phase:cpRaw,lastPh:eGet(r,'lastPh'),proposalDate:prStr};
+    if(inRange(apStr)){window._entDrillData.p1.push(info);if(ch.indexOf('FS')>=0)window._entDrillData.fs.push(info);else window._entDrillData.is.push(info);if(cpRaw.indexOf('DEAD')>=0)window._entDrillData.deadM.push(info);}
+    if(inRange(prStr)&&lp>=3)window._entDrillData.p3.push(info);
+    if(inRange(mdStr)&&lp>=4)window._entDrillData.p4.push(info);
+    if(inRange(clStr)&&cp===8)window._entDrillData.p8.push(info);
+  });
+  var _pnMgn=pnNow.rev>0?Math.round(pnNow.pk/pnNow.rev*100):0;
+  var _pnAvg=pnNow.pn>0?Math.round(pnNow.rev/pnNow.pn):0;
+  var kzStat={};endingList.forEach(function(e){var k=e.keizoku||'未設定';if(!kzStat[k])kzStat[k]=0;kzStat[k]++;});
+  var kzText=Object.keys(kzStat).map(function(k){var col=k==='継続'?'var(--grn)':k==='満了'?'var(--red)':'var(--org)';return '<span style="color:'+col+'">'+k+':'+kzStat[k]+'</span>';}).join(' ');
+  h+='<div class="ent-kpi-row">';
+  h+=kpiCard('月次売上 ▼',eFmt(pnNow.rev),0,'var(--blue)','稼働中PN請求額(千円)','','pn');
+  h+=kpiCard('月次粗利(PK) ▼',eFmt(pnNow.pk),0,'var(--grn)','稼働中PN粗利(千円)','','pn');
+  h+=kpiCard('受注CK ▼',eFmt(kpi.ck),Math.round(E_TARGETS.ck/1000),'var(--grn)','単位:千円','ck','p8');
+  h+=kpiCard('稼働中案件数 (PN)',pnNow.pn,0,'var(--blue)','現在稼働中','','pn');
+  h+=kpiCard('今月満了予定 ▼',endingThisMonth,0,'var(--red)',monthLabel+'終了 '+kzText,'','ending');
+  h+=kpiCard('今月DEAD ▼',kpi.deadM,0,'var(--red)','失注件数','deadM','deadM');
+  h+='</div>';
+  h+='<div class="ent-kpi-row" style="grid-template-columns:repeat(3,1fr)">';
+  h+=kpiCard('粗利率',_pnMgn+'%',0,'#bf8700','売上に対する粗利比率','','');
+  h+=kpiCard('稼働PN',pnNow.pn+'件',0,'#ea580c','現在稼働中プロ数','','');
+  h+=kpiCard('平均単価/PN',eFmt(_pnAvg),0,'#7c3aed','月額請求÷PN数','','');
+  h+='</div>';
+  h+='<div id="ent-drill-box" style="margin:0 24px"></div>';
   // === 予実確認 + CKフォーキャスト (top section) ===
   var _yosan=eParseYosan();var _pnNow=eBuildPN();
   if(_yosan&&_yosan.team.budget>0){
@@ -1169,16 +1218,8 @@ function renderEntOverview(){
     h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MIN+MID ('+(_mfjCnt.MIN+_mfjCnt.MID)+'件×平均単価)</option>';
     h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+MIN+MID+MAX ('+(_mfjCnt.MIN+_mfjCnt.MID+_mfjCnt.MAX)+'件×平均単価)</option>';
     h+='</select></div>';
-    // 今月カード
     var _curD=_revHist[_todayYM2]||{rev:0,pk:0,pn:0};var _curAvg=(_curD.pn||0)>0?Math.round(_curD.rev/(_curD.pn||1)):0;
     var _curMgn=_curD.rev>0?Math.round(_curD.pk/_curD.rev*100):0;
-    h+='<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">';
-    h+='<div style="background:#eff6ff;border-radius:8px;padding:10px;border-left:3px solid #0079C0"><div style="font-size:9px;color:var(--ink3)">今月売上</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#0079C0">'+eFmt(_curD.rev)+'</div></div>';
-    h+='<div style="background:#f0fdf4;border-radius:8px;padding:10px;border-left:3px solid #1a7f37"><div style="font-size:9px;color:var(--ink3)">粗利(PK)</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#1a7f37">'+eFmt(_curD.pk)+'</div></div>';
-    h+='<div style="background:#fff8e1;border-radius:8px;padding:10px;border-left:3px solid #bf8700"><div style="font-size:9px;color:var(--ink3)">粗利率</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#bf8700">'+_curMgn+'%</div></div>';
-    h+='<div style="background:#fef3c7;border-radius:8px;padding:10px;border-left:3px solid #ea580c"><div style="font-size:9px;color:var(--ink3)">稼働PN</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#ea580c">'+(_curD.pn||0)+'<span style="font-size:10px">件</span></div></div>';
-    h+='<div style="background:#f5f3ff;border-radius:8px;padding:10px;border-left:3px solid #7c3aed"><div style="font-size:9px;color:var(--ink3)">平均単価/PN</div><div style="font-family:var(--mono);font-size:18px;font-weight:700;color:#7c3aed">'+eFmt(_curAvg)+'</div></div>';
-    h+='</div>';
     // SVG
     var _totalH=_svgH+65;
     h+='<div style="overflow-x:auto"><svg width="'+_svgW+'" height="'+_totalH+'" viewBox="0 0 '+_svgW+' '+_totalH+'">';
@@ -1354,63 +1395,7 @@ function renderEntOverview(){
   h+='<div style="display:flex;gap:10px;margin-top:6px;font-size:9px;flex-wrap:wrap">';
   mList.forEach(function(m){if(m===E_MGR)return;var nm=m.split(' ')[0];var col=_kpiMemberColors[nm]||'#999';h+='<span><span style="display:inline-block;width:8px;height:8px;background:'+col+';border-radius:50%;vertical-align:middle"></span> '+nm+'</span>';});
   h+='</div></div>';
-  // Row 2: 実績系 月次売上/月次粗利/受注CK/稼働PN/満了予定/DEAD（クリックでドリルダウン）
-  var pnNow=eBuildPN();
-  // 今月満了予定PN
-  var endingThisMonth=0;var endingList=[];
-  var todayY=today.getFullYear(),todayMo=today.getMonth();
-  var endYMTarget=todayY+'/'+(todayMo+1<10?'0':'')+(todayMo+1);
-  var seenPN={};
-  var colPN=window.E_PN_COL||{};
-  E_PN2.forEach(function(r){
-    if(colPN.phase>=0){var ph=gv(r,colPN.phase);if(!ph||ph.indexOf('08')<0)return;}
-    var p=pnRow(r);
-    if(!p.oppId||seenPN[p.oppId])return;seenPN[p.oppId]=true;
-    var endUse=p.end;
-    if(p.cancel&&p.cancel.length>=7){var cd=new Date(p.cancel.replace(/\//g,'-'));var ed=new Date(p.end.replace(/\//g,'-'));if(!isNaN(cd)&&!isNaN(ed)&&cd<ed)endUse=p.cancel;}
-    if(endUse&&endUse.substring(0,7)===endYMTarget){
-      if(E_MF!=='all'&&p.member!==E_MF)return;
-      var keizoku=window.E_PN_KEIZOKU_COL>=0?gv(r,window.E_PN_KEIZOKU_COL):'';
-      endingThisMonth++;endingList.push({name:p.name,member:p.member,endDate:endUse,oppId:p.oppId,keizoku:keizoku});
-    }
-  });
-  // Save for drill-down
-  window._entDrillData={
-    p1:[],is:[],fs:[],p3:[],p4:[],p8:[],ending:endingList,deadM:[]
-  };
-  E_ROWS.forEach(function(r){
-    var m=eGet(r,'member');if(E_MF!=='all'&&m!==E_MF)return;
-    var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
-    var apStr=eGet(r,'apDate'),mdStr=eGet(r,'mendanDate'),clStr=eGet(r,'closeDate');
-    var prStr=eGet(r,'proposalDate');
-    var lp=ePh(eGet(r,'lastPh'));var cpRaw=eGet(r,'curPh');var cp=ePh(cpRaw);
-    var ch=eGet(r,'channel');var ck=eGetN(r,'ck');var oppId=eGet(r,'oppId');var name=eGet(r,'name');
-    var info={name:name,member:m,oppId:oppId,ck:ck,apDate:apStr,mendanDate:mdStr,closeDate:clStr,phase:cpRaw,lastPh:eGet(r,'lastPh'),proposalDate:prStr};
-    // P1商談: アポ日が期間内
-    if(inRange(apStr)){
-      window._entDrillData.p1.push(info);
-      if(ch.indexOf('FS')>=0)window._entDrillData.fs.push(info);else window._entDrillData.is.push(info);
-      if(cpRaw.indexOf('DEAD')>=0)window._entDrillData.deadM.push(info);
-    }
-    // KSF P3提案: 提案日が期間内 AND 最終到達≥P3
-    if(inRange(prStr)&&lp>=3)window._entDrillData.p3.push(info);
-    // KPI P4面談: 面談日が期間内 AND 最終到達≥P4
-    if(inRange(mdStr)&&lp>=4)window._entDrillData.p4.push(info);
-    // KGI P8受注: 受注日が期間内 AND 現フェーズ=P8
-    if(inRange(clStr)&&cp===8)window._entDrillData.p8.push(info);
-  });
-  h+='<div class="ent-kpi-row">';
-  h+=kpiCard('月次売上',eFmt(pnNow.rev),0,'var(--blue)','稼働中PN請求額(千円)','','pn');
-  h+=kpiCard('月次粗利(PK)',eFmt(pnNow.pk),0,'var(--grn)','稼働中PN粗利(千円)','','pn');
-  h+=kpiCard('受注CK',eFmt(kpi.ck),Math.round(E_TARGETS.ck/1000),'var(--grn)','単位:千円','ck','p8');
-  h+=kpiCard('稼働中案件数 (PN)',pnNow.pn,0,'var(--blue)','現在稼働中','','pn');
-  // 継続意向内訳
-  var kzStat={};endingList.forEach(function(e){var k=e.keizoku||'未設定';if(!kzStat[k])kzStat[k]=0;kzStat[k]++;});
-  var kzText=Object.keys(kzStat).map(function(k){var col=k==='継続'?'var(--grn)':k==='満了'?'var(--red)':'var(--org)';return '<span style="color:'+col+'">'+k+':'+kzStat[k]+'</span>';}).join(' ');
-  h+=kpiCard('今月満了予定',endingThisMonth,0,'var(--red)',monthLabel+'終了 '+kzText,'','ending');
-  h+=kpiCard('今月DEAD',kpi.deadM,0,'var(--red)','失注件数','deadM','deadM');
-  h+='</div>';
-  h+='<div id="ent-drill-box" style="margin:0 24px"></div>';
+  // (Row 2 cards moved to top)
   // === チーム全体サマリー（アソシエイト含むKPI）- 半期累計・新規/既顧客/継続内訳 ===
   var teamAll={p1:0,p3:0,p4:0,p8:0,newP8:0,existP8:0,keizokuP8:0,newCK:0,existCK:0,keizokuCK:0,totalCK:0};
   // H1 (2025/08〜2026/01), H2 (2026/02〜2026/07), FY-total
