@@ -717,6 +717,18 @@ function eBuildStalled(){
   zombie.sort(function(a,b){return b.days-a.days;});
   return{stalled:stalled,zombie:zombie};
 }
+// === パイプライン売上予測（localStorage）読み取り ===
+function eGetManualFcst(){
+  var total=0;var items=[];
+  E_ROWS.forEach(function(r){
+    var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
+    var cp=ePh(cpRaw);if(cp<1||cp>=8)return;
+    var oppId=eGet(r,'oppId');if(!oppId)return;
+    var v=0;try{v=parseInt(localStorage.getItem('ent_fcst_'+oppId)||'0')||0;}catch(e){}
+    if(v>0){total+=v;items.push({oppId:oppId,member:eGet(r,'member'),name:eGet(r,'name'),fcst:v});}
+  });
+  return{total:total,items:items};
+}
 // === Global MFJ forecast helpers ===
 function eMfjBreak(memberFilter,p8ckFromYosan){
   var today=new Date();var thisYM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
@@ -1202,7 +1214,11 @@ function renderEntOverview(){
     var E_REV_MFJ=window.E_REV_MFJ||'none';
     // MFJオーバーレイ計算
     var _mfjOverlay={};
-    if(E_REV_MFJ!=='none'){
+    if(E_REV_MFJ==='manual'){
+      // 手入力予測: 今月に一括加算
+      if(_manFcst.total>0){var _curYM=_todayYM2;if(!_mfjOverlay[_curYM])_mfjOverlay[_curYM]={add:0,cnt:0};_mfjOverlay[_curYM].add+=_manFcst.total;_mfjOverlay[_curYM].cnt+=_manFcst.items.length;}
+    }
+    if(E_REV_MFJ!=='none'&&E_REV_MFJ!=='manual'){
       E_ROWS.forEach(function(r){
         var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
         var cp=ePh(cpRaw);if(cp<1||cp>=8)return;
@@ -1229,7 +1245,9 @@ function renderEntOverview(){
     h+='<span style="font-size:9px;color:var(--ink3)">'+(_pnNewM?'📊 pn_new':'⚠ pn')+'</span>';
     h+='<span style="font-size:9px;color:var(--ink3)">※月クリック→案件一覧</span>';
     h+='<select class="fl" onchange="window.E_REV_MFJ=this.value;renderEnt()" style="margin-left:auto">';
+    var _manFcst=eGetManualFcst();
     h+='<option value="none"'+(E_REV_MFJ==='none'?' selected':'')+'>確定売上のみ</option>';
+    h+='<option value="manual"'+(E_REV_MFJ==='manual'?' selected':'')+'>+手入力予測 ('+eFmt(_manFcst.total)+')</option>';
     h+='<option value="MIN"'+(E_REV_MFJ==='MIN'?' selected':'')+'>+MIN案件</option>';
     h+='<option value="MID"'+(E_REV_MFJ==='MID'?' selected':'')+'>+MIN+MID案件</option>';
     h+='<option value="MAX"'+(E_REV_MFJ==='MAX'?' selected':'')+'>+全MFJ案件</option>';
@@ -1816,31 +1834,32 @@ function renderEntPipeline(){
   h+='<div style="margin:0 24px 8px;font-size:11px;color:var(--ink2)"><strong>'+filtered.length+'件</strong> / CK合計 '+eFmt(totalCK)+'</div>';
   // Excel-like table with lead times
   h+='<div class="ent-section" style="padding:0;overflow:hidden">';
-  h+='<div style="overflow-x:auto;max-height:70vh;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg);z-index:1"><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>MFJ</th><th>新規/継続</th><th>CK</th><th>受注予定</th><th>初回アポ日</th><th>面談日</th><th>ア→面(日数)</th><th>滞留</th><th>Next Action</th></tr></thead><tbody>';
+  // 売上予測の合計計算
+  var _fcstTotal=0;filtered.forEach(function(c){var sv=0;try{sv=parseInt(localStorage.getItem('ent_fcst_'+c.oppId)||'0')||0;}catch(e){}if(sv>0)_fcstTotal+=sv;});
+  if(_fcstTotal>0)h+='<div style="margin:0 24px 4px;font-size:11px;color:var(--purple)">📊 売上予測入力済み合計: <strong>'+eFmt(_fcstTotal)+'</strong>（フォーキャストに加算可能）</div>';
+  h+='<div style="overflow-x:auto;max-height:70vh;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg);z-index:1"><tr><th>担当</th><th>案件名</th><th>フェーズ</th><th>MFJ</th><th>CK</th><th>受注予定</th><th>滞留</th><th>Next Action</th><th style="background:#f5f3ff;color:#7c3aed;min-width:120px">月額売上予測</th></tr></thead><tbody>';
   filtered.forEach(function(c){
     var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'https://circulation.lightning.force.com/lightning/o/Opportunity/list';
     var mfjC=c.mfj==='MIN'?'background:var(--grn-bg);color:var(--grn)':c.mfj==='MID'?'background:#fff8c5;color:var(--org)':c.mfj==='MAX'?'background:#ffebe9;color:var(--red)':'';
     var phC=E_PH_COLORS[c.ph]||'var(--ink)';
-    // Lead time alert
-    var leadC='';
-    if(c.ph===3&&c.ap2md>=14)leadC='color:var(--red);font-weight:700';
-    else if(c.ph===3&&c.ap2md>=7)leadC='color:var(--org)';
+    var savedFcst=0;try{savedFcst=parseInt(localStorage.getItem('ent_fcst_'+c.oppId)||'0')||0;}catch(e){}
     h+='<tr>';
-    h+='<td style="font-weight:600;white-space:nowrap">'+c.member+'</td>';
-    h+='<td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
+    h+='<td style="font-weight:600;white-space:nowrap;font-size:10px">'+c.member+'</td>';
+    h+='<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue);font-size:10px" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
     h+='<td><span class="pill" style="font-size:9px;background:rgba(0,0,0,.04);color:'+phC+';font-weight:700">P'+c.ph+'</span></td>';
     h+='<td>'+(c.mfj?'<span class="pill" style="font-size:9px;'+mfjC+'">'+c.mfj+'</span>':'-')+'</td>';
-    h+='<td style="font-size:9px">'+(c.dealType||'-')+'</td>';
     h+='<td style="font-family:var(--mono);font-weight:600;'+(c.ck>0?'color:var(--blue)':'color:var(--ink3)')+'">'+(c.ck?eFmt(c.ck):'¥0')+'</td>';
     h+='<td style="font-size:9px;color:var(--ink3)">'+(c.closeDate||'-')+'</td>';
-    h+='<td style="font-size:9px;color:var(--ink3)">'+(c.apDate||'-')+'</td>';
-    h+='<td style="font-size:9px;color:var(--ink3)">'+(c.mendanDate||'-')+'</td>';
-    h+='<td style="font-family:var(--mono);font-size:10px;'+leadC+'">'+(c.ap2md>0?c.ap2md+'日':'-')+'</td>';
     h+='<td style="font-family:var(--mono);font-size:10px;'+(c.days>=30?'color:var(--red);font-weight:700':c.days>=14?'color:var(--org)':'')+'">'+c.days+'日</td>';
-    h+='<td style="font-size:9px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.nextDate?'<span style="color:var(--ink3)">'+c.nextDate+'</span> ':'')+(c.nextAct||'-')+'</td>';
-    h+='</tr>';
+    h+='<td style="font-size:9px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(c.nextAct||'-')+'</td>';
+    // 月額売上予測入力欄
+    h+='<td style="background:#faf8ff;padding:2px 4px">';
+    h+='<input type="number" value="'+(savedFcst||'')+'" placeholder="月額予測" style="width:90px;padding:4px 6px;border:1px solid '+(savedFcst>0?'#7c3aed':'var(--bd)');
+    h+=';border-radius:4px;font-family:var(--mono);font-size:10px;background:'+(savedFcst>0?'#f5f3ff':'#fff');
+    h+='" onchange="localStorage.setItem(\'ent_fcst_'+c.oppId+'\',this.value||\'0\');this.style.borderColor=this.value>0?\'#7c3aed\':\'var(--bd)\';this.style.background=this.value>0?\'#f5f3ff\':\'#fff\'" />';
+    h+='</td></tr>';
   });
-  if(!filtered.length)h+='<tr><td colspan="12" style="text-align:center;padding:20px;color:var(--ink3)">該当案件なし</td></tr>';
+  if(!filtered.length)h+='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--ink3)">該当案件なし</td></tr>';
   h+='</tbody></table></div></div>';
   return h;
 }
