@@ -187,8 +187,8 @@
 .ent-section .es-title{font-size:12px;font-weight:700;margin-bottom:10px}
 .ent-table{width:100%;border-collapse:collapse;font-size:11px}
 .ent-table th{text-align:left;padding:6px 8px;color:var(--ink3);font-size:9px;font-weight:600;border-bottom:1px solid var(--bd)}
-.ent-table .th-dark th{background:#1a1f2e !important;color:#fff !important;border-bottom:none}
-.ent-table .th-dark2 th{background:#2a3040 !important;color:#ccc !important;border-bottom:none}
+th.dkh{background:#1a1f2e !important;color:#fff !important;border-bottom:none !important;padding:8px !important;font-size:10px !important;font-weight:600 !important}
+th.dkh2{background:#2a3040 !important;color:#ccc !important;border-bottom:none !important;padding:6px 8px !important;font-size:9px !important}
 .ent-table td{padding:6px 8px;border-bottom:1px solid rgba(0,0,0,.03)}.ent-table tr:hover{background:rgba(0,121,192,.03)}
 .ent-heat{display:inline-block;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600;font-family:var(--mono);min-width:36px;text-align:center}
 .ent-heat.g{background:var(--grn-bg);color:var(--grn)}.ent-heat.y{background:#fff8c5;color:var(--org)}.ent-heat.r{background:#ffebe9;color:var(--red)}.ent-heat.x{background:var(--bg);color:var(--ink3)}
@@ -809,7 +809,7 @@ function showMorningBriefing(){
   if(yData&&yData.team.budget>0){
     var yt3=yData.team;
     h+='<div style="overflow-x:auto;margin-bottom:12px"><table class="ent-table" style="font-size:11px;width:100%"><thead>';
-    h+='<tr class="th-dark"><th>名前</th><th>予算</th><th>CK実績</th><th>率</th><th>MIN</th><th>率</th><th>MID</th><th>率</th><th>MAX</th><th>率</th></tr></thead><tbody>';
+    h+='<tr><th class="dkh">名前</th><th class="dkh">予算</th><th class="dkh">CK実績</th><th class="dkh">率</th><th class="dkh">MIN</th><th class="dkh">率</th><th class="dkh">MID</th><th class="dkh">率</th><th class="dkh">MAX</th><th class="dkh">率</th></tr></thead><tbody>';
     var teamMfjData=mfjBreak(null,yt3.jisseki);
     var jPctTeam=yt3.budget>0?Math.round(yt3.jisseki/yt3.budget*100):0;
     var jColTeam=jPctTeam>=100?'var(--grn)':jPctTeam>=50?'var(--org)':'var(--red)';
@@ -1189,7 +1189,7 @@ function renderEntOverview(){
     // 担当者別テーブル
     var yMemNames=Object.keys(yosanData.byMember).sort(function(a,b){return a===E_MGR?1:b===E_MGR?-1:a.localeCompare(b,'ja');});
     h+='<div style="margin-top:14px;overflow-x:auto"><table class="ent-table" style="font-size:11px">';
-    h+='<thead><tr class="th-dark"><th>担当</th><th>予算</th><th colspan="2">パイプラインCK</th><th colspan="2">受注済CK</th><th colspan="2">達成予測CK</th><th colspan="2">最善予測CK</th></tr></thead><tbody>';
+    h+='<thead><tr><th class="dkh">担当</th><th class="dkh">予算</th><th class="dkh" colspan="2">パイプラインCK</th><th class="dkh" colspan="2">受注済CK</th><th class="dkh" colspan="2">達成予測CK</th><th class="dkh" colspan="2">最善予測CK</th></tr></thead><tbody>';
     // Total row
     function yRow(label,d,isMgr){
       var b=d.budget;
@@ -1380,8 +1380,8 @@ function renderEntOverview(){
   var qTotal={budget:qBudget,pipeline:0,p8ck:0,min:0,mid:0,max:0};
   for(var qm in qMembers){if(qm===E_MGR)continue;var qd=qMembers[qm];qTotal.pipeline+=qd.pipeline;qTotal.p8ck+=qd.p8ck;qTotal.min+=qd.min;qTotal.mid+=qd.mid;qTotal.max+=qd.max;}
   h+='<div class="ent-section"><div class="es-title" style="color:var(--blue)">【今月】商況サマリー</div>';
-  h+='<div style="overflow-x:auto"><table class="ent-table" style="font-size:11px"><thead><tr class="th-dark"><th>名前</th><th>予算</th><th colspan="2">パイプライン総量</th><th colspan="2">実績</th><th colspan="2">MIN</th><th colspan="2">MID</th><th colspan="2">MAX</th></tr>';
-  h+='<tr class="th-dark2"><th></th><th></th><th>値</th><th>率</th><th>CK実績</th><th>率</th><th>値</th><th>率</th><th>値</th><th>率</th><th>値</th><th>率</th></tr></thead><tbody>';
+  h+='<div style="overflow-x:auto"><table class="ent-table" style="font-size:11px"><thead><tr><th class="dkh">名前</th><th class="dkh">予算</th><th class="dkh" colspan="2">パイプライン総量</th><th class="dkh" colspan="2">実績</th><th class="dkh" colspan="2">MIN</th><th class="dkh" colspan="2">MID</th><th class="dkh" colspan="2">MAX</th></tr>';
+  h+='<tr><th class="dkh2"></th><th class="dkh2"></th><th class="dkh2">値</th><th class="dkh2">率</th><th class="dkh2">CK実績</th><th class="dkh2">率</th><th class="dkh2">値</th><th class="dkh2">率</th><th class="dkh2">値</th><th class="dkh2">率</th><th class="dkh2">値</th><th class="dkh2">率</th></tr></thead><tbody>';
   // Total row
   function qRow(label,d,isMgr){
     var bg=d.budget>0?d.budget:0;
