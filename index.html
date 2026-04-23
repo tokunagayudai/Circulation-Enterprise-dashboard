@@ -1125,9 +1125,9 @@ function renderEntOverview(){
     var E_REV_MFJ=window.E_REV_MFJ||'none';
     // MFJオーバーレイ計算
     var _mfjOverlay={};
+    var _manFcst=eGetManualFcst();
     if(E_REV_MFJ==='manual'){
       // 手入力予測: 今月に一括加算
-    var _manFcst=eGetManualFcst();
       if(_manFcst.total>0){var _curYM=_todayYM2;if(!_mfjOverlay[_curYM])_mfjOverlay[_curYM]={add:0,cnt:0};_mfjOverlay[_curYM].add+=_manFcst.total;_mfjOverlay[_curYM].cnt+=_manFcst.items.length;}
     }
     var _mfjCnt={MIN:0,MID:0,MAX:0};var _mfjCaseCnt=0;
@@ -2342,12 +2342,14 @@ function renderEnt(){
   }
   h+='</div>';
   // Tab content
+  try{
   if(E_TAB==='overview')h+=renderEntOverview();
   else if(E_TAB==='pipeline')h+=renderEntPipeline();
   else if(E_TAB==='forecast')h+=renderEntForecast();
   else if(E_TAB==='funnel')h+=renderEntFunnel();
   else if(E_TAB==='dead')h+=renderEntDead();
   else if(E_TAB==='breakdown')h+=renderEntBreakdown();
+  }catch(e){h+='<div style="padding:20px;color:red;font-size:14px">Error: '+e.message+'<br>Stack: '+e.stack+'</div>';console.error(e);}
   M.innerHTML=h;updateSyncBadge();
   if(E_TAB==='forecast')eUpdateSim();
   var _ccv=document.getElementById('ck-confetti');
