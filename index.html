@@ -1098,6 +1098,56 @@ function renderEntOverview(){
     var _mo=E_MEMBER_ORDER.slice();Object.keys(_yosan.byMember).forEach(function(m){if(_mo.indexOf(m)<0)_mo.push(m);});
     _mo.forEach(function(m){var d=_yosan.byMember[m];if(!d)d={budget:0,jisseki:0,pipeline:0,tasseiYosoku:0,saizenYosoku:0};h+=_eRow(m,d,eMfjBreak(m,d.jisseki),m===E_MGR,false);});
     h+='</tbody></table></div>';
+    // === ビジュアルチャート ===
+    h+='<div style="display:grid;grid-template-columns:250px 1fr 250px;gap:12px;padding:4px 24px 12px">';
+    // (A) CK達成率ドーナツ
+    var _achPct=_yt.budget>0?Math.round(_yt.jisseki/_yt.budget*100):0;
+    var _achC=_achPct>=100?'#1a7f37':_achPct>=50?'#bf8700':'#cf222e';
+    var _dashA=Math.min(100,_achPct)*2.51327;var _dashR=251.327-_dashA;
+    h+='<div style="background:var(--bg2);border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,.04);text-align:center">';
+    h+='<div style="font-size:11px;font-weight:700;margin-bottom:8px">CK予算達成率</div>';
+    h+='<svg width="130" height="130" viewBox="0 0 100 100" style="margin:0 auto;display:block">';
+    h+='<circle cx="50" cy="50" r="40" fill="none" stroke="rgba(0,0,0,.08)" stroke-width="10"/>';
+    h+='<circle cx="50" cy="50" r="40" fill="none" stroke="'+_achC+'" stroke-width="10" stroke-dasharray="'+_dashA+' '+_dashR+'" stroke-linecap="round" transform="rotate(-90 50 50)"/>';
+    h+='<text x="50" y="46" text-anchor="middle" font-size="18" font-weight="700" fill="'+_achC+'" font-family="var(--mono)">'+_achPct+'%</text>';
+    h+='<text x="50" y="60" text-anchor="middle" font-size="7" fill="#656d76">'+eFmt(_yt.jisseki)+' / '+eFmt(_yt.budget)+'</text>';
+    h+='</svg></div>';
+    // (B) メンバー別CK棒グラフ
+    h+='<div style="background:var(--bg2);border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,.04)">';
+    h+='<div style="font-size:11px;font-weight:700;margin-bottom:10px">メンバー別 CK実績 / 予算</div>';
+    var _maxB=1;_mo.forEach(function(m){var d=_yosan.byMember[m];if(d&&d.budget>_maxB)_maxB=d.budget;if(d&&d.jisseki>_maxB)_maxB=d.jisseki;});
+    _mo.forEach(function(m){
+      if(m===E_MGR)return;
+      var d=_yosan.byMember[m]||{budget:0,jisseki:0};
+      var bW=Math.max(1,d.budget/_maxB*100);var jW=Math.max(1,d.jisseki/_maxB*100);
+      var jC=d.budget>0&&d.jisseki>=d.budget?'#1a7f37':d.budget>0&&d.jisseki>=d.budget*0.5?'#bf8700':'#cf222e';
+      h+='<div style="display:grid;grid-template-columns:60px 1fr 50px;align-items:center;gap:6px;margin-bottom:6px">';
+      h+='<div style="font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+m.split(' ')[0]+'</div>';
+      h+='<div style="position:relative;height:20px">';
+      h+='<div style="position:absolute;top:0;left:0;height:10px;width:'+bW+'%;background:rgba(0,0,0,.1);border-radius:3px" title="予算:'+eFmt(d.budget)+'"></div>';
+      h+='<div style="position:absolute;top:10px;left:0;height:10px;width:'+jW+'%;background:'+jC+';border-radius:3px" title="実績:'+eFmt(d.jisseki)+'"></div>';
+      h+='</div>';
+      h+='<div style="font-family:var(--mono);font-size:10px;font-weight:700;color:'+jC+';text-align:right">'+eFmt(d.jisseki)+'</div>';
+      h+='</div>';
+    });
+    h+='<div style="display:flex;gap:12px;margin-top:4px;font-size:9px;color:var(--ink3)"><span><span style="display:inline-block;width:8px;height:6px;background:rgba(0,0,0,.1);border-radius:2px;vertical-align:middle"></span> 予算</span><span><span style="display:inline-block;width:8px;height:6px;background:#0079C0;border-radius:2px;vertical-align:middle"></span> 実績</span></div>';
+    h+='</div>';
+    // (C) KPI達成率リング4つ
+    h+='<div style="background:var(--bg2);border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,.04)">';
+    h+='<div style="font-size:11px;font-weight:700;margin-bottom:8px">KPI達成率</div>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">';
+    var _kpiItems=[{l:'P1商談',v:kpi.p1,t:E_TARGETS.p1,c:'#0079C0'},{l:'P3提案',v:kpi.p3,t:E_TARGETS.p3,c:'#bf8700'},{l:'P4面談',v:kpi.p4,t:E_TARGETS.p4,c:'#ea580c'},{l:'P8受注',v:kpi.p8,t:E_TARGETS.p8,c:'#1a7f37'}];
+    _kpiItems.forEach(function(k){
+      var p=k.t>0?Math.round(k.v/k.t*100):0;
+      var da=Math.min(100,p)*1.5708;var dr=157.08-da;
+      h+='<div style="text-align:center">';
+      h+='<svg width="56" height="56" viewBox="0 0 60 60"><circle cx="30" cy="30" r="25" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="5"/><circle cx="30" cy="30" r="25" fill="none" stroke="'+k.c+'" stroke-width="5" stroke-dasharray="'+da+' '+dr+'" stroke-linecap="round" transform="rotate(-90 30 30)"/><text x="30" y="33" text-anchor="middle" font-size="12" font-weight="700" fill="'+k.c+'" font-family="var(--mono)">'+k.v+'</text></svg>';
+      h+='<div style="font-size:9px;font-weight:600;color:var(--ink2)">'+k.l+'</div>';
+      h+='<div style="font-size:8px;color:var(--ink3)">'+p+'% ('+k.v+'/'+k.t+')</div>';
+      h+='</div>';
+    });
+    h+='</div></div>';
+    h+='</div>';
   }
   // Row 1: 先行指標 P1商談(IS/FS) → KSF P3提案 → KPI P4面談 → KGI P8受注
   h+='<div class="ent-kpi-row">';
