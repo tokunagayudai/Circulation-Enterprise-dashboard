@@ -98,6 +98,7 @@
 .dz:hover{border-color:var(--blue);color:var(--blue)}
 .an{display:none;margin:8px 24px;padding:14px;background:var(--bg2);border-radius:10px;font-size:12px;line-height:1.6;border:1px solid rgba(0,0,0,.04)}.an.show{display:block}
 .spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--bd);border-top-color:var(--blue);border-radius:50%;animation:sp .6s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.ck-ring-anim{animation:ckRingPulse 2s ease-in-out infinite}@keyframes ckRingPulse{0%,100%{filter:drop-shadow(0 0 3px rgba(26,127,55,.3))}50%{filter:drop-shadow(0 0 10px rgba(26,127,55,.6))}}
 .hint{padding:4px 24px;font-size:9px;color:var(--ink3)}
 
 /* Org chart */
@@ -1113,19 +1114,24 @@ function renderEntOverview(){
     var _achPct=_yB>0?Math.round(_yt.jisseki/_yB*100):0;
     var _achC=_achPct>=100?'#1a7f37':_achPct>=50?'#bf8700':'#cf222e';
     // --- 上段: ドーナツ + ヨミゲージ ---
-    h+='<div style="display:grid;grid-template-columns:220px 1fr;gap:12px;padding:8px 24px">';
-    // (A) CK達成率ドーナツ
+    h+='<div style="display:grid;grid-template-columns:280px 1fr;gap:16px;padding:8px 24px">';
+    // (A) CK達成率ドーナツ（大）
     var _dA=Math.min(100,_achPct)*2.51327;var _dR=251.327-_dA;
-    h+='<div style="background:var(--bg2);border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,.04);text-align:center">';
-    h+='<div style="font-size:11px;font-weight:700;margin-bottom:4px">CK予算達成率</div>';
-    h+='<svg width="140" height="140" viewBox="0 0 100 100" style="display:block;margin:0 auto">';
-    h+='<circle cx="50" cy="50" r="40" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="10"/>';
-    h+='<circle cx="50" cy="50" r="40" fill="none" stroke="'+_achC+'" stroke-width="10" stroke-dasharray="'+_dA+' '+_dR+'" stroke-linecap="round" transform="rotate(-90 50 50)"/>';
-    h+='<text x="50" y="38" text-anchor="middle" font-size="12" font-weight="700" fill="'+_achC+'" font-family="var(--mono)">'+_achPct+'%</text>';
-    h+='<text x="50" y="54" text-anchor="middle" font-size="11" font-weight="800" fill="'+_achC+'" font-family="var(--mono)">'+eFmt(_yt.jisseki)+'</text>';
-    h+='<text x="50" y="65" text-anchor="middle" font-size="6" fill="#656d76">予算 '+eFmt(_yB)+'</text>';
-    h+='<text x="50" y="74" text-anchor="middle" font-size="6" fill="#8b949e">残 '+eFmt(Math.max(0,_yB-_yt.jisseki))+'</text>';
-    h+='</svg></div>';
+    var _ckAchieved=_achPct>=100;
+    h+='<div id="ck-donut-wrap" style="position:relative;background:'+(_ckAchieved?'linear-gradient(135deg,#f0fdf4,#dcfce7)':'var(--bg2)')+';border-radius:12px;padding:20px;border:'+(_ckAchieved?'2px solid #1a7f37':'1px solid rgba(0,0,0,.04)')+';text-align:center;overflow:hidden">';
+    if(_ckAchieved)h+='<div style="font-size:10px;color:#1a7f37;font-weight:700;margin-bottom:2px">🎉 予算達成！</div>';
+    h+='<div style="font-size:12px;font-weight:700;margin-bottom:6px">CK予算達成率</div>';
+    h+='<svg width="180" height="180" viewBox="0 0 100 100" style="display:block;margin:0 auto">';
+    h+='<circle cx="50" cy="50" r="40" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="8"/>';
+    h+='<circle cx="50" cy="50" r="40" fill="none" stroke="'+_achC+'" stroke-width="8" stroke-dasharray="'+_dA+' '+_dR+'" stroke-linecap="round" transform="rotate(-90 50 50)"'+(_ckAchieved?' class="ck-ring-anim"':'')+'/>';
+    h+='<text x="50" y="36" text-anchor="middle" font-size="14" font-weight="800" fill="'+_achC+'" font-family="var(--mono)">'+_achPct+'%</text>';
+    h+='<text x="50" y="53" text-anchor="middle" font-size="13" font-weight="800" fill="'+_achC+'" font-family="var(--mono)">'+eFmt(_yt.jisseki)+'</text>';
+    h+='<text x="50" y="65" text-anchor="middle" font-size="7" fill="#656d76" font-weight="600">予算 '+eFmt(_yB)+'</text>';
+    var _ckRemain=_yB-_yt.jisseki;
+    h+='<text x="50" y="75" text-anchor="middle" font-size="7" fill="'+(_ckRemain<=0?'#1a7f37':'#8b949e')+'" font-weight="600">'+(_ckRemain<=0?'超過 +'+eFmt(Math.abs(_ckRemain)):'残 '+eFmt(_ckRemain))+'</text>';
+    h+='</svg>';
+    if(_ckAchieved)h+='<canvas id="ck-confetti" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none"></canvas>';
+    h+='</div>';
     // (B) ヨミゲージ
     function _mfjPct(v){return _yB>0?(v/_yB*100).toFixed(1)+'%':'-';}
     h+='<div style="background:var(--bg2);border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,.04)">';
@@ -2409,6 +2415,21 @@ function renderEnt(){
   else if(E_TAB==='breakdown')h+=renderEntBreakdown();
   M.innerHTML=h;updateSyncBadge();
   if(E_TAB==='forecast')eUpdateSim();
+  var _ccv=document.getElementById('ck-confetti');
+  if(_ccv)eCkConfetti(_ccv);
+}
+function eCkConfetti(cv){
+  var ctx=cv.getContext('2d');var W=cv.offsetWidth;var H=cv.offsetHeight;
+  cv.width=W*2;cv.height=H*2;ctx.scale(2,2);
+  var cols=['#1a7f37','#bf8700','#0079C0','#ea580c','#cf222e','#7c3aed','#ff6b6b','#ffd93d'];
+  var ps=[];for(var i=0;i<60;i++)ps.push({x:W/2,y:H/2,vx:(Math.random()-0.5)*8,vy:Math.random()*-7-2,g:0.12,s:Math.random()*4+2,c:cols[Math.floor(Math.random()*cols.length)],a:1,r:Math.random()*360,rv:(Math.random()-0.5)*12});
+  var f=0;
+  function draw(){ctx.clearRect(0,0,W,H);var alive=false;
+    ps.forEach(function(p){p.x+=p.vx;p.vy+=p.g;p.y+=p.vy;p.r+=p.rv;if(f>20)p.a-=0.015;if(p.a<=0)return;alive=true;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r*Math.PI/180);ctx.globalAlpha=Math.max(0,p.a);ctx.fillStyle=p.c;
+      ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*0.6);ctx.restore();});
+    f++;if(alive&&f<120)requestAnimationFrame(draw);}
+  draw();
 }
 // ==== ACPLAN TAB ====
 function showD(){
