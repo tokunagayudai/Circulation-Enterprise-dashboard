@@ -817,19 +817,15 @@ function showMorningBriefing(){
     var _s4='style="background:#0069a8;color:#fff;padding:5px 8px;font-size:9px;font-weight:600;text-align:center;border:1px solid #444"';
     h+='<div style="overflow-x:auto;margin-bottom:12px"><table class="ent-table" style="font-size:11px;width:100%;border-collapse:collapse"><thead>';
     h+='<tr><td '+_g1+' rowspan="2">名前</td><td '+_g1+' rowspan="2">予算</td>';
-    h+='<td '+_g2+' colspan="2">パイプライン総量</td>';
-    h+='<td '+_g2+' colspan="2">期待収益</td>';
     h+='<td '+_g3+' colspan="2">実績</td>';
     h+='<td '+_g4+' colspan="6">ヨミ</td></tr>';
-    h+='<tr><td '+_s2+'>値</td><td '+_s2+'>率</td>';
-    h+='<td '+_s2+'>値</td><td '+_s2+'>率</td>';
-    h+='<td '+_s3+'>CK実績</td><td '+_s3+'>率</td>';
+    h+='<tr><td '+_s3+'>CK実績</td><td '+_s3+'>率</td>';
     h+='<td '+_s4+'>MIN</td><td '+_s4+'>率</td><td '+_s4+'>MID</td><td '+_s4+'>率</td><td '+_s4+'>MAX</td><td '+_s4+'>率</td></tr></thead><tbody>';
     var teamMfjData=mfjBreak(null,yt3.jisseki);
     var _fcBg='background:#f0f7ff';
     var _totBg='background:#fff0f0';
     function _mfRow(label,d,mfj,isMgr,isTotal){
-      var b=d.budget||0;var j=d.jisseki||0;var pl=d.pipeline||0;var ty=d.tasseiYosoku||0;
+      var b=d.budget||0;var j=d.jisseki||0;
       var mp=b>0?Math.round(j/b*100):0;
       var mc=mp>=100?'var(--grn)':mp>=50?'var(--org)':'var(--red)';
       var fbg=isTotal?_totBg:_fcBg;
@@ -837,10 +833,6 @@ function showMorningBriefing(){
       var r='<tr'+trS+'>';
       r+='<td style="font-weight:'+(isTotal?'700':'600')+'">'+label+'</td>';
       r+='<td style="font-family:var(--mono)">'+eFmt(b)+'</td>';
-      r+='<td style="font-family:var(--mono)">'+eFmt(pl)+'</td>';
-      r+='<td>'+pctCell(pl,b)+'</td>';
-      r+='<td style="font-family:var(--mono)">'+eFmt(ty)+'</td>';
-      r+='<td>'+pctCell(ty,b)+'</td>';
       r+='<td style="font-family:var(--mono);color:'+mc+';font-weight:700">'+eFmt(j)+'</td>';
       r+='<td>'+pctCell(j,b)+'</td>';
       r+='<td style="font-family:var(--mono);'+fbg+'">'+eFmt(mfj.min)+'</td>';
