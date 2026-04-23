@@ -1511,6 +1511,53 @@ function renderEntOverview(){
     });
     h+='</tbody></table></div></div>';
   }
+  // === P8案件 × pn_new照合チェック ===
+  var _pnNewData=window.E_PN_NEW;var _pnNewCol=window.E_PN_NEW_COL;
+  var _p8Check=[];
+  E_ROWS.forEach(function(r){
+    var cp=ePh(eGet(r,'curPh'));if(cp!==8)return;
+    var clStr=eGet(r,'closeDate');if(!clStr)return;
+    var clYM=clStr.substring(0,7);if(clYM!==thisYM)return;
+    var stStr=eGet(r,'startDate')||'';var edStr=eGet(r,'endDate')||'';
+    var oppId=eGet(r,'oppId');var name=eGet(r,'name');var member=eGet(r,'member');
+    var billM=eGetN(r,'billM');
+    var pnMonths={};
+    if(_pnNewData&&_pnNewCol&&_pnNewCol.oppId>=0){
+      _pnNewData.forEach(function(pr){
+        var pid=(_pnNewCol.oppId>=0?(pr[_pnNewCol.oppId]||''):'').toString().trim();
+        if(pid!==oppId)return;
+        var ym=(_pnNewCol.ym>=0?(pr[_pnNewCol.ym]||''):'').toString().trim();
+        ym=ym.replace(/-/g,'/');if(ym.length===6)ym=ym.substring(0,4)+'/'+ym.substring(4);
+        var bill=parseInt(((pr[_pnNewCol.bill]||'0').toString()).replace(/[,\s¥円]/g,''))||0;
+        pnMonths[ym]=bill;
+      });
+    }
+    _p8Check.push({name:name,member:member,oppId:oppId,closeDate:clStr,startDate:stStr,endDate:edStr,billM:billM,pnMonths:pnMonths,pnKeys:Object.keys(pnMonths).sort()});
+  });
+  if(_p8Check.length>0){
+    h+='<div class="ent-section" style="border:2px solid #7c3aed;background:rgba(124,58,237,.03)">';
+    h+='<div class="es-title" style="color:#7c3aed">🔍 今月P8計上案件 × pn_new照合（'+_p8Check.length+'件）</div>';
+    h+='<div style="overflow-x:auto"><table class="ent-table"><thead><tr><th>担当</th><th>案件名</th><th>受注日</th><th>契約開始</th><th>契約終了</th><th>月額(cases)</th><th>pn_newに含まれる月</th><th>5月</th><th>6月</th><th>7月</th></tr></thead><tbody>';
+    _p8Check.forEach(function(c){
+      var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'#';
+      var m05=c.pnMonths['2026/05'],m06=c.pnMonths['2026/06'],m07=c.pnMonths['2026/07'];
+      function mCell(v){if(v===undefined)return '<td style="background:#ffebe9;color:var(--red);font-weight:700;text-align:center">✗ なし</td>';return '<td style="background:#f0fdf4;font-family:var(--mono);color:var(--grn);font-weight:600;text-align:center">'+eFmt(v)+'</td>';}
+      h+='<tr><td style="font-weight:600;font-size:10px">'+c.member+'</td>';
+      h+='<td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue);font-size:10px" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
+      h+='<td style="font-size:9px">'+c.closeDate+'</td>';
+      h+='<td style="font-size:9px;color:var(--blue);font-weight:600">'+(c.startDate||'-')+'</td>';
+      h+='<td style="font-size:9px">'+(c.endDate||'-')+'</td>';
+      h+='<td style="font-family:var(--mono);font-size:10px">'+(c.billM?eFmt(c.billM):'-')+'</td>';
+      h+='<td style="font-size:9px">'+(c.pnKeys.length>0?c.pnKeys.join(', '):'<span style="color:var(--red)">なし</span>')+'</td>';
+      h+=mCell(m05);h+=mCell(m06);h+=mCell(m07);
+      h+='</tr>';
+    });
+    h+='</tbody></table></div>';
+    var _missing=_p8Check.filter(function(c){return c.pnKeys.length===0;});
+    if(_missing.length>0)h+='<div style="margin-top:8px;padding:8px 12px;background:#ffebe9;border-radius:6px;font-size:11px;color:var(--red);font-weight:600">⚠ '+_missing.length+'件がpn_newに未反映 → SFで請求レコード確認が必要</div>';
+    else h+='<div style="margin-top:8px;padding:8px 12px;background:#f0fdf4;border-radius:6px;font-size:11px;color:var(--grn);font-weight:600">✅ 全P8案件がpn_newに反映済み</div>';
+    h+='</div>';
+  }
   h+='</div>';
   // === Quip風 商況サマリーテーブル（予算/パイプライン/実績/ヨミ） ===
   var qBudget=E_TARGETS.ck;
