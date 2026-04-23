@@ -807,10 +807,13 @@ function showMorningBriefing(){
   // メンバー別テーブル
   if(yData&&yData.team.budget>0){
     var yt3=yData.team;
-    var _hL='style="background:#1a1f2e;color:#fff;padding:8px 10px;font-size:10px;font-weight:700;text-align:left;border:none"';
-    var _hR='style="background:#0079C0;color:#fff;padding:8px 10px;font-size:10px;font-weight:700;text-align:left;border:none"';
+    var _hG1='style="background:#1a1f2e;color:#fff;padding:6px 10px;font-size:11px;font-weight:700;text-align:center;border:none"';
+    var _hG2='style="background:#0079C0;color:#fff;padding:6px 10px;font-size:11px;font-weight:700;text-align:center;border:none"';
+    var _hL='style="background:#2a3040;color:#fff;padding:6px 10px;font-size:10px;font-weight:600;text-align:left;border:none"';
+    var _hR='style="background:#0069a8;color:#fff;padding:6px 10px;font-size:10px;font-weight:600;text-align:left;border:none"';
     h+='<div style="overflow-x:auto;margin-bottom:12px"><table class="ent-table" style="font-size:11px;width:100%"><thead>';
-    h+='<tr><td '+_hL+'>名前</td><td '+_hL+'>予算</td><td '+_hL+'>CK実績</td><td '+_hL+'>率</td><td '+_hR+'>MIN</td><td '+_hR+'>率</td><td '+_hR+'>MID</td><td '+_hR+'>率</td><td '+_hR+'>MAX</td><td '+_hR+'>率</td></tr></thead><tbody>';
+    h+='<tr><td '+_hG1+' rowspan="2">名前</td><td '+_hG1+' rowspan="2">予算</td><td '+_hG1+' colspan="2">実績</td><td '+_hG2+' colspan="6">ヨミ</td></tr>';
+    h+='<tr><td '+_hL+'>CK実績</td><td '+_hL+'>率</td><td '+_hR+'>MIN</td><td '+_hR+'>率</td><td '+_hR+'>MID</td><td '+_hR+'>率</td><td '+_hR+'>MAX</td><td '+_hR+'>率</td></tr></thead><tbody>';
     var teamMfjData=mfjBreak(null,yt3.jisseki);
     var jPctTeam=yt3.budget>0?Math.round(yt3.jisseki/yt3.budget*100):0;
     var jColTeam=jPctTeam>=100?'var(--grn)':jPctTeam>=50?'var(--org)':'var(--red)';
