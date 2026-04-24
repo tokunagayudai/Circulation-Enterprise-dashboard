@@ -100,6 +100,12 @@
 .spinner{display:inline-block;width:20px;height:20px;border:2px solid var(--bd);border-top-color:var(--blue);border-radius:50%;animation:sp .6s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 .ck-ring-anim{animation:ckRingPulse 2s ease-in-out infinite}@keyframes ckRingPulse{0%,100%{filter:drop-shadow(0 0 3px rgba(26,127,55,.3))}50%{filter:drop-shadow(0 0 10px rgba(26,127,55,.6))}}
 .hint{padding:4px 24px;font-size:9px;color:var(--ink3)}
+.drill-modal-bg{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:9998;animation:fadeIn .15s}
+.drill-modal{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.25);z-index:9999;width:90vw;max-width:1200px;max-height:85vh;display:flex;flex-direction:column;animation:drillSlide .2s ease-out}
+@keyframes drillSlide{from{opacity:0;transform:translate(-50%,-48%)}to{opacity:1;transform:translate(-50%,-50%)}}
+.drill-modal-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--bd);flex-shrink:0}
+.drill-modal-body{overflow:auto;padding:0;flex:1}
+.drill-close{font-size:20px;width:32px;height:32px;border:none;background:rgba(0,0,0,.06);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink2);transition:.15s}.drill-close:hover{background:rgba(0,0,0,.12)}
 
 /* Org chart */
 .org-toolbar{display:flex;gap:6px;padding:6px 24px;align-items:center;flex-wrap:wrap}
@@ -2298,8 +2304,20 @@ function renderEntBreakdown(){
   return h;
 }
 // Drill-down for revenue chart bar click (show PN cases for that month)
+function closeDrillModal(){var el=document.getElementById('drill-modal-wrap');if(el)el.remove();}
+function openDrillModal(title,bodyHtml,stats){
+  closeDrillModal();
+  var wrap=document.createElement('div');wrap.id='drill-modal-wrap';
+  var h='<div class="drill-modal-bg" onclick="closeDrillModal()"></div>';
+  h+='<div class="drill-modal">';
+  h+='<div class="drill-modal-hdr"><div><div style="font-size:14px;font-weight:700">'+title+'</div>';
+  if(stats)h+='<div style="display:flex;gap:12px;font-size:10px;color:var(--ink2);margin-top:4px">'+stats+'</div>';
+  h+='</div><button class="drill-close" onclick="closeDrillModal()">✕</button></div>';
+  h+='<div class="drill-modal-body">'+bodyHtml+'</div></div>';
+  wrap.innerHTML=h;document.body.appendChild(wrap);
+  document.addEventListener('keydown',function _esc(e){if(e.key==='Escape'){closeDrillModal();document.removeEventListener('keydown',_esc);}});
+}
 function showRevDrill(ym){
-  var box=document.getElementById('rev-drill-box');if(!box)return;
   var list=[];
   // pn_newがあればそちらを使用
   var pnNew=window.E_PN_NEW;var pnCol=window.E_PN_NEW_COL;
@@ -2338,17 +2356,8 @@ function showRevDrill(ym){
   var totalPK=list.reduce(function(s,c){return s+c.pk;},0);
   var totalPay=list.reduce(function(s,c){return s+c.pay;},0);
   var avgMgn=totalBill>0?Math.round(totalPK/totalBill*100):0;
-  var h='<div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--blue)">';
-  h+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">';
-  h+='<div style="font-size:13px;font-weight:700;color:var(--blue)">'+ym+' 稼働案件</div>';
-  h+='<div style="display:flex;gap:12px;font-size:10px;color:var(--ink2)">';
-  h+='<span>案件数: <strong>'+list.length+'</strong></span>';
-  h+='<span>売上: <strong style="color:var(--blue)">'+eFmt(totalBill)+'</strong></span>';
-  h+='<span>支払: <strong>'+eFmt(totalPay)+'</strong></span>';
-  h+='<span>PK: <strong style="color:var(--grn)">'+eFmt(totalPK)+'</strong></span>';
-  h+='<span>粗利率: <strong style="color:var(--org)">'+avgMgn+'%</strong></span>';
-  h+='</div>';
-  h+='<button onclick="document.getElementById(\'rev-drill-box\').innerHTML=\'\'" style="font-size:10px;padding:4px 12px;border:1px solid var(--bd);border-radius:6px;background:var(--bg2);cursor:pointer">✕ 閉じる</button></div>';
+  var stats='<span>案件数: <strong>'+list.length+'</strong></span><span>売上: <strong style="color:var(--blue)">'+eFmt(totalBill)+'</strong></span><span>支払: <strong>'+eFmt(totalPay)+'</strong></span><span>PK: <strong style="color:var(--grn)">'+eFmt(totalPK)+'</strong></span><span>粗利率: <strong style="color:var(--org)">'+avgMgn+'%</strong></span>';
+  var h='';
   // E_ROWSから受注日を引く
   var _closeDateMap={};
   E_ROWS.forEach(function(r){var oid=eGet(r,'oppId');if(oid)_closeDateMap[oid]=eGet(r,'closeDate')||'';});
@@ -2371,12 +2380,11 @@ function showRevDrill(ym){
     h+='<td style="font-family:var(--mono);color:var(--grn);font-weight:600">'+eFmt(c.pk)+'</td>';
     h+='<td style="font-family:var(--mono);color:'+mgnC+';font-weight:600">'+mgn+'%</td></tr>';
   });
-  h+='</tbody></table></div></div>';
-  box.innerHTML=h;box.scrollIntoView({behavior:'smooth',block:'nearest'});
+  h+='</tbody></table></div>';
+  openDrillModal(ym+' 稼働案件',h,stats);
 }
 // Drill-down for KPI cards on overview
 function showEntDrill(key){
-  var box=document.getElementById('ent-drill-box');if(!box)return;
   var d=window._entDrillData;if(!d)return;
   var labels={p1:'P1商談(アポ取得月)',is:'IS経由商談',fs:'FS経由商談',p3:'KSF提案実施(最終到達P3+)',p4:'KPI面談実施(面談日)',p8:'KGI新規受注(受注予定日)',pn:'稼働中案件一覧',ending:'今月満了予定案件',deadM:'今月DEAD案件',ck:'今月受注CK',wonM:'今月受注済み案件'};
   var list=d[key]||[];
@@ -2399,8 +2407,9 @@ function showEntDrill(key){
       }
     });
   }
-  var h='<div class="ent-section" style="margin-top:8px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px"><div style="font-size:12px;font-weight:700">'+labels[key]+' ('+list.length+'件)</div><button onclick="document.getElementById(\'ent-drill-box\').innerHTML=\'\'" style="font-size:10px;padding:4px 10px;border:1px solid var(--bd);border-radius:6px;background:var(--bg2);cursor:pointer">閉じる ✕</button></div>';
-  if(!list.length){h+='<div style="color:var(--ink3);font-size:11px;padding:10px">該当案件なし</div></div>';box.innerHTML=h;return;}
+  var _title=labels[key]+' ('+list.length+'件)';
+  if(!list.length){openDrillModal(_title,'<div style="color:var(--ink3);font-size:12px;padding:20px;text-align:center">該当案件なし</div>');return;}
+  var h='';
   h+='<div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg);z-index:1"><tr>';
   if(key==='pn'){h+='<th>担当</th><th>案件名</th><th>契約期間</th><th>月額請求</th><th>月額PK</th></tr></thead><tbody>';}
   else if(key==='ending'){h+='<th>担当</th><th>案件名</th><th>終了日</th><th>継続意向</th></tr></thead><tbody>';}
@@ -2430,8 +2439,8 @@ function showEntDrill(key){
       h+='<td style="font-size:9px;color:var(--ink3)">'+(c.closeDate||'-')+'</td></tr>';
     }
   });
-  h+='</tbody></table></div></div>';
-  box.innerHTML=h;box.scrollIntoView({behavior:'smooth',block:'nearest'});
+  h+='</tbody></table></div>';
+  openDrillModal(_title,h);
 }
 function renderEnt(){
   var M=document.getElementById('M');
