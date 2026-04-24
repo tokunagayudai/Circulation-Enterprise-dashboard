@@ -1236,19 +1236,12 @@ function renderEntOverview(){
     _allMs.forEach(function(m){var d=_revHist[m]||{rev:0,pk:0,pn:0};var mfjA=(_mfjOverlay[m]||{add:0}).add;var tot=d.rev+mfjA;if(tot>_revMax)_revMax=tot;if((d.pn||0)>_pnMax)_pnMax=d.pn;});
     var _svgW=Math.max(1100,_allMs.length*60);var _svgH=320;var _barW=38;var _gap=(_svgW-80)/_allMs.length;var _chartPad=50;
     // ============ 売上セクション ============
-    h+='<div style="padding:0 24px 16px"><div style="background:var(--bg2);border-radius:12px;padding:20px;border:1px solid rgba(0,0,0,.04)">';
+    h+='<div style="padding:0 24px 16px"><div style="display:grid;grid-template-columns:1fr 192px;gap:12px;align-items:start">';
+    h+='<div style="background:var(--bg2);border-radius:12px;padding:20px;border:1px solid rgba(0,0,0,.04)">';
     h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">';
     h+='<div style="font-size:13px;font-weight:700">月別売上推移（2025/08〜）</div>';
     h+='<span style="font-size:9px;color:var(--ink3)">'+(_pnNewM?'📊 pn_new':'⚠ pn')+'</span>';
     h+='<span style="font-size:9px;color:var(--ink3)">※月クリック→案件一覧</span>';
-    // 売上ミニKPI
-    h+='<div style="display:flex;gap:14px;margin-left:auto;margin-right:12px;align-items:center">';
-    h+='<div style="text-align:center;cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:8px;color:var(--ink3)">売上</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--blue)">'+eFmt(pnNow.rev)+'</div></div>';
-    h+='<div style="text-align:center;cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:8px;color:var(--ink3)">粗利</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--grn)">'+eFmt(pnNow.pk)+'</div></div>';
-    h+='<div style="text-align:center"><div style="font-size:8px;color:var(--ink3)">粗利率</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:#bf8700">'+_pnMgn+'%</div></div>';
-    h+='<div style="text-align:center;cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:8px;color:var(--ink3)">PN</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:#ea580c">'+pnNow.pn+'</div></div>';
-    h+='<div style="text-align:center"><div style="font-size:8px;color:var(--ink3)">単価</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:#7c3aed">'+eFmt(_pnAvg)+'</div></div>';
-    h+='</div>';
     h+='<select class="fl" onchange="window.E_REV_MFJ=this.value;renderEnt()" style="margin-left:auto">';
     h+='<option value="none"'+(E_REV_MFJ==='none'?' selected':'')+'>確定売上のみ</option>';
     h+='<option value="manual"'+(E_REV_MFJ==='manual'?' selected':'')+'>+手入力予測 ('+eFmt(_manFcst.total)+')</option>';
@@ -1308,6 +1301,15 @@ function renderEntOverview(){
     if(E_REV_MFJ==='manual')h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(234,88,12,.25);border:1px dashed var(--org);border-radius:2px;vertical-align:middle"></span> 手入力予測</span>';
     h+='<span style="color:#7c3aed">■ 平均単価/PN</span></div>';
     h+='<div id="rev-drill-box" style="margin:0"></div>';
+    h+='</div>';
+    // ---- 右列: KPIカード縦積み ----
+    h+='<div style="display:flex;flex-direction:column;gap:8px">';
+    h+='<div class="ent-kpi" style="cursor:pointer" onclick="showEntDrill(\'pn\')"><div class="ek-label">月次売上 <span style="font-size:9px;color:var(--ink3)">▼</span></div><div class="ek-val" style="color:var(--blue);font-size:22px">'+eFmt(pnNow.rev)+'</div><div class="ek-sub">今月稼働実績</div></div>';
+    h+='<div class="ent-kpi" style="cursor:pointer" onclick="showEntDrill(\'pn\')"><div class="ek-label">月次粗利 <span style="font-size:9px;color:var(--ink3)">▼</span></div><div class="ek-val" style="color:var(--grn);font-size:22px">'+eFmt(pnNow.pk)+'</div><div class="ek-sub">PK合計</div></div>';
+    h+='<div class="ent-kpi"><div class="ek-label">粗利率</div><div class="ek-val" style="color:#bf8700">'+_pnMgn+'%</div><div class="ek-sub">PK÷売上</div></div>';
+    h+='<div class="ent-kpi" style="cursor:pointer" onclick="showEntDrill(\'pn\')"><div class="ek-label">稼働PN <span style="font-size:9px;color:var(--ink3)">▼</span></div><div class="ek-val" style="color:#ea580c">'+pnNow.pn+'</div><div class="ek-sub">稼働中案件数</div></div>';
+    h+='<div class="ent-kpi"><div class="ek-label">平均単価</div><div class="ek-val" style="color:#7c3aed;font-size:20px">'+eFmt(_pnAvg)+'</div><div class="ek-sub">/月/PN</div></div>';
+    h+='</div>';
     h+='</div></div>';
     // ============ CKセクション ============
     h+='<div style="padding:0 24px 4px;margin-top:4px"><div style="font-size:12px;font-weight:700;color:var(--ink2);border-bottom:2px solid #bf8700;padding-bottom:4px;display:inline-block">CK・受注管理</div></div>';
