@@ -1166,13 +1166,6 @@ function renderEntOverview(){
   var _pnAvg=pnNow.pn>0?Math.round(pnNow.rev/pnNow.pn):0;
   var kzStat={};endingList.forEach(function(e){var k=e.keizoku||'未設定';if(!kzStat[k])kzStat[k]=0;kzStat[k]++;});
   var kzText=Object.keys(kzStat).map(function(k){var col=k==='継続'?'var(--grn)':k==='満了'?'var(--red)':'var(--org)';return '<span style="color:'+col+'">'+k+':'+kzStat[k]+'</span>';}).join(' ');
-  h+='<div class="ent-kpi-row" style="grid-template-columns:repeat(5,1fr)">';
-  h+=kpiCard('月次売上 ▼',eFmt(pnNow.rev),0,'var(--blue)','稼働中PN請求額(千円)','','pn');
-  h+=kpiCard('月次粗利(PK) ▼',eFmt(pnNow.pk),0,'var(--grn)','稼働中PN粗利(千円)','','pn');
-  h+=kpiCard('粗利率',_pnMgn+'%',0,'#bf8700','売上に対する粗利比率','','');
-  h+=kpiCard('稼働中案件数 (PN)',pnNow.pn,0,'var(--blue)','現在稼働中','','pn');
-  h+=kpiCard('平均単価/PN',eFmt(_pnAvg),0,'#7c3aed','月額請求÷PN数','','');
-  h+='</div>';
   h+='<div id="ent-drill-box" style="margin:0 24px"></div>';
   // === 予実確認 + CKフォーキャスト (top section) ===
   var _yosan=eParseYosan();var _pnNow=eBuildPN();
@@ -1242,11 +1235,20 @@ function renderEntOverview(){
     var _revMax=1;var _pnMax=1;
     _allMs.forEach(function(m){var d=_revHist[m]||{rev:0,pk:0,pn:0};var mfjA=(_mfjOverlay[m]||{add:0}).add;var tot=d.rev+mfjA;if(tot>_revMax)_revMax=tot;if((d.pn||0)>_pnMax)_pnMax=d.pn;});
     var _svgW=Math.max(1100,_allMs.length*60);var _svgH=320;var _barW=38;var _gap=(_svgW-80)/_allMs.length;var _chartPad=50;
+    // ============ 売上セクション ============
     h+='<div style="padding:0 24px 16px"><div style="background:var(--bg2);border-radius:12px;padding:20px;border:1px solid rgba(0,0,0,.04)">';
     h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">';
     h+='<div style="font-size:13px;font-weight:700">月別売上推移（2025/08〜）</div>';
     h+='<span style="font-size:9px;color:var(--ink3)">'+(_pnNewM?'📊 pn_new':'⚠ pn')+'</span>';
     h+='<span style="font-size:9px;color:var(--ink3)">※月クリック→案件一覧</span>';
+    // 売上ミニKPI
+    h+='<div style="display:flex;gap:14px;margin-left:auto;margin-right:12px;align-items:center">';
+    h+='<div style="text-align:center;cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:8px;color:var(--ink3)">売上</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--blue)">'+eFmt(pnNow.rev)+'</div></div>';
+    h+='<div style="text-align:center;cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:8px;color:var(--ink3)">粗利</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:var(--grn)">'+eFmt(pnNow.pk)+'</div></div>';
+    h+='<div style="text-align:center"><div style="font-size:8px;color:var(--ink3)">粗利率</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:#bf8700">'+_pnMgn+'%</div></div>';
+    h+='<div style="text-align:center;cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:8px;color:var(--ink3)">PN</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:#ea580c">'+pnNow.pn+'</div></div>';
+    h+='<div style="text-align:center"><div style="font-size:8px;color:var(--ink3)">単価</div><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:#7c3aed">'+eFmt(_pnAvg)+'</div></div>';
+    h+='</div>';
     h+='<select class="fl" onchange="window.E_REV_MFJ=this.value;renderEnt()" style="margin-left:auto">';
     h+='<option value="none"'+(E_REV_MFJ==='none'?' selected':'')+'>確定売上のみ</option>';
     h+='<option value="manual"'+(E_REV_MFJ==='manual'?' selected':'')+'>+手入力予測 ('+eFmt(_manFcst.total)+')</option>';
@@ -1307,6 +1309,8 @@ function renderEntOverview(){
     h+='<span style="color:#7c3aed">■ 平均単価/PN</span></div>';
     h+='<div id="rev-drill-box" style="margin:0"></div>';
     h+='</div></div>';
+    // ============ CKセクション ============
+    h+='<div style="padding:0 24px 4px;margin-top:4px"><div style="font-size:12px;font-weight:700;color:var(--ink2);border-bottom:2px solid #bf8700;padding-bottom:4px;display:inline-block">CK・受注管理</div></div>';
     // --- 上段: ドーナツ + ヨミゲージ ---
     h+='<div style="display:grid;grid-template-columns:200px 1fr 1fr;gap:12px;padding:8px 24px">';
     // (A) CK達成率ドーナツ（大）
@@ -1416,6 +1420,8 @@ function renderEntOverview(){
     _mo.forEach(function(m){var d=_yosan.byMember[m];if(!d)d={budget:0,jisseki:0,pipeline:0,tasseiYosoku:0,saizenYosoku:0};h+=_eRow(m,d,eMfjBreak(m,d.jisseki),m===E_MGR,false);});
     h+='</tbody></table></div>';
   }
+  // ============ KPIセクション ============
+  h+='<div style="padding:0 24px 4px;margin-top:4px"><div style="font-size:12px;font-weight:700;color:var(--ink2);border-bottom:2px solid var(--blue);padding-bottom:4px;display:inline-block">KPI 達成状況</div></div>';
   // === KPI ドーナツチャート（担当者色分け）===
   var _kpiMemberColors={'岡部':'#0079C0','中村':'#1a7f37','栫':'#ea580c','福本':'#7c3aed','飯田':'#bf8700','徳永':'#8b949e'};
   function _kpiDonut(label,key,val,target,mainColor,sub){
@@ -1455,7 +1461,7 @@ function renderEntOverview(){
     h2+='</div></div>';
     return h2;
   }
-  h+='<div style="padding:4px 24px 8px"><div style="font-size:13px;font-weight:700;margin-bottom:8px">KPI 達成状況</div>';
+  h+='<div style="padding:4px 24px 8px">';
   h+='<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">';
   h+=_kpiDonut('P1商談合計','p1',kpi.p1,_dynTargets.p1,'var(--ink)','アポ日='+monthLabel);
   h+=_kpiDonut('IS経由','is',kpi.is,_dynTargets.is,'var(--blue)','アポ取得月');
