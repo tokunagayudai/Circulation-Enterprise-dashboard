@@ -2353,7 +2353,7 @@ function showRevDrill(ym){
   var _closeDateMap={};
   E_ROWS.forEach(function(r){var oid=eGet(r,'oppId');if(oid)_closeDateMap[oid]=eGet(r,'closeDate')||'';});
   var _th='style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:10px;font-weight:600;border:none"';
-  h+='<div style="overflow-x:auto;max-height:500px;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg2);z-index:1"><tr><td '+_th+'>担当</td><td '+_th+'>案件名</td><td '+_th+'>稼働プロ</td><td '+_th+'>契約期間</td><td '+_th+'>月請求</td><td '+_th+'>月支払</td><td '+_th+'>月粗利</td><td '+_th+'>粗利率</td></tr></thead><tbody>';
+  h+='<div style="overflow-x:auto;max-height:500px;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg2);z-index:1"><tr><td '+_th+'>担当</td><td '+_th+'>案件名</td><td '+_th+'>稼働プロ</td><td '+_th+'>受注日</td><td '+_th+'>契約期間</td><td '+_th+'>月請求</td><td '+_th+'>月支払</td><td '+_th+'>月粗利</td><td '+_th+'>粗利率</td></tr></thead><tbody>';
   list.sort(function(a,b){return b.bill-a.bill;});
   list.forEach(function(c){
     var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'#';
@@ -2364,6 +2364,7 @@ function showRevDrill(ym){
     h+='<tr><td style="font-weight:600;white-space:nowrap;font-size:10px">'+c.member+'</td>';
     h+='<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue);font-size:10px" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
     h+='<td style="font-size:10px;color:var(--ink2)">'+c.expert+'</td>';
+    h+='<td style="font-size:9px;color:var(--ink3);white-space:nowrap">'+(clDate||'-')+'</td>';
     h+='<td style="font-size:9px;color:var(--ink3);white-space:nowrap">'+period+'</td>';
     h+='<td style="font-family:var(--mono);font-weight:600">'+eFmt(c.bill)+'</td>';
     h+='<td style="font-family:var(--mono);color:var(--ink3)">'+eFmt(c.pay)+'</td>';
