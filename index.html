@@ -1192,28 +1192,43 @@ function renderEntOverview(){
       // 手入力予測: 今月に一括加算
       if(_manFcst.total>0){var _curYM=_todayYM2;if(!_mfjOverlay[_curYM])_mfjOverlay[_curYM]={add:0,cnt:0};_mfjOverlay[_curYM].add+=_manFcst.total;_mfjOverlay[_curYM].cnt+=_manFcst.items.length;}
     }
-    var _mfjCnt={MIN:0,MID:0,MAX:0};var _mfjCaseCnt=0;
+    var _mfjCnt={MIN:0,MID:0,MAX:0};var _mfjCaseCnt=0;var _mfjCases=[];
     E_ROWS.forEach(function(r){
       var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
       var cp=ePh(cpRaw);if(cp<1||cp>=8)return;
       var mfj=eGet(r,'mfj');
       if(!mfj||mfj==='-'){if(cp>=5)mfj='MIN';else if(cp===4)mfj='MID';else if(cp>=2)mfj='MAX';else return;}
       if(mfj==='MIN')_mfjCnt.MIN++;else if(mfj==='MID')_mfjCnt.MID++;else if(mfj==='MAX')_mfjCnt.MAX++;
+      var stStr=eGet(r,'startDate')||'';var clStr=eGet(r,'closeDate')||'';
+      var startYM='';
+      if(stStr.length>=7)startYM=stStr.substring(0,7);
+      else if(clStr.length>=7){var cd=new Date(clStr.replace(/\//g,'-'));cd.setMonth(cd.getMonth()+1);startYM=cd.getFullYear()+'/'+(cd.getMonth()+1<10?'0':'')+(cd.getMonth()+1);}
+      else startYM=_todayYM2;
+      if(startYM<_todayYM2)startYM=_todayYM2;
+      _mfjCases.push({mfj:mfj,startYM:startYM});
     });
     if(E_REV_MFJ!=='none'&&E_REV_MFJ!=='manual'){
-      if(E_REV_MFJ==='MIN')_mfjCaseCnt=_mfjCnt.MIN;
-      else if(E_REV_MFJ==='MID')_mfjCaseCnt=_mfjCnt.MIN+_mfjCnt.MID;
-      else if(E_REV_MFJ==='MAX')_mfjCaseCnt=_mfjCnt.MIN+_mfjCnt.MID+_mfjCnt.MAX;
-      var _latestAvg=0;
+      var _latestAvg=0;var _avgByM={};
       _allMs.forEach(function(m){
         var d=_revHist[m]||{rev:0,pk:0,pn:0};
         var avg=(d.pn||0)>0?Math.round(d.rev/(d.pn||1)):0;
         if(avg>0)_latestAvg=avg;
-        if(m>=_todayYM2){
-          var mAvg=avg>0?avg:_latestAvg;
-          if(mAvg>0&&_mfjCaseCnt>0){if(!_mfjOverlay[m])_mfjOverlay[m]={add:0,cnt:0};_mfjOverlay[m].add=mAvg*_mfjCaseCnt;_mfjOverlay[m].cnt=_mfjCaseCnt;}
-        }
+        _avgByM[m]=avg>0?avg:_latestAvg;
       });
+      _mfjCases.forEach(function(c){
+        var ok=false;
+        if(E_REV_MFJ==='MIN'&&c.mfj==='MIN')ok=true;
+        if(E_REV_MFJ==='MID'&&(c.mfj==='MIN'||c.mfj==='MID'))ok=true;
+        if(E_REV_MFJ==='MAX')ok=true;
+        if(!ok)return;
+        _mfjCaseCnt++;
+        _allMs.forEach(function(m){
+          if(m<c.startYM)return;
+          var mAvg=_avgByM[m]||0;
+          if(mAvg>0){if(!_mfjOverlay[m])_mfjOverlay[m]={add:0,cnt:0};_mfjOverlay[m].add+=mAvg;_mfjOverlay[m].cnt++;}
+        });
+      });
+      // _mfjCaseCnt is already total qualifying cases
     }
     // max計算
     var _revMax=1;var _pnMax=1;
@@ -1279,7 +1294,7 @@ function renderEntOverview(){
     h+='<span><span style="display:inline-block;width:10px;height:10px;background:#0079C0;border-radius:2px;vertical-align:middle"></span> 売上</span>';
     h+='<span><span style="display:inline-block;width:10px;height:10px;background:#1a7f37;border-radius:2px;vertical-align:middle"></span> 粗利(PK) <span style="color:#1a7f37">%=粗利率</span></span>';
     h+='<span><span style="display:inline-block;width:16px;height:0;border-top:2px dashed #ea580c;vertical-align:middle"></span> PN数</span>';
-    if(E_REV_MFJ!=='none'&&E_REV_MFJ!=='manual')h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(234,88,12,.25);border:1px dashed var(--org);border-radius:2px;vertical-align:middle"></span> '+E_REV_MFJ+' '+_mfjCaseCnt+'件×月平均単価</span>';
+    if(E_REV_MFJ!=='none'&&E_REV_MFJ!=='manual')h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(234,88,12,.25);border:1px dashed var(--org);border-radius:2px;vertical-align:middle"></span> '+E_REV_MFJ+' '+_mfjCaseCnt+'件×平均単価（契約開始日〜）</span>';
     if(E_REV_MFJ==='manual')h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(234,88,12,.25);border:1px dashed var(--org);border-radius:2px;vertical-align:middle"></span> 手入力予測</span>';
     h+='<span style="color:#7c3aed">■ 平均単価/PN</span></div>';
     h+='<div id="rev-drill-box" style="margin:0"></div>';
