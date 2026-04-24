@@ -1253,7 +1253,7 @@ function renderEntOverview(){
     var _curMgn=_curD.rev>0?Math.round(_curD.pk/_curD.rev*100):0;
     // SVG
     var _totalH=_svgH+65;
-    h+='<div style="overflow-x:auto"><svg width="'+_svgW+'" height="'+_totalH+'" viewBox="0 0 '+_svgW+' '+_totalH+'">';
+    h+='<div><svg style="width:100%;height:auto;display:block" viewBox="0 0 '+_svgW+' '+_totalH+'">';
     for(var _gi=0;_gi<=5;_gi++){var _gy=_svgH-(_svgH*(_gi/5));h+='<line x1="'+_chartPad+'" y1="'+_gy+'" x2="'+(_svgW-40)+'" y2="'+_gy+'" stroke="rgba(0,0,0,.05)"/><text x="'+(_chartPad-4)+'" y="'+(_gy+3)+'" text-anchor="end" font-size="9" fill="#8b949e" font-family="var(--mono)">'+eFmt(Math.round(_revMax/5*_gi))+'</text>';}
     for(var _pi=0;_pi<=4;_pi++){var _py=_svgH-(_svgH*(_pi/4));h+='<text x="'+(_svgW-4)+'" y="'+(_py+3)+'" text-anchor="end" font-size="8" fill="#ea580c" font-family="var(--mono)">'+Math.round(_pnMax/4*_pi)+'</text>';}
     var _pnPts=[];
@@ -1303,12 +1303,13 @@ function renderEntOverview(){
     h+='<div id="rev-drill-box" style="margin:0"></div>';
     h+='</div>';
     // ---- 右列: KPIカード縦積み ----
+    var _rkS='background:#fff;border-radius:10px;padding:14px 16px;border:1px solid rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.04)';
     h+='<div style="display:flex;flex-direction:column;gap:8px">';
-    h+='<div class="ent-kpi" style="cursor:pointer" onclick="showEntDrill(\'pn\')"><div class="ek-label">月次売上 <span style="font-size:9px;color:var(--ink3)">▼</span></div><div class="ek-val" style="color:var(--blue);font-size:22px">'+eFmt(pnNow.rev)+'</div><div class="ek-sub">今月稼働実績</div></div>';
-    h+='<div class="ent-kpi" style="cursor:pointer" onclick="showEntDrill(\'pn\')"><div class="ek-label">月次粗利 <span style="font-size:9px;color:var(--ink3)">▼</span></div><div class="ek-val" style="color:var(--grn);font-size:22px">'+eFmt(pnNow.pk)+'</div><div class="ek-sub">PK合計</div></div>';
-    h+='<div class="ent-kpi"><div class="ek-label">粗利率</div><div class="ek-val" style="color:#bf8700">'+_pnMgn+'%</div><div class="ek-sub">PK÷売上</div></div>';
-    h+='<div class="ent-kpi" style="cursor:pointer" onclick="showEntDrill(\'pn\')"><div class="ek-label">稼働PN <span style="font-size:9px;color:var(--ink3)">▼</span></div><div class="ek-val" style="color:#ea580c">'+pnNow.pn+'</div><div class="ek-sub">稼働中案件数</div></div>';
-    h+='<div class="ent-kpi"><div class="ek-label">平均単価</div><div class="ek-val" style="color:#7c3aed;font-size:20px">'+eFmt(_pnAvg)+'</div><div class="ek-sub">/月/PN</div></div>';
+    h+='<div style="'+_rkS+';cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:10px;color:var(--ink3);font-weight:500">月次売上 <span style="font-size:9px">▼</span></div><div style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--blue);line-height:1.2;margin:4px 0 2px">'+eFmt(pnNow.rev)+'</div><div style="font-size:10px;color:var(--ink3)">今月稼働実績</div></div>';
+    h+='<div style="'+_rkS+';cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:10px;color:var(--ink3);font-weight:500">月次粗利 <span style="font-size:9px">▼</span></div><div style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--grn);line-height:1.2;margin:4px 0 2px">'+eFmt(pnNow.pk)+'</div><div style="font-size:10px;color:var(--ink3)">PK合計</div></div>';
+    h+='<div style="'+_rkS+'"><div style="font-size:10px;color:var(--ink3);font-weight:500">粗利率</div><div style="font-family:var(--mono);font-size:24px;font-weight:700;color:#bf8700;line-height:1.2;margin:4px 0 2px">'+_pnMgn+'%</div><div style="font-size:10px;color:var(--ink3)">PK÷売上</div></div>';
+    h+='<div style="'+_rkS+';cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:10px;color:var(--ink3);font-weight:500">稼働PN <span style="font-size:9px">▼</span></div><div style="font-family:var(--mono);font-size:24px;font-weight:700;color:#ea580c;line-height:1.2;margin:4px 0 2px">'+pnNow.pn+'</div><div style="font-size:10px;color:var(--ink3)">稼働中案件数</div></div>';
+    h+='<div style="'+_rkS+'"><div style="font-size:10px;color:var(--ink3);font-weight:500">平均単価</div><div style="font-family:var(--mono);font-size:22px;font-weight:700;color:#7c3aed;line-height:1.2;margin:4px 0 2px">'+eFmt(_pnAvg)+'</div><div style="font-size:10px;color:var(--ink3)">/月/PN</div></div>';
     h+='</div>';
     h+='</div></div>';
     // ============ CKセクション ============
