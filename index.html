@@ -366,7 +366,8 @@ var E_PHASE={'01':1,'02':2,'03':3,'04':4,'05':5,'06':6,'07':7,'08':8};
 var E_PH_LABELS={1:'P1 商談',2:'P2 案件化',3:'P3 提案',4:'P4 面談',5:'P5-6 合意',7:'P7 契約前',8:'P8 受注'};
 var E_PH_COLORS={1:'var(--blue)',2:'#6366f1',3:'var(--org)',4:'#ea580c',5:'#0d9488',7:'#7c3aed',8:'var(--grn)'};
 var E_TARGETS={p8:18,p4:48,p1:75,p3:64,is:45,fs:30,ck:20000000};
-var E_MGR='徳永 雄大';
+var E_TARGETS_PP={p1:15,is:9,fs:6,p3:8,p4:6,p8:3};
+var E_MGR='徳永 雄大';var E_MGR_KPI_END='2026/02';
 var E_MEMBER_ORDER=['栫 英輝','中村 春香','岡部 瑛美','福本 悠太','飯田 知美','徳永 雄大'];
 // Phase parser
 function ePh(s){if(!s)return 0;if(s.indexOf('08')>=0)return 8;if(s.indexOf('07')>=0)return 7;if(s.indexOf('06')>=0)return 5;if(s.indexOf('05')>=0)return 5;if(s.indexOf('04')>=0)return 4;if(s.indexOf('03')>=0)return 3;if(s.indexOf('02')>=0)return 2;if(s.indexOf('01')>=0)return 1;if(s.indexOf('DEAD')>=0)return -1;return 0;}
@@ -918,10 +919,13 @@ function showMorningBriefing(){
   // ============================================
   h+='<div class="mbr-sect-hdr" style="background:#1a1f2e;color:#fff;margin-bottom:8px;font-size:13px">③ 今月KPI達成状況</div>';
   h+='<div class="mbr-kpi-row" style="margin-bottom:8px">';
-  h+=kpiMini('P1商談',kpiData.p1,E_TARGETS.p1,'var(--ink)');
-  h+=kpiMini('P3提案',kpiData.p3,E_TARGETS.p3,'var(--org)');
-  h+=kpiMini('P4面談',kpiData.p4,E_TARGETS.p4,'var(--org)');
-  h+=kpiMini('P8計上',kpiData.p8,E_TARGETS.p8,'var(--grn)');
+  var _mbrNm=E_MEMBER_ORDER.filter(function(m){return m!==E_MGR;}).length;
+  var _mbrTodayYM=new Date();_mbrTodayYM=_mbrTodayYM.getFullYear()+'/'+(_mbrTodayYM.getMonth()+1<10?'0':'')+(_mbrTodayYM.getMonth()+1);
+  var _mbrPP=_mbrNm+(_mbrTodayYM<E_MGR_KPI_END?1:0);
+  h+=kpiMini('P1商談',kpiData.p1,E_TARGETS_PP.p1*_mbrPP,'var(--ink)');
+  h+=kpiMini('P3提案',kpiData.p3,E_TARGETS_PP.p3*_mbrPP,'var(--org)');
+  h+=kpiMini('P4面談',kpiData.p4,E_TARGETS_PP.p4*_mbrPP,'var(--org)');
+  h+=kpiMini('P8計上',kpiData.p8,E_TARGETS_PP.p8*_mbrPP,'var(--grn)');
   h+=kpiMini('受注CK',Math.round(kpiData.ck/1000),Math.round(E_TARGETS.ck/1000),'var(--grn)');
   h+='</div>';
 
@@ -1067,6 +1071,21 @@ function renderEntOverview(){
   else if(E_MONTH==='h2'){targetStart=new Date(2026,1,1);targetEnd=new Date(2026,6,31);monthLabel='下期(2-7月)';targetYM='';}
   else{targetStart=new Date(2025,7,1);targetEnd=today;monthLabel='今期全体';targetYM='';}
   function inRange(dStr){if(!dStr)return false;var d=new Date(dStr.replace(/\//g,'-'));return !isNaN(d)&&d>=targetStart&&d<=targetEnd;}
+  // 動的目標計算: 1人あたり目標 × アクティブ人数 × 月数
+  var _nonMgrMembers=E_MEMBER_ORDER.filter(function(m){return m!==E_MGR;});
+  var _nonMgrCount=_nonMgrMembers.length;
+  var _dynTargets={};
+  var _tMonths=0;var _mgrMonths=0;
+  var _ym=new Date(targetStart);
+  while(_ym<=targetEnd){
+    _tMonths++;
+    var _ymStr=_ym.getFullYear()+'/'+(_ym.getMonth()+1<10?'0':'')+(_ym.getMonth()+1);
+    if(_ymStr<E_MGR_KPI_END)_mgrMonths++;
+    _ym=new Date(_ym.getFullYear(),_ym.getMonth()+1,1);
+  }
+  var _totalPP=_nonMgrCount*_tMonths+_mgrMonths;
+  for(var _tk in E_TARGETS_PP)_dynTargets[_tk]=E_TARGETS_PP[_tk]*_totalPP;
+  _dynTargets.ck=E_TARGETS.ck;
   // Calculate KPIs with per-member breakdown
   var byMember={};mList.forEach(function(m){byMember[m]={is:0,fs:0,p1:0,p3:0,p4:0,p8:0,ck:0,deadM:0};});
   var kpi={p1:0,p4:0,p8:0,ck:0,is:0,fs:0,p3:0,p2:0,deadM:0};
@@ -1391,12 +1410,12 @@ function renderEntOverview(){
   }
   h+='<div style="padding:4px 24px 8px"><div style="font-size:13px;font-weight:700;margin-bottom:8px">KPI 達成状況</div>';
   h+='<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px">';
-  h+=_kpiDonut('P1商談合計','p1',kpi.p1,E_TARGETS.p1,'var(--ink)','アポ日='+monthLabel);
-  h+=_kpiDonut('IS経由','is',kpi.is,E_TARGETS.is,'var(--blue)','アポ取得月');
-  h+=_kpiDonut('FS経由','fs',kpi.fs,E_TARGETS.fs,'#6366f1','アポ取得月');
-  h+=_kpiDonut('KSF 提案(P3)','p3',kpi.p3,E_TARGETS.p3,'var(--org)','提案日='+monthLabel);
-  h+=_kpiDonut('KPI 面談(P4)','p4',kpi.p4,E_TARGETS.p4,'var(--org)','面談日='+monthLabel);
-  h+=_kpiDonut('KGI 受注(P8)','p8',kpi.p8,E_TARGETS.p8,'var(--grn)','受注予定日='+monthLabel);
+  h+=_kpiDonut('P1商談合計','p1',kpi.p1,_dynTargets.p1,'var(--ink)','アポ日='+monthLabel);
+  h+=_kpiDonut('IS経由','is',kpi.is,_dynTargets.is,'var(--blue)','アポ取得月');
+  h+=_kpiDonut('FS経由','fs',kpi.fs,_dynTargets.fs,'#6366f1','アポ取得月');
+  h+=_kpiDonut('KSF 提案(P3)','p3',kpi.p3,_dynTargets.p3,'var(--org)','提案日='+monthLabel);
+  h+=_kpiDonut('KPI 面談(P4)','p4',kpi.p4,_dynTargets.p4,'var(--org)','面談日='+monthLabel);
+  h+=_kpiDonut('KGI 受注(P8)','p8',kpi.p8,_dynTargets.p8,'var(--grn)','受注予定日='+monthLabel);
   h+='</div>';
   // Color legend
   h+='<div style="display:flex;gap:10px;margin-top:6px;font-size:9px;flex-wrap:wrap">';
@@ -1433,7 +1452,9 @@ function renderEntOverview(){
   var h2Stat=teamStat(new Date(2026,1,1),new Date(2026,6,31,23,59,59));
   var fyStat=teamStat(new Date(2025,7,1),new Date(2026,6,31,23,59,59));
   // アソシエイト目標（チーム全体、半期）
-  var assocTargets={p1:E_TARGETS.p1*6,p3:E_TARGETS.p3*6,p4:E_TARGETS.p4*6,p8:E_TARGETS.p8*6};
+  var _h1pp=_nonMgrCount*6+6;var _h2pp=_nonMgrCount*6;
+  function _mkTgt(pp){return{p1:E_TARGETS_PP.p1*pp,p3:E_TARGETS_PP.p3*pp,p4:E_TARGETS_PP.p4*pp,p8:E_TARGETS_PP.p8*pp};}
+  var assocTargetsH1=_mkTgt(_h1pp);var assocTargetsH2=_mkTgt(_h2pp);
   function cell(v,tgt){
     if(!tgt)return '<td style="font-family:var(--mono);font-weight:600">'+v+'</td>';
     var pct=Math.round(v/tgt*100);
@@ -1443,8 +1464,8 @@ function renderEntOverview(){
   h+='<div class="ent-section"><div class="es-title" style="color:var(--blue)">👥 チーム全体サマリー（アソシエイト含む・継続案件を除くP1/P3/P4）<span style="font-size:9px;font-weight:400;color:var(--ink3);margin-left:8px">目標は半期累計</span></div>';
   h+='<div style="overflow-x:auto"><table class="ent-table" style="font-size:11px">';
   h+='<thead><tr><th>期間</th><th>P1商談<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>KSF P3提案<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>KPI P4面談<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>KGI P8受注<br><span style="font-weight:400;color:var(--ink3)">アソシエイト目標</span></th><th>└新規P8</th><th>└既顧客P8</th><th>└継続P8</th><th>総CK</th></tr></thead><tbody>';
-  function statRow(label,s,showTgt){
-    var tgt=showTgt?assocTargets:{};
+  function statRow(label,s,tgtObj){
+    var tgt=tgtObj||{};
     return '<tr><td style="font-weight:700">'+label+'</td>'+
       cell(s.p1,tgt.p1||0)+
       cell(s.p3,tgt.p3||0)+
@@ -1455,9 +1476,9 @@ function renderEntOverview(){
       '<td style="font-family:var(--mono);color:var(--grn)">'+s.keizokuP8+'<br><span style="font-size:9px;color:var(--ink3)">'+eFmt(s.keizokuCK)+'</span></td>'+
       '<td style="font-family:var(--mono);font-weight:700">'+eFmt(s.totalCK)+'</td></tr>';
   }
-  h+=statRow('上期 (8〜1月)',h1Stat,true);
-  h+=statRow('下期 (2〜7月)',h2Stat,true);
-  h+=statRow('今期累計 (8月〜)',fyStat,false);
+  h+=statRow('上期 (8〜1月)',h1Stat,assocTargetsH1);
+  h+=statRow('下期 (2〜7月)',h2Stat,assocTargetsH2);
+  h+=statRow('今期累計 (8月〜)',fyStat,null);
   h+='</tbody></table></div>';
   // 新規/既顧客/継続の構成メッセージ
   var newPct=fyStat.p8>0?Math.round(fyStat.newP8/fyStat.p8*100):0;
