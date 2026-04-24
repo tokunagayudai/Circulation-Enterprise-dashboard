@@ -1302,7 +1302,7 @@ function renderEntOverview(){
     h+='<div id="rev-drill-box" style="margin:0"></div>';
     h+='</div></div>';
     // --- 上段: ドーナツ + ヨミゲージ ---
-    h+='<div style="display:grid;grid-template-columns:220px 1fr 180px;gap:12px;padding:8px 24px">';
+    h+='<div style="display:grid;grid-template-columns:200px minmax(300px,480px) 220px;gap:12px;padding:8px 24px">';
     // (A) CK達成率ドーナツ（大）
     var _dA=Math.min(100,_achPct)*2.51327;var _dR=251.327-_dA;
     var _ckAchieved=_achPct>=100;
@@ -1355,27 +1355,27 @@ function renderEntOverview(){
       _wonThisM.list.push({name:eGet(r,'name'),member:eGet(r,'member'),oppId:eGet(r,'oppId'),dealType:dt,ck:eGetN(r,'ck')});
     });
     window._entDrillData.wonM=_wonThisM.list;
-    h+='<div style="display:flex;flex-direction:column;gap:8px">';
-    // 今月受注
     var _wonC=_wonThisM.total>0?'var(--grn)':'var(--ink3)';
     var _netPn=_wonThisM.total-endingThisMonth;var _netC=_netPn>0?'var(--grn)':_netPn<0?'var(--red)':'var(--ink3)';
-    h+='<div style="background:'+(_wonThisM.total>0?'#f0fdf4':'var(--bg2)')+';border-radius:10px;padding:12px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.2)':'rgba(0,0,0,.04)')+';cursor:pointer;flex:1" onclick="showEntDrill(\'wonM\')">';
-    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500;margin-bottom:2px">今月受注 ▼</div>';
-    h+='<div style="font-family:var(--mono);font-size:22px;font-weight:700;color:'+_wonC+';line-height:1.1">'+_wonThisM.total+'</div>';
-    h+='<div style="font-size:8px;color:var(--ink3);margin-top:2px">継続:'+_wonThisM.keizoku+' 新規/既顧客:'+_wonThisM.newEx+'</div></div>';
-    // 今月満了予定
     var _endC=endingThisMonth>0?'var(--red)':'var(--ink3)';
-    h+='<div style="background:var(--bg2);border-radius:10px;padding:12px;border:1px solid rgba(0,0,0,.04);cursor:pointer;flex:1" onclick="showEntDrill(\'ending\')">';
-    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500;margin-bottom:2px">今月満了予定 ▼</div>';
-    h+='<div style="font-family:var(--mono);font-size:22px;font-weight:700;color:'+_endC+';line-height:1.1">'+endingThisMonth+'</div>';
-    h+='<div style="font-size:8px;color:var(--ink3);margin-top:2px">'+kzText+'</div></div>';
+    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+    // 今月受注
+    h+='<div style="background:'+(_wonThisM.total>0?'#f0fdf4':'var(--bg2)')+';border-radius:8px;padding:10px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.2)':'rgba(0,0,0,.04)')+';cursor:pointer" onclick="showEntDrill(\'wonM\')">';
+    h+='<div style="font-size:8px;color:var(--ink3);font-weight:500">今月受注 ▼</div>';
+    h+='<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:'+_wonC+'">'+_wonThisM.total+'</div>';
+    h+='<div style="font-size:7px;color:var(--ink3)">継続:'+_wonThisM.keizoku+' 新規:'+_wonThisM.newEx+'</div></div>';
+    // 今月満了予定
+    h+='<div style="background:var(--bg2);border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);cursor:pointer" onclick="showEntDrill(\'ending\')">';
+    h+='<div style="font-size:8px;color:var(--ink3);font-weight:500">満了予定 ▼</div>';
+    h+='<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:'+_endC+'">'+endingThisMonth+'</div>';
+    h+='<div style="font-size:7px;color:var(--ink3)">'+kzText+'</div></div>';
     // 今月DEAD
-    h+='<div style="background:var(--bg2);border-radius:10px;padding:12px;border:1px solid rgba(0,0,0,.04);cursor:pointer;flex:1" onclick="showEntDrill(\'deadM\')">';
-    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500;margin-bottom:2px">今月DEAD ▼</div>';
-    h+='<div style="font-family:var(--mono);font-size:22px;font-weight:700;color:'+(kpi.deadM>0?'var(--red)':'var(--ink3)')+';line-height:1.1">'+kpi.deadM+'</div>';
-    h+='<div style="font-size:8px;color:var(--ink3);margin-top:2px">'+memBrkdwn('deadM')+'</div></div>';
-    // 純増減
-    h+='<div style="background:'+((_netPn>0)?'rgba(26,127,55,.05)':(_netPn<0)?'rgba(207,34,46,.05)':'var(--bg2)')+';border-radius:8px;padding:8px 12px;text-align:center;border:1px solid rgba(0,0,0,.04)">';
+    h+='<div style="background:var(--bg2);border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);cursor:pointer" onclick="showEntDrill(\'deadM\')">';
+    h+='<div style="font-size:8px;color:var(--ink3);font-weight:500">今月DEAD ▼</div>';
+    h+='<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:'+(kpi.deadM>0?'var(--red)':'var(--ink3)')+'">'+kpi.deadM+'</div>';
+    h+='<div style="font-size:7px;color:var(--ink3)">'+memBrkdwn('deadM')+'</div></div>';
+    // PN純増減
+    h+='<div style="background:'+((_netPn>0)?'rgba(26,127,55,.05)':(_netPn<0)?'rgba(207,34,46,.05)':'var(--bg2)')+';border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);text-align:center">';
     h+='<div style="font-size:8px;color:var(--ink3)">PN純増減</div>';
     h+='<div style="font-family:var(--mono);font-size:16px;font-weight:800;color:'+_netC+'">'+(_netPn>0?'+':'')+_netPn+'</div></div>';
     h+='</div></div>';
