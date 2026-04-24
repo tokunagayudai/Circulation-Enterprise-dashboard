@@ -1361,7 +1361,7 @@ function renderEntOverview(){
       if(E_MF!=='all'&&eGet(r,'member')!==E_MF)return;
       var cp=ePh(eGet(r,'curPh'));if(cp!==8)return;
       var clStr=eGet(r,'closeDate');if(!clStr)return;
-      if(clStr.substring(0,7)!==thisYM)return;
+      if(clStr.substring(0,7)!==endYMTarget)return;
       var dt=eGet(r,'dealType')||'';
       _wonThisM.total++;
       if(dt.indexOf('継続')>=0)_wonThisM.keizoku++;else _wonThisM.newEx++;
