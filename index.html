@@ -1234,7 +1234,7 @@ function renderEntOverview(){
     // max計算
     var _revMax=1;var _pnMax=1;
     _allMs.forEach(function(m){var d=_revHist[m]||{rev:0,pk:0,pn:0};var mfjA=(_mfjOverlay[m]||{add:0}).add;var tot=d.rev+mfjA;if(tot>_revMax)_revMax=tot;if((d.pn||0)>_pnMax)_pnMax=d.pn;});
-    var _svgW=Math.max(1100,_allMs.length*60);var _svgH=320;var _barW=38;var _gap=(_svgW-80)/_allMs.length;var _chartPad=50;
+    var _svgW=Math.max(1100,_allMs.length*60);var _svgH=240;var _barW=34;var _gap=(_svgW-80)/_allMs.length;var _chartPad=50;
     // ============ 売上セクション ============
     h+='<div style="padding:0 24px 16px"><div style="display:grid;grid-template-columns:1fr 192px;gap:12px;align-items:start">';
     h+='<div style="background:var(--bg2);border-radius:12px;padding:20px;border:1px solid rgba(0,0,0,.04)">';
