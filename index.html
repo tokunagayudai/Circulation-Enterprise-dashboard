@@ -1302,7 +1302,7 @@ function renderEntOverview(){
     h+='<div id="rev-drill-box" style="margin:0"></div>';
     h+='</div></div>';
     // --- 上段: ドーナツ + ヨミゲージ ---
-    h+='<div style="display:grid;grid-template-columns:200px minmax(300px,480px) 220px;gap:12px;padding:8px 24px">';
+    h+='<div style="display:grid;grid-template-columns:200px 1fr 1fr;gap:12px;padding:8px 24px">';
     // (A) CK達成率ドーナツ（大）
     var _dA=Math.min(100,_achPct)*2.51327;var _dR=251.327-_dA;
     var _ckAchieved=_achPct>=100;
