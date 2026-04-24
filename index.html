@@ -1236,7 +1236,7 @@ function renderEntOverview(){
     _allMs.forEach(function(m){var d=_revHist[m]||{rev:0,pk:0,pn:0};var mfjA=(_mfjOverlay[m]||{add:0}).add;var tot=d.rev+mfjA;if(tot>_revMax)_revMax=tot;if((d.pn||0)>_pnMax)_pnMax=d.pn;});
     var _svgW=Math.max(1100,_allMs.length*60);var _svgH=240;var _barW=34;var _gap=(_svgW-80)/_allMs.length;var _chartPad=50;
     // ============ 売上セクション ============
-    h+='<div style="padding:0 24px 16px"><div style="display:grid;grid-template-columns:1fr 192px;gap:12px;align-items:start">';
+    h+='<div style="padding:0 24px 16px"><div style="display:grid;grid-template-columns:1fr 192px;gap:12px;align-items:stretch">';
     h+='<div style="background:var(--bg2);border-radius:12px;padding:20px;border:1px solid rgba(0,0,0,.04)">';
     h+='<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">';
     h+='<div style="font-size:13px;font-weight:700">月別売上推移（2025/08〜）</div>';
@@ -1304,7 +1304,7 @@ function renderEntOverview(){
     h+='</div>';
     // ---- 右列: KPIカード縦積み ----
     var _rkS='background:#fff;border-radius:10px;padding:14px 16px;border:1px solid rgba(0,0,0,.08);box-shadow:0 1px 3px rgba(0,0,0,.04)';
-    h+='<div style="display:flex;flex-direction:column;gap:8px">';
+    h+='<div style="display:flex;flex-direction:column;justify-content:space-between;gap:4px">';
     h+='<div style="'+_rkS+';cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:10px;color:var(--ink3);font-weight:500">月次売上 <span style="font-size:9px">▼</span></div><div style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--blue);line-height:1.2;margin:4px 0 2px">'+eFmt(pnNow.rev)+'</div><div style="font-size:10px;color:var(--ink3)">今月稼働実績</div></div>';
     h+='<div style="'+_rkS+';cursor:pointer" onclick="showEntDrill(\'pn\')"><div style="font-size:10px;color:var(--ink3);font-weight:500">月次粗利 <span style="font-size:9px">▼</span></div><div style="font-family:var(--mono);font-size:24px;font-weight:700;color:var(--grn);line-height:1.2;margin:4px 0 2px">'+eFmt(pnNow.pk)+'</div><div style="font-size:10px;color:var(--ink3)">PK合計</div></div>';
     h+='<div style="'+_rkS+'"><div style="font-size:10px;color:var(--ink3);font-weight:500">粗利率</div><div style="font-family:var(--mono);font-size:24px;font-weight:700;color:#bf8700;line-height:1.2;margin:4px 0 2px">'+_pnMgn+'%</div><div style="font-size:10px;color:var(--ink3)">PK÷売上</div></div>';
