@@ -1556,23 +1556,39 @@ function renderEntOverview(){
     var _wonC=_wonThisM.total>0?'var(--grn)':'var(--ink3)';
     var _netPn=_wonThisM.total-endingThisMonth;var _netC=_netPn>0?'var(--grn)':_netPn<0?'var(--red)':'var(--ink3)';
     var _endC=endingThisMonth>0?'var(--red)':'var(--ink3)';
-    h+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:center">';
-    // 今月受注
-    h+='<div style="background:'+(_wonThisM.total>0?'#f0fdf4':'var(--bg2)')+';border-radius:8px;padding:12px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.2)':'rgba(0,0,0,.04)')+';cursor:pointer;text-align:center" onclick="showEntDrill(\'wonM\')">';
-    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">今月受注 ▼</div>';
-    h+='<div style="font-family:var(--mono);font-size:28px;font-weight:800;color:'+_wonC+';line-height:1.2">'+_wonThisM.total+'</div>';
-    h+='<div style="font-size:8px;color:var(--ink3)">継続:'+_wonThisM.keizoku+' 新規:'+_wonThisM.newEx+'</div></div>';
-    // PN純増減（中央・矢印付き）
-    h+='<div style="text-align:center;padding:0 14px">';
-    h+='<div style="font-size:8px;color:var(--ink3);margin-bottom:2px">PN純増減</div>';
-    h+='<div style="font-family:var(--mono);font-size:24px;font-weight:800;color:'+_netC+'">'+(_netPn>0?'+':'')+_netPn+'</div>';
-    h+='<div style="font-size:16px;color:'+_netC+'">'+(_netPn>0?'▲':_netPn<0?'▼':'—')+'</div></div>';
-    // 今月満了予定
-    h+='<div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid rgba(0,0,0,.04);cursor:pointer;text-align:center" onclick="showEntDrill(\'ending\')">';
-    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">満了予定 ▼</div>';
-    h+='<div style="font-family:var(--mono);font-size:28px;font-weight:800;color:'+_endC+';line-height:1.2">'+endingThisMonth+'</div>';
-    h+='<div style="font-size:8px;color:var(--ink3)">'+kzText+'</div></div>';
-    h+='</div></div>';
+    h+='<div style="display:grid;grid-template-columns:1fr 100px 1fr;gap:0;align-items:center;padding:0 24px 8px">';
+    // 今月受注（左）
+    h+='<div style="background:'+(_wonThisM.total>0?'linear-gradient(135deg,#f0fdf4,#dcfce7)':'var(--bg2)')+';border-radius:10px;padding:16px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.15)':'rgba(0,0,0,.04)')+';cursor:pointer;display:flex;align-items:center;gap:14px" onclick="showEntDrill(\'wonM\')">';
+    // ミニドーナツ
+    var _wonPct=_wonThisM.total>0?Math.min(100,Math.round(_wonThisM.total/10*100)):0;
+    var _wonArc=_wonPct*1.5708/100;
+    h+='<svg width="56" height="56" viewBox="0 0 56 56" style="flex-shrink:0">';
+    h+='<circle cx="28" cy="28" r="22" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="5"/>';
+    if(_wonThisM.total>0){var _nA=_wonThisM.newEx/_wonThisM.total*138.23;h+='<circle cx="28" cy="28" r="22" fill="none" stroke="#1a7f37" stroke-width="5" stroke-dasharray="'+_nA.toFixed(1)+' '+(138.23-_nA).toFixed(1)+'" transform="rotate(-90 28 28)"/>';if(_wonThisM.keizoku>0){var _kA=_wonThisM.keizoku/_wonThisM.total*138.23;h+='<circle cx="28" cy="28" r="22" fill="none" stroke="#1a7f37" stroke-width="5" stroke-dasharray="'+_kA.toFixed(1)+' '+(138.23-_kA).toFixed(1)+'" opacity=".4" transform="rotate('+(-90+_nA/138.23*360)+' 28 28)"/>';}}
+    h+='<text x="28" y="32" text-anchor="middle" font-size="16" font-weight="800" fill="'+_wonC+'" font-family="var(--mono)">'+_wonThisM.total+'</text>';
+    h+='</svg>';
+    h+='<div><div style="font-size:10px;font-weight:700;color:var(--ink2)">今月受注 ▼</div>';
+    h+='<div style="font-size:9px;color:var(--ink3);margin-top:3px"><span style="display:inline-block;width:6px;height:6px;background:#1a7f37;border-radius:50%;vertical-align:middle"></span> 新規 '+_wonThisM.newEx+' <span style="display:inline-block;width:6px;height:6px;background:#1a7f37;border-radius:50%;vertical-align:middle;opacity:.4"></span> 継続 '+_wonThisM.keizoku+'</div></div></div>';
+    // PN純増減（中央）
+    var _netBg=_netPn>0?'linear-gradient(180deg,rgba(26,127,55,.08),rgba(26,127,55,.02))':_netPn<0?'linear-gradient(180deg,rgba(207,34,46,.08),rgba(207,34,46,.02))':'var(--bg2)';
+    h+='<div style="text-align:center;padding:12px 0;background:'+_netBg+';border-radius:10px">';
+    h+='<div style="font-size:9px;color:var(--ink3);font-weight:600">PN純増減</div>';
+    h+='<div style="font-family:var(--mono);font-size:32px;font-weight:800;color:'+_netC+';line-height:1">'+(_netPn>0?'+':'')+_netPn+'</div>';
+    h+='<svg width="24" height="14" viewBox="0 0 24 14" style="margin-top:2px">';
+    if(_netPn>0)h+='<polygon points="12,0 24,14 0,14" fill="'+_netC+'" opacity=".7"/>';
+    else if(_netPn<0)h+='<polygon points="12,14 24,0 0,0" fill="'+_netC+'" opacity=".7"/>';
+    else h+='<rect x="4" y="5" width="16" height="4" rx="2" fill="var(--ink3)" opacity=".3"/>';
+    h+='</svg></div>';
+    // 今月満了予定（右）
+    h+='<div style="background:var(--bg2);border-radius:10px;padding:16px;border:1px solid rgba(0,0,0,.04);cursor:pointer;display:flex;align-items:center;gap:14px;justify-content:flex-end" onclick="showEntDrill(\'ending\')">';
+    h+='<div style="text-align:right"><div style="font-size:10px;font-weight:700;color:var(--ink2)">満了予定 ▼</div>';
+    h+='<div style="font-size:9px;color:var(--ink3);margin-top:3px">'+kzText+'</div></div>';
+    var _endArc=endingThisMonth>0?Math.min(138.23,endingThisMonth/15*138.23):0;
+    h+='<svg width="56" height="56" viewBox="0 0 56 56" style="flex-shrink:0">';
+    h+='<circle cx="28" cy="28" r="22" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="5"/>';
+    if(endingThisMonth>0)h+='<circle cx="28" cy="28" r="22" fill="none" stroke="#cf222e" stroke-width="5" stroke-dasharray="'+_endArc.toFixed(1)+' '+(138.23-_endArc).toFixed(1)+'" stroke-linecap="round" transform="rotate(-90 28 28)"/>';
+    h+='<text x="28" y="32" text-anchor="middle" font-size="16" font-weight="800" fill="'+_endC+'" font-family="var(--mono)">'+endingThisMonth+'</text>';
+    h+='</svg></div>';
     // --- フォーキャストテーブル ---
     var _g1='style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:11px;font-weight:700;text-align:center;border:1px solid #444"';
     var _g3='style="background:#8b0000;color:#fff;padding:6px 8px;font-size:11px;font-weight:700;text-align:center;border:1px solid #444"';
@@ -2294,14 +2310,21 @@ function showRevDrill(ym){
   E_ROWS.forEach(function(r){var oid=eGet(r,'oppId');if(oid)_closeDateMap[oid]=eGet(r,'closeDate')||'';});
   var _th='style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:10px;font-weight:600;border:none"';
   h+='<div style="overflow-x:auto;max-height:500px;overflow-y:auto"><table class="ent-table"><thead style="position:sticky;top:0;background:var(--bg2);z-index:1"><tr><td '+_th+'>担当</td><td '+_th+'>案件名</td><td '+_th+'>稼働プロ</td><td '+_th+'>受注日</td><td '+_th+'>契約期間</td><td '+_th+'>月請求</td><td '+_th+'>月支払</td><td '+_th+'>月粗利</td><td '+_th+'>粗利率</td></tr></thead><tbody>';
-  list.sort(function(a,b){return b.bill-a.bill;});
+  // 今月稼働開始の判定
+  var _nowYM=new Date();_nowYM=_nowYM.getFullYear()+'/'+(_nowYM.getMonth()+1<10?'0':'')+(_nowYM.getMonth()+1);
+  list.forEach(function(c){c._newThisMonth=(c.startDate&&c.startDate.substring(0,7)===_nowYM);});
+  // 今月稼働開始を上に、それ以外は売上降順
+  list.sort(function(a,b){if(a._newThisMonth!==b._newThisMonth)return a._newThisMonth?-1:1;return b.bill-a.bill;});
+  var newCount=list.filter(function(c){return c._newThisMonth;}).length;
+  if(newCount>0)h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 10px;background:repeating-linear-gradient(45deg,rgba(0,121,192,.04),rgba(0,121,192,.04) 4px,transparent 4px,transparent 8px);border-radius:6px;border:1px solid rgba(0,121,192,.15)"><span style="font-size:10px;font-weight:700;color:var(--blue)">🆕 今月稼働開始 '+newCount+'件</span><span style="font-size:9px;color:var(--ink3)">（ハッチング行）</span></div>';
   list.forEach(function(c){
     var url=c.oppId&&c.oppId.length>=15?SFO+c.oppId+'/view':'#';
     var mgn=c.bill>0?Math.round(c.pk/c.bill*100):0;
     var mgnC=mgn>=50?'var(--grn)':mgn>=30?'var(--org)':'var(--red)';
     var clDate=_closeDateMap[c.oppId]||'';
     var period=(c.startDate||'-')+' 〜 '+(c.endDate||'-');
-    h+='<tr><td style="font-weight:600;white-space:nowrap;font-size:10px">'+c.member+'</td>';
+    var rowBg=c._newThisMonth?'background:repeating-linear-gradient(45deg,rgba(0,121,192,.06),rgba(0,121,192,.06) 4px,transparent 4px,transparent 8px)':'';
+    h+='<tr style="'+rowBg+'"><td style="font-weight:600;white-space:nowrap;font-size:10px">'+(c._newThisMonth?'🆕 ':'')+c.member+'</td>';
     h+='<td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;color:var(--blue);font-size:10px" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
     h+='<td style="font-size:10px;color:var(--ink2)">'+c.expert+'</td>';
     h+='<td style="font-size:9px;color:var(--ink3);white-space:nowrap">'+(clDate||'-')+'</td>';
