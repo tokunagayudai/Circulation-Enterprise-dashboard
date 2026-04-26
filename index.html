@@ -1707,8 +1707,8 @@ function renderEntOverview(){
     h+='</div>';
   });
   h+='</div></div>';
-  // (Row 2 cards moved to top)
-  // === チーム全体サマリー（アソシエイト含むKPI）- 半期累計・新規/既顧客/継続内訳 ===
+  // === 滞留案件セクションへ ===
+  if(false){// removed: チーム全体サマリー + 商況サマリー
   var teamAll={p1:0,p3:0,p4:0,p8:0,newP8:0,existP8:0,keizokuP8:0,newCK:0,existCK:0,keizokuCK:0,totalCK:0};
   // H1 (2025/08〜2026/01), H2 (2026/02〜2026/07), FY-total
   function teamStat(periodStart,periodEnd){
@@ -1919,7 +1919,7 @@ function renderEntOverview(){
     var qd=qMembers[m];if(!qd)qd={budget:0,pipeline:0,p8ck:0,min:0,mid:0,max:0};
     h+=qRow(m,qd,m===E_MGR);
   });
-  h+='</tbody></table></div></div>';
+  }// end removed block
   // Stalled sections grouped by phase (P2/P3/P4/P5)
   var stalledData=eBuildStalled();var stalled=stalledData.stalled;var zombie=stalledData.zombie;
   if(E_MF!=='all'){stalled=stalled.filter(function(s){return s.member===E_MF;});zombie=zombie.filter(function(s){return s.member===E_MF;});}
