@@ -1667,6 +1667,7 @@ function renderEntOverview(){
     if(E_MF!=='all'&&eGet(r,'member')!==E_MF)return;
     var cpR=eGet(r,'curPh');if(cpR.indexOf('DEAD')>=0)return;
     var cp=ePh(cpR);if(cp<1||cp>8)return;
+    if(cp===8){var _clS=eGet(r,'closeDate');if(!_clS||_clS.substring(0,7)!==endYMTarget)return;}
     var dt=eGet(r,'dealType')||'';
     var isNew=dt.indexOf('継続')<0;
     var ck=eGetN(r,'ck');
@@ -1674,7 +1675,7 @@ function renderEntOverview(){
     _phCounts[cp].items.push({name:eGet(r,'name'),member:eGet(r,'member'),oppId:eGet(r,'oppId'),isNew:isNew,ck:ck});
   });
   var _phLabels={1:'P1 見込み',2:'P2 案件',3:'P3 提案中',4:'P4 面談中',5:'P5-7 合意',8:'P8 受注'};
-  var _phSubs={1:'案件化(P2) or DEAD処理',2:'要件整理→提案実施',3:'提案→面談設定',4:'口頭合意獲得',5:'クロージング→契約処理',8:'総受注'};
+  var _phSubs={1:'案件化(P2) or DEAD処理',2:'要件整理→提案実施',3:'提案→面談設定',4:'口頭合意獲得',5:'クロージング→契約処理',8:'今月受注分'};
   var _phColors={1:'#656d76',2:'#0079C0',3:'#bf8700',4:'#ea580c',5:'#7c3aed',8:'#1a7f37'};
   h+='<div style="padding:4px 24px 8px;margin-top:4px">';
   h+='<div style="font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:6px">現在のパイプライン（フェーズ別案件数）</div>';
