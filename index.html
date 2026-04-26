@@ -746,7 +746,7 @@ function eGetManualFcst(){
   var total=0;var items=[];
   E_ROWS.forEach(function(r){
     var cpRaw=eGet(r,'curPh');if(cpRaw.indexOf('DEAD')>=0)return;
-    var cp=ePh(cpRaw);if(cp<1||cp>=8)return;
+    var cp=ePh(cpRaw);if(cp<1)return;
     var oppId=eGet(r,'oppId');if(!oppId)return;
     var v=0;try{v=parseInt(localStorage.getItem('ent_fcst_'+oppId)||'0')||0;}catch(e){}
     if(v>0){total+=v;items.push({oppId:oppId,member:eGet(r,'member'),name:eGet(r,'name'),fcst:v});}
@@ -1499,8 +1499,8 @@ function renderEntOverview(){
     _revHtml+='</div></div>';
     // ============ CKセクション ============
     h+='<div style="padding:0 24px 4px;margin-top:4px"><div style="font-size:12px;font-weight:700;color:var(--ink2);border-bottom:2px solid #bf8700;padding-bottom:4px;display:inline-block">CK・受注管理</div></div>';
-    // --- 上段: ドーナツ + ヨミゲージ ---
-    h+='<div style="display:grid;grid-template-columns:200px 1fr 1fr;gap:12px;padding:8px 24px">';
+    // --- 上段: ドーナツ + ヨミゲージ + カード3枚縦 ---
+    h+='<div style="display:grid;grid-template-columns:180px 1fr 180px;gap:12px;padding:8px 24px">';
     // (A) CK達成率ドーナツ（大）
     var _dA=Math.min(100,_achPct)*2.51327;var _dR=251.327-_dA;
     var _ckAchieved=_achPct>=100;
@@ -1556,22 +1556,20 @@ function renderEntOverview(){
     var _wonC=_wonThisM.total>0?'var(--grn)':'var(--ink3)';
     var _netPn=_wonThisM.total-endingThisMonth;var _netC=_netPn>0?'var(--grn)':_netPn<0?'var(--red)':'var(--ink3)';
     var _endC=endingThisMonth>0?'var(--red)':'var(--ink3)';
-    h+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:center">';
+    // (C) 受注/PN純増減/満了 - 縦3枚
+    h+='<div style="display:flex;flex-direction:column;gap:6px">';
     // 今月受注
-    h+='<div style="background:'+(_wonThisM.total>0?'#f0fdf4':'var(--bg2)')+';border-radius:8px;padding:12px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.2)':'rgba(0,0,0,.04)')+';cursor:pointer;text-align:center" onclick="showEntDrill(\'wonM\')">';
+    h+='<div style="background:'+(_wonThisM.total>0?'#f0fdf4':'var(--bg2)')+';border-radius:8px;padding:10px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.15)':'rgba(0,0,0,.04)')+';cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="showEntDrill(\'wonM\')">';
     h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">今月受注 ▼</div>';
-    h+='<div style="font-family:var(--mono);font-size:28px;font-weight:800;color:'+_wonC+';line-height:1.2">'+_wonThisM.total+'</div>';
-    h+='<div style="font-size:8px;color:var(--ink3)">継続:'+_wonThisM.keizoku+' 新規:'+_wonThisM.newEx+'</div></div>';
-    // PN純増減（中央・矢印付き）
-    h+='<div style="text-align:center;padding:0 14px">';
-    h+='<div style="font-size:8px;color:var(--ink3);margin-bottom:2px">PN純増減</div>';
-    h+='<div style="font-family:var(--mono);font-size:24px;font-weight:800;color:'+_netC+'">'+(_netPn>0?'+':'')+_netPn+'</div>';
-    h+='<div style="font-size:16px;color:'+_netC+'">'+(_netPn>0?'▲':_netPn<0?'▼':'—')+'</div></div>';
-    // 今月満了予定
-    h+='<div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid rgba(0,0,0,.04);cursor:pointer;text-align:center" onclick="showEntDrill(\'ending\')">';
+    h+='<div><span style="font-family:var(--mono);font-size:22px;font-weight:800;color:'+_wonC+'">'+_wonThisM.total+'</span> <span style="font-size:8px;color:var(--ink3)">継続'+_wonThisM.keizoku+' 新規'+_wonThisM.newEx+'</span></div></div>';
+    // PN純増減
+    h+='<div style="background:'+((_netPn>0)?'rgba(26,127,55,.04)':(_netPn<0)?'rgba(207,34,46,.04)':'var(--bg2)')+';border-radius:8px;padding:10px;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(0,0,0,.04)">';
+    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">PN純増減</div>';
+    h+='<div style="font-family:var(--mono);font-size:22px;font-weight:800;color:'+_netC+'">'+(_netPn>0?'+':'')+_netPn+'</div></div>';
+    // 今月満了
+    h+='<div style="background:var(--bg2);border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="showEntDrill(\'ending\')">';
     h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">満了予定 ▼</div>';
-    h+='<div style="font-family:var(--mono);font-size:28px;font-weight:800;color:'+_endC+';line-height:1.2">'+endingThisMonth+'</div>';
-    h+='<div style="font-size:8px;color:var(--ink3)">'+kzText+'</div></div>';
+    h+='<div><span style="font-family:var(--mono);font-size:22px;font-weight:800;color:'+_endC+'">'+endingThisMonth+'</span> <span style="font-size:8px;color:var(--ink3)">'+kzText+'</span></div></div>';
     h+='</div></div>';
     // --- フォーキャストテーブル ---
     var _g1='style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:11px;font-weight:700;text-align:center;border:1px solid #444"';
@@ -1902,9 +1900,62 @@ function renderEntForecast(){
   h+='</div>';
   h+='<div id="es_result" style="margin-top:8px;padding:12px;background:rgba(0,121,192,.06);border-radius:8px;font-size:12px"></div>';
   h+='</div>';
+  // === 月別売上推移チャート（フォーキャストタブ用 - 概要と同じ） ===
+  h+='<div class="ent-section"><div class="es-title">月別売上推移（2025/08〜）<span style="font-size:9px;color:var(--ink3);font-weight:400;margin-left:8px">📊 pn_new ※月クリック→案件一覧</span></div>';
+  var _fcRevHist={};var _fcPnNewM=ePnNewMonthly();
+  if(_fcPnNewM){for(var _fk in _fcPnNewM){_fcRevHist[_fk]={rev:_fcPnNewM[_fk].rev,pk:_fcPnNewM[_fk].pk,pn:_fcPnNewM[_fk].pn};}}
+  var _fcTodayYM=new Date();_fcTodayYM=_fcTodayYM.getFullYear()+'/'+(_fcTodayYM.getMonth()+1<10?'0':'')+(_fcTodayYM.getMonth()+1);
+  var _fcAllMs=[];for(var _frm='2025/08';_frm<='2027/01';_frm=eAddMonth(_frm,1))_fcAllMs.push(_frm);
+  // MFJオーバーレイ(手入力含む)
+  var _fcMfjOvl={};var _fcManFcst=eGetManualFcst();
+  if(_fcManFcst.total>0){if(!_fcMfjOvl[_fcTodayYM])_fcMfjOvl[_fcTodayYM]={add:0,cnt:0};_fcMfjOvl[_fcTodayYM].add+=_fcManFcst.total;_fcMfjOvl[_fcTodayYM].cnt+=_fcManFcst.items.length;}
+  // MIN案件のフォーキャスト
+  var _fcLatestAvg=0;var _fcAvgByM={};
+  _fcAllMs.forEach(function(m){var d=_fcRevHist[m]||{rev:0,pn:0};var a=(d.pn||0)>0?Math.round(d.rev/(d.pn||1)):0;if(a>0)_fcLatestAvg=a;_fcAvgByM[m]=a>0?a:_fcLatestAvg;});
+  var _fcMfjCnt=0;
+  E_ROWS.forEach(function(r){
+    var cpR=eGet(r,'curPh');if(cpR.indexOf('DEAD')>=0)return;var cp=ePh(cpR);if(cp<1||cp>=8)return;
+    var mfj=eGet(r,'mfj');if(!mfj||mfj==='-'){if(cp>=5)mfj='MIN';else return;}
+    if(mfj!=='MIN')return;_fcMfjCnt++;
+    var stStr=eGet(r,'startDate')||'';var clStr=eGet(r,'closeDate')||'';
+    var startYM='';
+    if(stStr.length>=7)startYM=stStr.substring(0,7);
+    else if(clStr.length>=7){var cd=new Date(clStr.replace(/\//g,'-'));cd.setMonth(cd.getMonth()+1);startYM=cd.getFullYear()+'/'+(cd.getMonth()+1<10?'0':'')+(cd.getMonth()+1);}
+    else startYM=_fcTodayYM;
+    if(startYM<_fcTodayYM)startYM=_fcTodayYM;
+    _fcAllMs.forEach(function(m){if(m<startYM)return;var mA=_fcAvgByM[m]||0;if(mA>0){if(!_fcMfjOvl[m])_fcMfjOvl[m]={add:0,cnt:0};_fcMfjOvl[m].add+=mA;_fcMfjOvl[m].cnt++;}});
+  });
+  var _fcRevMax=1,_fcPnMax=1;
+  _fcAllMs.forEach(function(m){var d=_fcRevHist[m]||{rev:0,pn:0};var mA=(_fcMfjOvl[m]||{add:0}).add;var t=d.rev+mA;if(t>_fcRevMax)_fcRevMax=t;if((d.pn||0)>_fcPnMax)_fcPnMax=d.pn;});
+  var _fcSvgW=Math.max(1100,_fcAllMs.length*60);var _fcSvgH=220;var _fcBarW=34;var _fcGap=(_fcSvgW-80)/_fcAllMs.length;var _fcPad=50;var _fcTH=_fcSvgH+65;
+  h+='<div><svg style="width:100%;height:auto;display:block" viewBox="0 0 '+_fcSvgW+' '+_fcTH+'">';
+  for(var _fgi=0;_fgi<=5;_fgi++){var _fgy=_fcSvgH-(_fcSvgH*(_fgi/5));h+='<line x1="'+_fcPad+'" y1="'+_fgy+'" x2="'+(_fcSvgW-40)+'" y2="'+_fgy+'" stroke="rgba(0,0,0,.05)"/><text x="'+(_fcPad-4)+'" y="'+(_fgy+3)+'" text-anchor="end" font-size="9" fill="#8b949e" font-family="var(--mono)">'+eFmt(Math.round(_fcRevMax/5*_fgi))+'</text>';}
+  var _fcPnPts=[];
+  _fcAllMs.forEach(function(m,i){
+    var x=_fcPad+20+i*_fcGap;var d=_fcRevHist[m]||{rev:0,pk:0,pn:0};var mA=(_fcMfjOvl[m]||{add:0,cnt:0});
+    var isPast=m<=_fcTodayYM;var isCur=m===_fcTodayYM;
+    var bH=_fcRevMax>0?d.rev/_fcRevMax*_fcSvgH:0;var pkH=_fcRevMax>0?d.pk/_fcRevMax*_fcSvgH:0;var mfjH=_fcRevMax>0?mA.add/_fcRevMax*_fcSvgH:0;
+    if(isCur){h+='<defs><pattern id="fcHatch" patternUnits="userSpaceOnUse" width="6" height="6"><path d="M0,6 l6,-6 M-1,1 l2,-2 M5,7 l2,-2" stroke="rgba(220,38,38,.15)" stroke-width="1"/></pattern></defs>';h+='<rect x="'+(x-_fcGap/2)+'" y="0" width="'+_fcGap+'" height="'+_fcSvgH+'" rx="4" fill="url(#fcHatch)"/>';}
+    h+='<rect x="'+(x-_fcGap/2)+'" y="0" width="'+_fcGap+'" height="'+_fcSvgH+'" fill="transparent" style="cursor:pointer" onclick="showRevDrill(\''+m+'\')"/>';
+    if(mfjH>0)h+='<rect x="'+(x-_fcBarW/2)+'" y="'+(_fcSvgH-bH-mfjH)+'" width="'+(_fcBarW/2-1)+'" height="'+mfjH+'" rx="2" fill="rgba(234,88,12,.25)" stroke="var(--org)" stroke-width="0.5" stroke-dasharray="2 1"/>';
+    h+='<rect x="'+(x-_fcBarW/2)+'" y="'+(_fcSvgH-bH)+'" width="'+(_fcBarW/2-1)+'" height="'+bH+'" rx="2" fill="'+(isPast?'#0079C0':'rgba(0,121,192,.2)')+'"/>';
+    h+='<rect x="'+x+'" y="'+(_fcSvgH-pkH)+'" width="'+(_fcBarW/2-1)+'" height="'+pkH+'" rx="2" fill="'+(isPast?'#1a7f37':'rgba(26,127,55,.2)')+'"/>';
+    if(d.rev>0||mA.add>0){var _t=d.rev+mA.add;var _l=_t>=10000000?Math.round(_t/10000)+'万':_t>=1000?Math.round(_t/1000)+'k':_t;h+='<text x="'+(x-_fcBarW/4)+'" y="'+Math.max(12,_fcSvgH-bH-mfjH-4)+'" text-anchor="middle" font-size="'+(isCur?'11':'8')+'" font-weight="'+(isCur?'800':'400')+'" fill="'+(isCur?'#dc2626':'#656d76')+'" font-family="var(--mono)">'+_l+'</text>';}
+    var _fcPnH=_fcPnMax>0?(d.pn||0)/_fcPnMax*_fcSvgH:0;_fcPnPts.push(x+','+(_fcSvgH-_fcPnH));
+    if((d.pn||0)>0)h+='<text x="'+x+'" y="'+Math.max(10,_fcSvgH-_fcPnH-6)+'" text-anchor="middle" font-size="8" fill="#ea580c" font-weight="600" font-family="var(--mono)">'+(d.pn||0)+'</text>';
+    var mL=m.split('/')[1];var yL=mL==='08'?m.split('/')[0].substring(2)+'/':'';
+    h+='<text x="'+x+'" y="'+(_fcSvgH+16)+'" text-anchor="middle" font-size="'+(isCur?'12':'9')+'" fill="'+(isCur?'#dc2626':'#8b949e')+'" font-weight="'+(isCur?'800':'400')+'" font-family="var(--mono)">'+yL+mL+'</text>';
+    if(isCur)h+='<text x="'+x+'" y="'+(_fcSvgH+28)+'" text-anchor="middle" font-size="9" fill="#dc2626" font-weight="800">▲今月</text>';
+  });
+  if(_fcPnPts.length>1)h+='<polyline points="'+_fcPnPts.join(' ')+'" fill="none" stroke="#ea580c" stroke-width="2" stroke-dasharray="6 3" opacity=".7"/>';
+  h+='</svg></div>';
+  h+='<div style="display:flex;gap:14px;margin-top:6px;font-size:10px;color:var(--ink3);flex-wrap:wrap">';
+  h+='<span><span style="display:inline-block;width:10px;height:10px;background:#0079C0;border-radius:2px;vertical-align:middle"></span> 売上</span>';
+  h+='<span><span style="display:inline-block;width:10px;height:10px;background:#1a7f37;border-radius:2px;vertical-align:middle"></span> 粗利</span>';
+  h+='<span><span style="display:inline-block;width:16px;height:0;border-top:2px dashed #ea580c;vertical-align:middle"></span> PN数</span>';
+  if(_fcManFcst.total>0||_fcMfjCnt>0)h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(234,88,12,.25);border:1px dashed var(--org);border-radius:2px;vertical-align:middle"></span> 手入力予測+MIN案件</span>';
+  h+='</div></div>';
   return h;
-}
-function eUpdateSim(){
   var r12=parseInt(document.getElementById('es_r12').value);
   var r24=parseInt(document.getElementById('es_r24').value);
   var r48=parseInt(document.getElementById('es_r48').value);
