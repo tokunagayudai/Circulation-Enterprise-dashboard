@@ -1499,8 +1499,8 @@ function renderEntOverview(){
     _revHtml+='</div></div>';
     // ============ CKセクション ============
     h+='<div style="padding:0 24px 4px;margin-top:4px"><div style="font-size:12px;font-weight:700;color:var(--ink2);border-bottom:2px solid #bf8700;padding-bottom:4px;display:inline-block">CK・受注管理</div></div>';
-    // --- 上段: ドーナツ + ヨミゲージ + カード3枚縦 ---
-    h+='<div style="display:grid;grid-template-columns:180px 1fr 180px;gap:12px;padding:8px 24px">';
+    // --- 上段: ドーナツ + ヨミゲージ ---
+    h+='<div style="display:grid;grid-template-columns:200px 1fr;gap:12px;padding:8px 24px">';
     // (A) CK達成率ドーナツ（大）
     var _dA=Math.min(100,_achPct)*2.51327;var _dR=251.327-_dA;
     var _ckAchieved=_achPct>=100;
@@ -1556,8 +1556,9 @@ function renderEntOverview(){
     var _wonC=_wonThisM.total>0?'var(--grn)':'var(--ink3)';
     var _netPn=_wonThisM.total-endingThisMonth;var _netC=_netPn>0?'var(--grn)':_netPn<0?'var(--red)':'var(--ink3)';
     var _endC=endingThisMonth>0?'var(--red)':'var(--ink3)';
-    // (C) 受注/PN純増減/満了 - 縦3枚
-    h+='<div style="display:flex;flex-direction:column;gap:6px">';
+    h+='</div>';
+    // (C) 受注/PN純増減/満了 - 縦3枚（CKグリッドの外）
+    h+='<div style="display:flex;flex-direction:column;gap:6px;padding:8px 24px">';
     // 今月受注
     h+='<div style="background:'+(_wonThisM.total>0?'#f0fdf4':'var(--bg2)')+';border-radius:8px;padding:10px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.15)':'rgba(0,0,0,.04)')+';cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="showEntDrill(\'wonM\')">';
     h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">今月受注 ▼</div>';
@@ -1570,7 +1571,7 @@ function renderEntOverview(){
     h+='<div style="background:var(--bg2);border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="showEntDrill(\'ending\')">';
     h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">満了予定 ▼</div>';
     h+='<div><span style="font-family:var(--mono);font-size:22px;font-weight:800;color:'+_endC+'">'+endingThisMonth+'</span> <span style="font-size:8px;color:var(--ink3)">'+kzText+'</span></div></div>';
-    h+='</div></div>';
+    h+='</div>';
     // --- フォーキャストテーブル ---
     var _g1='style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:11px;font-weight:700;text-align:center;border:1px solid #444"';
     var _g3='style="background:#8b0000;color:#fff;padding:6px 8px;font-size:11px;font-weight:700;text-align:center;border:1px solid #444"';
