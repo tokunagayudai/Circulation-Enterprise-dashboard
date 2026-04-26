@@ -1916,8 +1916,11 @@ function renderEntOverview(){
     h+=qRow(m,qd,m===E_MGR);
   });
   }// end removed block
-  // Stalled sections grouped by phase (P2/P3/P4/P5)
-  var stalledData=eBuildStalled();var stalled=stalledData.stalled;var zombie=stalledData.zombie;
+  // (滞留案件はパイプラインタブに移動済み)
+  return h;
+}
+// (orphaned stalled code removed)
+if(false){ var stalledData=eBuildStalled();var stalled=stalledData.stalled;var zombie=stalledData.zombie;
   if(E_MF!=='all'){stalled=stalled.filter(function(s){return s.member===E_MF;});zombie=zombie.filter(function(s){return s.member===E_MF;});}
   // Helper: render jinsen pill with color
   function jinsenPill(j){
@@ -2046,8 +2049,7 @@ function renderEntOverview(){
   }
   return h;
 }
-// Render pipeline detail (Quip replacement - Excel-like with filters & sorting)
-
+}// end if(false)
 // Render pipeline detail (Quip replacement - Excel-like with filters & sorting, includes P8 this month)
 var E_PL_FILTERS={ph:'all',member:'all',dealType:'all',mfj:'all',sortBy:'ph',sortDir:'desc'};
 function renderEntPipeline(){
