@@ -1661,6 +1661,51 @@ function renderEntOverview(){
   h+='<div style="display:flex;gap:10px;margin-top:6px;font-size:9px;flex-wrap:wrap">';
   mList.forEach(function(m){if(m===E_MGR)return;var nm=m.split(' ')[0];var col=_kpiMemberColors[nm]||'#999';h+='<span><span style="display:inline-block;width:8px;height:8px;background:'+col+';border-radius:50%;vertical-align:middle"></span> '+nm+'</span>';});
   h+='</div></div>';
+  // === 現在のフェーズ別案件数（パイプライン） ===
+  var _phCounts={1:{n:0,ck:0,items:[]},2:{n:0,ck:0,items:[]},3:{n:0,ck:0,items:[]},4:{n:0,ck:0,items:[]},5:{n:0,ck:0,items:[]},6:{n:0,ck:0,items:[]},7:{n:0,ck:0,items:[]},8:{n:0,ck:0,items:[]}};
+  E_ROWS.forEach(function(r){
+    if(E_MF!=='all'&&eGet(r,'member')!==E_MF)return;
+    var cpR=eGet(r,'curPh');if(cpR.indexOf('DEAD')>=0)return;
+    var cp=ePh(cpR);if(cp<1||cp>8)return;
+    var dt=eGet(r,'dealType')||'';
+    var isNew=dt.indexOf('継続')<0;
+    var ck=eGetN(r,'ck');
+    _phCounts[cp].n++;_phCounts[cp].ck+=ck;
+    _phCounts[cp].items.push({name:eGet(r,'name'),member:eGet(r,'member'),oppId:eGet(r,'oppId'),isNew:isNew,ck:ck});
+  });
+  var _phLabels={1:'P1 見込み',2:'P2 案件',3:'P3 提案中',4:'P4 面談中',5:'P5-7 合意',8:'P8 受注'};
+  var _phSubs={1:'案件化(P2) or DEAD処理',2:'要件整理→提案実施',3:'提案→面談設定',4:'口頭合意獲得',5:'クロージング→契約処理',8:'総受注'};
+  var _phColors={1:'#656d76',2:'#0079C0',3:'#bf8700',4:'#ea580c',5:'#7c3aed',8:'#1a7f37'};
+  h+='<div style="padding:4px 24px 8px;margin-top:4px">';
+  h+='<div style="font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:6px">現在のパイプライン（フェーズ別案件数）</div>';
+  h+='<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">';
+  [1,2,3,4,5,8].forEach(function(ph){
+    var d=(ph===5)?{n:_phCounts[5].n+_phCounts[6].n+_phCounts[7].n,ck:_phCounts[5].ck+_phCounts[6].ck+_phCounts[7].ck,items:_phCounts[5].items.concat(_phCounts[6].items).concat(_phCounts[7].items)}:_phCounts[ph];
+    var newN=0,keiN=0;d.items.forEach(function(it){if(it.isNew)newN++;else keiN++;});
+    var col=_phColors[ph];
+    h+='<div style="background:var(--bg2);border-radius:10px;padding:12px 10px;border:1px solid rgba(0,0,0,.04);text-align:center">';
+    h+='<div style="font-size:10px;font-weight:700;color:var(--ink2);margin-bottom:2px">'+_phLabels[ph]+'</div>';
+    h+='<div style="font-size:9px;color:'+col+';font-weight:600;margin-bottom:6px">'+_phSubs[ph]+'</div>';
+    // ドーナツ
+    var total=d.n;
+    h+='<svg width="80" height="80" viewBox="0 0 80 80" style="display:block;margin:0 auto">';
+    h+='<circle cx="40" cy="40" r="30" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="6"/>';
+    if(total>0&&(newN>0||keiN>0)){
+      var newArc=newN/total*188.5;var keiArc=keiN/total*188.5;
+      h+='<circle cx="40" cy="40" r="30" fill="none" stroke="'+col+'" stroke-width="6" stroke-dasharray="'+newArc.toFixed(1)+' '+(188.5-newArc).toFixed(1)+'" transform="rotate(-90 40 40)"/>';
+      if(keiN>0)h+='<circle cx="40" cy="40" r="30" fill="none" stroke="'+col+'" stroke-width="6" stroke-dasharray="'+keiArc.toFixed(1)+' '+(188.5-keiArc).toFixed(1)+'" opacity=".4" transform="rotate('+(-90+newArc/188.5*360)+' 40 40)"/>';
+    }
+    h+='<text x="40" y="44" text-anchor="middle" font-size="20" font-weight="800" fill="'+col+'" font-family="var(--mono)">'+total+'</text>';
+    h+='</svg>';
+    // 内訳
+    h+='<div style="font-size:9px;color:var(--ink3);margin-top:4px">';
+    h+='<span style="display:inline-block;width:6px;height:6px;background:'+col+';border-radius:50%;vertical-align:middle"></span> 新規 '+newN;
+    h+=' <span style="display:inline-block;width:6px;height:6px;background:'+col+';border-radius:50%;vertical-align:middle;opacity:.4"></span> 継続 '+keiN;
+    h+='</div>';
+    if(d.ck>0)h+='<div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px">CK '+eFmt(d.ck)+'</div>';
+    h+='</div>';
+  });
+  h+='</div></div>';
   // (Row 2 cards moved to top)
   // === チーム全体サマリー（アソシエイト含むKPI）- 半期累計・新規/既顧客/継続内訳 ===
   var teamAll={p1:0,p3:0,p4:0,p8:0,newP8:0,existP8:0,keizokuP8:0,newCK:0,existCK:0,keizokuCK:0,totalCK:0};
