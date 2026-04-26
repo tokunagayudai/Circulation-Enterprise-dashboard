@@ -243,6 +243,21 @@
 .mbr-fcst-item{background:var(--bg);border-radius:8px;padding:10px 12px;text-align:center}
 @media(max-width:640px){.mbr-kpi-row{grid-template-columns:repeat(2,1fr)}.mbr-fcst-row{grid-template-columns:1fr}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+/* Mascot assistant */
+.mascot-wrap{position:fixed;bottom:24px;right:24px;z-index:8000;display:flex;flex-direction:column;align-items:flex-end;gap:0}
+.mascot-bubble{display:none;width:360px;max-height:70vh;overflow-y:auto;background:#fff;border-radius:16px 16px 4px 16px;box-shadow:0 8px 32px rgba(0,0,0,.18);margin-bottom:10px;animation:bubbleIn .2s ease-out}
+.mascot-bubble.open{display:block}
+.mascot-bubble-hdr{background:linear-gradient(135deg,#1a1f2e,#2a3548);color:#fff;padding:14px 16px;border-radius:16px 16px 0 0;display:flex;align-items:center;justify-content:space-between}
+.mascot-bubble-hdr h3{font-size:13px;margin:0}.mascot-bubble-hdr span{font-size:10px;opacity:.6}
+.mascot-bubble-body{padding:12px 14px;font-size:11px;line-height:1.6}
+.mascot-btn{width:60px;height:60px;border-radius:50%;border:3px solid #fff;background:linear-gradient(135deg,#0079C0,#00a5e0);box-shadow:0 4px 16px rgba(0,121,192,.35);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;position:relative}
+.mascot-btn:hover{transform:scale(1.08);box-shadow:0 6px 24px rgba(0,121,192,.45)}
+.mascot-btn:active{transform:scale(.95)}
+.mascot-badge{position:absolute;top:-4px;right:-4px;background:#cf222e;color:#fff;font-size:9px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
+@keyframes bubbleIn{from{opacity:0;transform:translateY(12px) scale(.95)}to{opacity:1;transform:translateY(0) scale(1)}}
+.m-kpi-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.m-kpi{background:var(--bg);border-radius:8px;padding:8px 10px}
+.m-kpi .mk-l{font-size:9px;color:var(--ink3);font-weight:500}.m-kpi .mk-v{font-family:var(--mono);font-size:18px;font-weight:700;line-height:1.2}.m-kpi .mk-s{font-size:9px;color:var(--ink3)}
 .ent-fc .efc-label{font-size:10px;font-weight:600;color:var(--ink2);margin-bottom:4px}
 .ent-fc .efc-val{font-size:20px;font-weight:700;font-family:var(--mono)}
 .ent-fc .efc-sub{font-size:9px;color:var(--ink3);margin-top:2px}
@@ -304,7 +319,7 @@
 </style>
 <body>
 <nav class="topnav">
-<div class="tn-logo" style="cursor:pointer" onclick="_mbrShown=false;triggerMorningBriefing()" title="朝会ブリーフィングを表示">C</div>
+<div class="tn-logo" style="cursor:pointer" onclick="toggleMascotBubble()" title="今日のサマリー">C</div>
 <div class="tn-section biz">
 <span class="tn-label">案件管理</span>
 <div class="tn-btns">
@@ -1046,7 +1061,91 @@ function showMorningBriefing(){
 var _mbrShown=false;
 function triggerMorningBriefing(){
   if(_mbrShown)return;_mbrShown=true;
-  setTimeout(showMorningBriefing,500);
+  setTimeout(function(){initMascot();},300);
+}
+function initMascot(){
+  if(document.getElementById('mascot-wrap'))return;
+  var w=document.createElement('div');w.className='mascot-wrap';w.id='mascot-wrap';
+  // Build condensed summary
+  var s=buildMascotSummary();
+  w.innerHTML='<div class="mascot-bubble" id="mascot-bubble">'+
+    '<div class="mascot-bubble-hdr"><h3>今日のサマリー</h3><span id="mascot-date"></span></div>'+
+    '<div class="mascot-bubble-body" id="mascot-bubble-body">'+s+'</div>'+
+    '</div>'+
+    '<div class="mascot-btn" onclick="toggleMascotBubble()" title="今日のサマリー">'+
+    '<svg width="32" height="32" viewBox="0 0 32 32" fill="none">'+
+    '<circle cx="16" cy="13" r="10" fill="#fff" opacity=".9"/>'+
+    '<circle cx="12" cy="11" r="2" fill="#1a1f2e"/><circle cx="20" cy="11" r="2" fill="#1a1f2e"/>'+
+    '<path d="M11 16 Q16 20 21 16" stroke="#1a1f2e" stroke-width="1.5" fill="none" stroke-linecap="round"/>'+
+    '<rect x="7" y="22" width="18" height="8" rx="3" fill="#fff" opacity=".9"/>'+
+    '<text x="16" y="29" text-anchor="middle" font-size="7" font-weight="700" fill="#0079C0" font-family="var(--mono)">ENT</text>'+
+    '</svg>'+
+    '<div class="mascot-badge" id="mascot-badge" style="display:none">!</div>'+
+    '</div>';
+  document.body.appendChild(w);
+  var td=new Date();
+  document.getElementById('mascot-date').textContent=td.getFullYear()+'/'+(td.getMonth()+1)+'/'+(td.getDate()<10?'0':'')+td.getDate();
+  // Check for alerts
+  var stalledD=eBuildStalled();var aCount=(stalledD.stalled||[]).length+(stalledD.zombie||[]).length;
+  if(aCount>0){var b=document.getElementById('mascot-badge');b.style.display='flex';b.textContent=aCount>9?'9+':aCount;}
+}
+function toggleMascotBubble(){
+  var b=document.getElementById('mascot-bubble');
+  if(!b)return;
+  if(b.classList.contains('open')){b.classList.remove('open');}
+  else{b.innerHTML='<div class="mascot-bubble-hdr"><h3>今日のサマリー</h3><span>'+new Date().toLocaleDateString('ja-JP')+'</span></div><div class="mascot-bubble-body">'+buildMascotSummary()+'</div>';b.classList.add('open');}
+}
+function buildMascotSummary(){
+  if(!E_ROWS||E_ROWS.length===0)return '<div style="color:var(--ink3)">データ読込中...</div>';
+  var today=new Date();var thisYM=today.getFullYear()+'/'+(today.getMonth()+1<10?'0':'')+(today.getMonth()+1);
+  var mStart=new Date(today.getFullYear(),today.getMonth(),1);var mEnd=new Date(today.getFullYear(),today.getMonth()+1,0);
+  function inM(d){if(!d)return false;var v=new Date(d.replace(/\//g,'-'));return !isNaN(v)&&v>=mStart&&v<=mEnd;}
+  var k={p1:0,p3:0,p4:0,p8:0,ck:0,dead:0};
+  E_ROWS.forEach(function(r){
+    var dt=eGet(r,'dealType');if(dt.indexOf('継続')>=0)return;
+    var ap=eGet(r,'apDate'),md=eGet(r,'mendanDate'),cl=eGet(r,'closeDate'),pr=eGet(r,'proposalDate');
+    var lp=ePh(eGet(r,'lastPh'));var cpR=eGet(r,'curPh');var cp=ePh(cpR);
+    if(inM(ap)){k.p1++;if(cpR.indexOf('DEAD')>=0)k.dead++;}
+    if(inM(pr)&&lp>=3)k.p3++;
+    if(inM(md)&&lp>=4)k.p4++;
+    if(inM(cl)&&cp===8){k.p8++;k.ck+=eGetN(r,'ck');}
+  });
+  var pn=eBuildPN();var yD=eParseYosan();
+  var ckPct=0,ckBudget=0,ckJisseki=0;
+  if(yD&&yD.team.budget>0){ckBudget=yD.team.budget;ckJisseki=yD.team.jisseki;ckPct=Math.round(ckJisseki/ckBudget*100);}
+  var stalledD=eBuildStalled();var aCnt=(stalledD.stalled||[]).length+(stalledD.zombie||[]).length;
+  var h='';
+  // CK progress bar
+  var ckC=ckPct>=100?'var(--grn)':ckPct>=50?'var(--org)':'var(--red)';
+  h+='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px"><span style="color:var(--ink3)">CK予算達成</span><span style="font-weight:700;color:'+ckC+'">'+eFmt(ckJisseki)+' / '+eFmt(ckBudget)+' ('+ckPct+'%)</span></div>';
+  h+='<div style="height:8px;background:rgba(0,0,0,.08);border-radius:4px;overflow:hidden"><div style="height:100%;width:'+Math.min(100,ckPct)+'%;background:'+ckC+';border-radius:4px"></div></div></div>';
+  // KPI cards 2x2
+  h+='<div class="m-kpi-row">';
+  h+='<div class="m-kpi"><div class="mk-l">月次売上</div><div class="mk-v" style="color:var(--blue)">'+eFmt(pn.rev)+'</div><div class="mk-s">PN '+pn.pn+'件</div></div>';
+  h+='<div class="m-kpi"><div class="mk-l">月次粗利</div><div class="mk-v" style="color:var(--grn)">'+eFmt(pn.pk)+'</div><div class="mk-s">率 '+(pn.rev>0?Math.round(pn.pk/pn.rev*100):0)+'%</div></div>';
+  h+='</div>';
+  h+='<div class="m-kpi-row">';
+  h+='<div class="m-kpi"><div class="mk-l">P1商談</div><div class="mk-v">'+k.p1+'</div></div>';
+  h+='<div class="m-kpi"><div class="mk-l">P8受注</div><div class="mk-v" style="color:var(--grn)">'+k.p8+'</div><div class="mk-s">CK '+eFmt(k.ck)+'</div></div>';
+  h+='</div>';
+  // Alerts
+  if(aCnt>0)h+='<div style="background:#fff8c5;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:10px;color:var(--org);font-weight:600">⚠ 滞留案件 '+aCnt+'件あり</div>';
+  if(k.dead>0)h+='<div style="background:#ffebe9;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:10px;color:var(--red);font-weight:600">💀 今月DEAD '+k.dead+'件</div>';
+  // Insights
+  if(yD&&yD.team.budget>0){
+    var dayPct=Math.round(today.getDate()/new Date(today.getFullYear(),today.getMonth()+1,0).getDate()*100);
+    if(ckPct>=100)h+='<div style="background:#dafbe1;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:10px;color:var(--grn);font-weight:600">🎉 予算達成おめでとうございます！</div>';
+    else if(ckPct<dayPct*0.7)h+='<div style="background:#ffebe9;border-radius:6px;padding:8px 10px;margin-bottom:8px;font-size:10px;color:var(--red)">⚡ CK達成率が月進捗を下回っています</div>';
+  }
+  // Buttons
+  h+='<div style="display:flex;gap:6px;margin-top:4px">';
+  h+='<button onclick="toggleMascotBubble();_mbrShown=false;triggerFullBriefing()" style="flex:1;background:var(--blue);color:#fff;border:none;padding:8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer">📋 詳細ブリーフィング</button>';
+  h+='<button onclick="toggleMascotBubble()" style="flex:1;background:var(--bg);color:var(--ink2);border:1px solid var(--bd);padding:8px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer">閉じる</button>';
+  h+='</div>';
+  return h;
+}
+function triggerFullBriefing(){
+  setTimeout(showMorningBriefing,100);
 }
 // Render enterprise overview
 function renderEntOverview(){
