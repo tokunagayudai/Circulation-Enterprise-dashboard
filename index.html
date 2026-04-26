@@ -1842,64 +1842,6 @@ function renderEntForecast(){
   if(pipMonthlyMax>maxRev*0.5)maxRev+=pipMonthlyMax;
   var h='';
   // Header summary
-  h+='<div class="ent-kpi-row">';
-  h+='<div class="ent-kpi"><div class="ek-label">今月確定売上</div><div class="ek-val" style="color:var(--blue)">'+eFmt(todayRev.rev)+'</div><div class="ek-sub">PN '+todayRev.pn+'件</div></div>';
-  var lastM=fc.months[fc.months.length-1];var lastRev=fc.base[lastM]||{rev:0,pn:0};
-  var decay=todayRev.rev>0?Math.round((1-lastRev.rev/todayRev.rev)*100):0;
-  h+='<div class="ent-kpi"><div class="ek-label">6ヶ月後 確定売上</div><div class="ek-val" style="color:var(--red)">'+eFmt(lastRev.rev)+'</div><div class="ek-sub">▼'+decay+'% PN '+lastRev.pn+'件</div></div>';
-  h+='<div class="ent-kpi"><div class="ek-label">パイプライン CK (MID)</div><div class="ek-val" style="color:var(--org)">'+eFmt(ckMid)+'</div><div class="ek-sub">月換算 '+eFmt(pipMonthlyMid)+'</div></div>';
-  h+='<div class="ent-kpi"><div class="ek-label">単価平均</div><div class="ek-val">'+eFmt(avgPrice)+'</div><div class="ek-sub">/月/PN</div></div>';
-  h+='</div>';
-  // Revenue forecast chart with overlays
-  h+='<div class="ent-section"><div class="es-title">売上推移フォーキャスト（既存契約 + パイプライン見込）</div>';
-  h+='<div style="position:relative">';
-  h+='<div style="display:flex;align-items:flex-end;gap:6px;height:200px;padding:24px 4px 0;border-bottom:1px solid var(--bd);position:relative">';
-  fc.months.forEach(function(m,i){
-    var d=fc.base[m];var rh=Math.max(2,d.rev/maxRev*180);
-    // Pipeline overlay (only future months, scale linearly from month 1)
-    var pipScale=i===0?0:Math.min(1,i/3); // pipeline ramps up over 3 months
-    var pMin=pipMonthlyMin*pipScale,pMid=pipMonthlyMid*pipScale,pMax=pipMonthlyMax*pipScale;
-    var minH=pMin/maxRev*180,midH=(pMid-pMin)/maxRev*180,maxH=(pMax-pMid)/maxRev*180;
-    var isCur=m===fc.todayYM;var ml=m.replace('20','').replace('/','-');
-    h+='<div style="flex:1;display:flex;flex-direction:column;align-items:stretch;gap:1px;min-width:0">';
-    h+='<div style="font-size:8px;text-align:center;color:var(--ink2);font-family:var(--mono)">'+eFmt(d.rev+(i>0?pMid:0))+'</div>';
-    // Stacked bars: base (solid) + min (light grn) + mid (light org) + max (light blue)
-    if(maxH>0)h+='<div style="height:'+maxH+'px;background:rgba(99,102,241,.18);border-top:1px dashed rgba(99,102,241,.5)"></div>';
-    if(midH>0)h+='<div style="height:'+midH+'px;background:rgba(234,88,12,.22);border-top:1px dashed rgba(234,88,12,.6)"></div>';
-    if(minH>0)h+='<div style="height:'+minH+'px;background:rgba(26,127,55,.28);border-top:1px dashed rgba(26,127,55,.7)"></div>';
-    h+='<div style="height:'+rh+'px;background:var(--blue);border-radius:'+(maxH+midH+minH===0?'2px 2px 0 0':'0')+';min-height:2px"></div>';
-    h+='<div style="font-size:9px;text-align:center;color:'+(isCur?'var(--blue);font-weight:700':'var(--ink3)')+';margin-top:4px">'+ml+'</div>';
-    h+='<div style="font-size:8px;text-align:center;color:var(--ink3)">'+d.pn+'名'+(d.ending>0?' (-'+d.ending+')':'')+'</div>';
-    h+='</div>';
-  });
-  h+='</div></div>';
-  h+='<div style="display:flex;gap:14px;margin-top:10px;font-size:10px;flex-wrap:wrap">';
-  h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:var(--blue);border-radius:2px"></span>確定売上(既存契約)</span>';
-  h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:rgba(26,127,55,.28);border:1px dashed var(--grn)"></span>MIN (P5-7×80%)</span>';
-  h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:rgba(234,88,12,.22);border:1px dashed #ea580c"></span>MID (+P4×50%)</span>';
-  h+='<span style="display:flex;align-items:center;gap:4px"><span style="width:12px;height:12px;background:rgba(99,102,241,.18);border:1px dashed #6366f1"></span>MAX (+P2-3×15%)</span>';
-  h+='</div>';
-  h+='<div style="margin-top:6px;font-size:9px;color:var(--ink3)">※パイプライン換算: CK÷6ヶ月÷40%粗利率で月次売上に換算（あくまで目安）</div>';
-  h+='</div>';
-  // CK breakdown
-  h+='<div class="ent-section"><div class="es-title">CKフォーキャスト（パイプライン加重）</div>';
-  h+='<div class="ent-forecast">';
-  h+='<div class="ent-fc" style="border-left:3px solid var(--grn)"><div class="efc-label">MIN ほぼ確定</div><div class="efc-val" style="color:var(--grn)">'+eFmt(ckMin)+'</div><div class="efc-sub">P5-7 ×80%</div></div>';
-  h+='<div class="ent-fc" style="border-left:3px solid var(--org)"><div class="efc-label">MID 期待値</div><div class="efc-val" style="color:var(--org)">'+eFmt(ckMid)+'</div><div class="efc-sub">+P4 ×50%</div></div>';
-  h+='<div class="ent-fc" style="border-left:3px solid var(--blue)"><div class="efc-label">MAX 上限</div><div class="efc-val" style="color:var(--blue)">'+eFmt(ckMax)+'</div><div class="efc-sub">+P2-3 ×15%</div></div>';
-  h+='<div class="ent-fc" style="border:2px solid var(--ink)"><div class="efc-label">月間目標CK</div><div class="efc-val">'+eFmt(E_TARGETS.ck)+'</div><div class="efc-sub">vs MID '+(E_TARGETS.ck>0?Math.round(ckMid/E_TARGETS.ck*100):0)+'%</div></div>';
-  h+='</div></div>';
-  // Simulation
-  h+='<div class="ent-section"><div class="es-title">目標逆算シミュレーション</div>';
-  h+='<div style="font-size:10px;color:var(--ink3);margin-bottom:8px">月間目標: P8受注 '+E_TARGETS.p8+'件 / CK '+eFmt(E_TARGETS.ck)+'</div>';
-  var r12=ePct(team.p2,team.p1)||40,r24=ePct(team.p4,team.p2)||20,r48=ePct(team.p8,team.p4)||50;
-  h+='<div class="ent-sim">';
-  h+='<div class="ent-sim-row"><label>P1→P2 案件化率</label><input type="range" id="es_r12" min="10" max="80" value="'+r12+'" oninput="eUpdateSim()"><div class="es-v" id="es_r12v">'+r12+'%</div></div>';
-  h+='<div class="ent-sim-row"><label>P2→P4 面談到達率</label><input type="range" id="es_r24" min="10" max="80" value="'+r24+'" oninput="eUpdateSim()"><div class="es-v" id="es_r24v">'+r24+'%</div></div>';
-  h+='<div class="ent-sim-row"><label>P4→P8 クロージング率</label><input type="range" id="es_r48" min="10" max="80" value="'+r48+'" oninput="eUpdateSim()"><div class="es-v" id="es_r48v">'+r48+'%</div></div>';
-  h+='</div>';
-  h+='<div id="es_result" style="margin-top:8px;padding:12px;background:rgba(0,121,192,.06);border-radius:8px;font-size:12px"></div>';
-  h+='</div>';
   // === 月別売上推移チャート（フォーキャストタブ用 - 概要と同じ） ===
   h+='<div class="ent-section"><div class="es-title">月別売上推移（2025/08〜）<span style="font-size:9px;color:var(--ink3);font-weight:400;margin-left:8px">📊 pn_new ※月クリック→案件一覧</span></div>';
   var _fcRevHist={};var _fcPnNewM=ePnNewMonthly();
@@ -1955,6 +1897,33 @@ function renderEntForecast(){
   h+='<span><span style="display:inline-block;width:16px;height:0;border-top:2px dashed #ea580c;vertical-align:middle"></span> PN数</span>';
   if(_fcManFcst.total>0||_fcMfjCnt>0)h+='<span><span style="display:inline-block;width:10px;height:10px;background:rgba(234,88,12,.25);border:1px dashed var(--org);border-radius:2px;vertical-align:middle"></span> 手入力予測+MIN案件</span>';
   h+='</div></div>';
+  h+='<div class="ent-kpi-row">';
+  h+='<div class="ent-kpi"><div class="ek-label">今月確定売上</div><div class="ek-val" style="color:var(--blue)">'+eFmt(todayRev.rev)+'</div><div class="ek-sub">PN '+todayRev.pn+'件</div></div>';
+  var lastM=fc.months[fc.months.length-1];var lastRev=fc.base[lastM]||{rev:0,pn:0};
+  var decay=todayRev.rev>0?Math.round((1-lastRev.rev/todayRev.rev)*100):0;
+  h+='<div class="ent-kpi"><div class="ek-label">6ヶ月後 確定売上</div><div class="ek-val" style="color:var(--red)">'+eFmt(lastRev.rev)+'</div><div class="ek-sub">▼'+decay+'% PN '+lastRev.pn+'件</div></div>';
+  h+='<div class="ent-kpi"><div class="ek-label">パイプライン CK (MID)</div><div class="ek-val" style="color:var(--org)">'+eFmt(ckMid)+'</div><div class="ek-sub">月換算 '+eFmt(pipMonthlyMid)+'</div></div>';
+  h+='<div class="ent-kpi"><div class="ek-label">単価平均</div><div class="ek-val">'+eFmt(avgPrice)+'</div><div class="ek-sub">/月/PN</div></div>';
+  h+='</div>';
+  // CK breakdown
+  h+='<div class="ent-section"><div class="es-title">CKフォーキャスト（パイプライン加重）</div>';
+  h+='<div class="ent-forecast">';
+  h+='<div class="ent-fc" style="border-left:3px solid var(--grn)"><div class="efc-label">MIN ほぼ確定</div><div class="efc-val" style="color:var(--grn)">'+eFmt(ckMin)+'</div><div class="efc-sub">P5-7 ×80%</div></div>';
+  h+='<div class="ent-fc" style="border-left:3px solid var(--org)"><div class="efc-label">MID 期待値</div><div class="efc-val" style="color:var(--org)">'+eFmt(ckMid)+'</div><div class="efc-sub">+P4 ×50%</div></div>';
+  h+='<div class="ent-fc" style="border-left:3px solid var(--blue)"><div class="efc-label">MAX 上限</div><div class="efc-val" style="color:var(--blue)">'+eFmt(ckMax)+'</div><div class="efc-sub">+P2-3 ×15%</div></div>';
+  h+='<div class="ent-fc" style="border:2px solid var(--ink)"><div class="efc-label">月間目標CK</div><div class="efc-val">'+eFmt(E_TARGETS.ck)+'</div><div class="efc-sub">vs MID '+(E_TARGETS.ck>0?Math.round(ckMid/E_TARGETS.ck*100):0)+'%</div></div>';
+  h+='</div></div>';
+  // Simulation
+  h+='<div class="ent-section"><div class="es-title">目標逆算シミュレーション</div>';
+  h+='<div style="font-size:10px;color:var(--ink3);margin-bottom:8px">月間目標: P8受注 '+E_TARGETS.p8+'件 / CK '+eFmt(E_TARGETS.ck)+'</div>';
+  var r12=ePct(team.p2,team.p1)||40,r24=ePct(team.p4,team.p2)||20,r48=ePct(team.p8,team.p4)||50;
+  h+='<div class="ent-sim">';
+  h+='<div class="ent-sim-row"><label>P1→P2 案件化率</label><input type="range" id="es_r12" min="10" max="80" value="'+r12+'" oninput="eUpdateSim()"><div class="es-v" id="es_r12v">'+r12+'%</div></div>';
+  h+='<div class="ent-sim-row"><label>P2→P4 面談到達率</label><input type="range" id="es_r24" min="10" max="80" value="'+r24+'" oninput="eUpdateSim()"><div class="es-v" id="es_r24v">'+r24+'%</div></div>';
+  h+='<div class="ent-sim-row"><label>P4→P8 クロージング率</label><input type="range" id="es_r48" min="10" max="80" value="'+r48+'" oninput="eUpdateSim()"><div class="es-v" id="es_r48v">'+r48+'%</div></div>';
+  h+='</div>';
+  h+='<div id="es_result" style="margin-top:8px;padding:12px;background:rgba(0,121,192,.06);border-radius:8px;font-size:12px"></div>';
+  h+='</div>';
   return h;
   var r12=parseInt(document.getElementById('es_r12').value);
   var r24=parseInt(document.getElementById('es_r24').value);
