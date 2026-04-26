@@ -1676,11 +1676,13 @@ function renderEntOverview(){
   h+='<div style="padding:4px 24px 8px;margin-top:4px">';
   h+='<div style="font-size:11px;font-weight:700;color:var(--ink2);margin-bottom:6px">現在のパイプライン（フェーズ別案件数）</div>';
   h+='<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:8px">';
+  window._phDrillData={};
   [1,2,3,4,5,8].forEach(function(ph){
     var d=(ph===5)?{n:_phCounts[5].n+_phCounts[6].n+_phCounts[7].n,ck:_phCounts[5].ck+_phCounts[6].ck+_phCounts[7].ck,items:_phCounts[5].items.concat(_phCounts[6].items).concat(_phCounts[7].items)}:_phCounts[ph];
+    window._phDrillData[ph]=d;
     var newN=0,keiN=0;d.items.forEach(function(it){if(it.isNew)newN++;else keiN++;});
     var col=_phColors[ph];
-    h+='<div style="background:var(--bg2);border-radius:10px;padding:12px 10px;border:1px solid rgba(0,0,0,.04);text-align:center">';
+    h+='<div style="background:var(--bg2);border-radius:10px;padding:12px 10px;border:1px solid rgba(0,0,0,.04);text-align:center;cursor:pointer" onclick="showPhDrill('+ph+')">';
     h+='<div style="font-size:10px;font-weight:700;color:var(--ink2);margin-bottom:2px">'+_phLabels[ph]+'</div>';
     h+='<div style="font-size:9px;color:'+col+';font-weight:600;margin-bottom:6px">'+_phSubs[ph]+'</div>';
     // ドーナツ
@@ -2215,6 +2217,27 @@ function openDrillModal(title,bodyHtml,stats){
   document.addEventListener('mousemove',function(e){if(!dragging)return;modal.style.left=Math.max(0,e.clientX-dx)+'px';modal.style.top=Math.max(0,e.clientY-dy)+'px';});
   document.addEventListener('mouseup',function(){dragging=false;});
   document.addEventListener('keydown',function _esc(e){if(e.key==='Escape'){closeDrillModal();document.removeEventListener('keydown',_esc);}});
+}
+function showPhDrill(ph){
+  var labels={1:'P1 見込み',2:'P2 案件',3:'P3 提案中',4:'P4 面談中',5:'P5-7 合意',8:'P8 受注（今月）'};
+  var d=window._phDrillData&&window._phDrillData[ph];
+  if(!d||!d.items||d.items.length===0){openDrillModal(labels[ph]||'P'+ph,'<div style="padding:20px;color:var(--ink3)">対象案件なし</div>');return;}
+  var items=d.items.slice().sort(function(a,b){return a.member.localeCompare(b.member,'ja');});
+  var totalCK=0;items.forEach(function(c){totalCK+=c.ck||0;});
+  var newN=items.filter(function(c){return c.isNew;}).length;
+  var stats='<span>合計 <strong>'+items.length+'</strong>件</span><span>CK合計 <strong>'+eFmt(totalCK)+'</strong></span><span>新規 '+newN+' / 継続 '+(items.length-newN)+'</span>';
+  var h='<table class="ent-table" style="width:100%"><thead><tr><th>担当</th><th>案件名</th><th>新規/継続</th><th style="text-align:right">CK</th></tr></thead><tbody>';
+  items.forEach(function(c){
+    var url=c.oppId&&c.oppId.length>=15?'https://circulation.lightning.force.com/lightning/r/Opportunity/'+c.oppId+'/view':'';
+    h+='<tr>';
+    h+='<td style="font-size:10px;white-space:nowrap">'+c.member+'</td>';
+    h+='<td style="cursor:pointer;color:var(--blue)" onclick="window.open(\''+url+'\',\'_blank\')">'+c.name+'</td>';
+    h+='<td style="font-size:10px">'+(c.isNew?'<span style="color:var(--blue)">新規</span>':'<span style="color:var(--ink3)">継続</span>')+'</td>';
+    h+='<td style="font-family:var(--mono);text-align:right">'+(c.ck?eFmt(c.ck):'-')+'</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table>';
+  openDrillModal((labels[ph]||'P'+ph)+' （'+items.length+'件）',h,stats);
 }
 function showRevDrill(ym){
   var list=[];
