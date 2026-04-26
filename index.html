@@ -1555,26 +1555,22 @@ function renderEntOverview(){
     var _wonC=_wonThisM.total>0?'var(--grn)':'var(--ink3)';
     var _netPn=_wonThisM.total-endingThisMonth;var _netC=_netPn>0?'var(--grn)':_netPn<0?'var(--red)':'var(--ink3)';
     var _endC=endingThisMonth>0?'var(--red)':'var(--ink3)';
-    h+='<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">';
+    h+='<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:0;align-items:center">';
     // 今月受注
-    h+='<div style="background:'+(_wonThisM.total>0?'#f0fdf4':'var(--bg2)')+';border-radius:8px;padding:10px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.2)':'rgba(0,0,0,.04)')+';cursor:pointer" onclick="showEntDrill(\'wonM\')">';
-    h+='<div style="font-size:8px;color:var(--ink3);font-weight:500">今月受注 ▼</div>';
-    h+='<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:'+_wonC+'">'+_wonThisM.total+'</div>';
-    h+='<div style="font-size:7px;color:var(--ink3)">継続:'+_wonThisM.keizoku+' 新規:'+_wonThisM.newEx+'</div></div>';
+    h+='<div style="background:'+(_wonThisM.total>0?'#f0fdf4':'var(--bg2)')+';border-radius:8px;padding:12px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.2)':'rgba(0,0,0,.04)')+';cursor:pointer;text-align:center" onclick="showEntDrill(\'wonM\')">';
+    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">今月受注 ▼</div>';
+    h+='<div style="font-family:var(--mono);font-size:28px;font-weight:800;color:'+_wonC+';line-height:1.2">'+_wonThisM.total+'</div>';
+    h+='<div style="font-size:8px;color:var(--ink3)">継続:'+_wonThisM.keizoku+' 新規:'+_wonThisM.newEx+'</div></div>';
+    // PN純増減（中央・矢印付き）
+    h+='<div style="text-align:center;padding:0 14px">';
+    h+='<div style="font-size:8px;color:var(--ink3);margin-bottom:2px">PN純増減</div>';
+    h+='<div style="font-family:var(--mono);font-size:24px;font-weight:800;color:'+_netC+'">'+(_netPn>0?'+':'')+_netPn+'</div>';
+    h+='<div style="font-size:16px;color:'+_netC+'">'+(_netPn>0?'▲':_netPn<0?'▼':'—')+'</div></div>';
     // 今月満了予定
-    h+='<div style="background:var(--bg2);border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);cursor:pointer" onclick="showEntDrill(\'ending\')">';
-    h+='<div style="font-size:8px;color:var(--ink3);font-weight:500">満了予定 ▼</div>';
-    h+='<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:'+_endC+'">'+endingThisMonth+'</div>';
-    h+='<div style="font-size:7px;color:var(--ink3)">'+kzText+'</div></div>';
-    // 今月DEAD
-    h+='<div style="background:var(--bg2);border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);cursor:pointer" onclick="showEntDrill(\'deadM\')">';
-    h+='<div style="font-size:8px;color:var(--ink3);font-weight:500">今月DEAD ▼</div>';
-    h+='<div style="font-family:var(--mono);font-size:20px;font-weight:700;color:'+(kpi.deadM>0?'var(--red)':'var(--ink3)')+'">'+kpi.deadM+'</div>';
-    h+='<div style="font-size:7px;color:var(--ink3)">'+memBrkdwn('deadM')+'</div></div>';
-    // PN純増減
-    h+='<div style="background:'+((_netPn>0)?'rgba(26,127,55,.05)':(_netPn<0)?'rgba(207,34,46,.05)':'var(--bg2)')+';border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);text-align:center">';
-    h+='<div style="font-size:8px;color:var(--ink3)">PN純増減</div>';
-    h+='<div style="font-family:var(--mono);font-size:16px;font-weight:800;color:'+_netC+'">'+(_netPn>0?'+':'')+_netPn+'</div></div>';
+    h+='<div style="background:var(--bg2);border-radius:8px;padding:12px;border:1px solid rgba(0,0,0,.04);cursor:pointer;text-align:center" onclick="showEntDrill(\'ending\')">';
+    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">満了予定 ▼</div>';
+    h+='<div style="font-family:var(--mono);font-size:28px;font-weight:800;color:'+_endC+';line-height:1.2">'+endingThisMonth+'</div>';
+    h+='<div style="font-size:8px;color:var(--ink3)">'+kzText+'</div></div>';
     h+='</div></div>';
     // --- フォーキャストテーブル ---
     var _g1='style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:11px;font-weight:700;text-align:center;border:1px solid #444"';
