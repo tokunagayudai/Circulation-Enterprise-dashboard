@@ -1556,20 +1556,22 @@ function renderEntOverview(){
     var _wonC=_wonThisM.total>0?'var(--grn)':'var(--ink3)';
     var _netPn=_wonThisM.total-endingThisMonth;var _netC=_netPn>0?'var(--grn)':_netPn<0?'var(--red)':'var(--ink3)';
     var _endC=endingThisMonth>0?'var(--red)':'var(--ink3)';
-    // (C) 受注/PN純増減/満了 - 縦3枚（グリッド3列目）
+    // (C) 満了/受注/PN純増減 - 縦3枚中央揃え（グリッド3列目）
     h+='<div style="display:flex;flex-direction:column;gap:6px">';
+    // 満了予定
+    h+='<div style="background:var(--bg2);border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);cursor:pointer;text-align:center" onclick="showEntDrill(\'ending\')">';
+    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">満了予定 ▼</div>';
+    h+='<div style="font-family:var(--mono);font-size:22px;font-weight:800;color:'+_endC+'">'+endingThisMonth+'</div>';
+    h+='<div style="font-size:8px;color:var(--ink3)">'+kzText+'</div></div>';
     // 今月受注
-    h+='<div style="background:'+(_wonThisM.total>0?'#f0fdf4':'var(--bg2)')+';border-radius:8px;padding:10px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.15)':'rgba(0,0,0,.04)')+';cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="showEntDrill(\'wonM\')">';
+    h+='<div style="background:'+(_wonThisM.total>0?'#f0fdf4':'var(--bg2)')+';border-radius:8px;padding:10px;border:1px solid '+(_wonThisM.total>0?'rgba(26,127,55,.15)':'rgba(0,0,0,.04)')+';cursor:pointer;text-align:center" onclick="showEntDrill(\'wonM\')">';
     h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">今月受注 ▼</div>';
-    h+='<div><span style="font-family:var(--mono);font-size:22px;font-weight:800;color:'+_wonC+'">'+_wonThisM.total+'</span> <span style="font-size:8px;color:var(--ink3)">継続'+_wonThisM.keizoku+' 新規'+_wonThisM.newEx+'</span></div></div>';
+    h+='<div style="font-family:var(--mono);font-size:22px;font-weight:800;color:'+_wonC+'">'+_wonThisM.total+'</div>';
+    h+='<div style="font-size:8px;color:var(--ink3)">継続'+_wonThisM.keizoku+' 新規'+_wonThisM.newEx+'</div></div>';
     // PN純増減
-    h+='<div style="background:'+((_netPn>0)?'rgba(26,127,55,.04)':(_netPn<0)?'rgba(207,34,46,.04)':'var(--bg2)')+';border-radius:8px;padding:10px;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(0,0,0,.04)">';
+    h+='<div style="background:'+((_netPn>0)?'rgba(26,127,55,.04)':(_netPn<0)?'rgba(207,34,46,.04)':'var(--bg2)')+';border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);text-align:center">';
     h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">PN純増減</div>';
     h+='<div style="font-family:var(--mono);font-size:22px;font-weight:800;color:'+_netC+'">'+(_netPn>0?'+':'')+_netPn+'</div></div>';
-    // 今月満了
-    h+='<div style="background:var(--bg2);border-radius:8px;padding:10px;border:1px solid rgba(0,0,0,.04);cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="showEntDrill(\'ending\')">';
-    h+='<div style="font-size:9px;color:var(--ink3);font-weight:500">満了予定 ▼</div>';
-    h+='<div><span style="font-family:var(--mono);font-size:22px;font-weight:800;color:'+_endC+'">'+endingThisMonth+'</span> <span style="font-size:8px;color:var(--ink3)">'+kzText+'</span></div></div>';
     h+='</div></div>';
     // --- フォーキャストテーブル ---
     var _g1='style="background:#1a1f2e;color:#fff;padding:6px 8px;font-size:11px;font-weight:700;text-align:center;border:1px solid #444"';
